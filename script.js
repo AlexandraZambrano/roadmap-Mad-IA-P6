@@ -102,21 +102,27 @@ const bootcampData = {
         },
         {
             type: "Proyecto",
-            name: "Problema de regresión | <i class='bi bi-person-fill'></i>",
+            name: "Problema de regresión | <i class='bi bi-people-fill'></i>",
             start: 9,
             end: 10,
         },
         {
             type: "Proyecto",
-            name: "Problema de clasificación | <i class='bi bi-person-fill'></i>",
+            name: "Problema de clasificación | <i class='bi bi-people-fill'></i>",
             start: 11,
             end: 12,
         },
         {
             type: "Proyecto",
-            name: "Machine learning avanzado | <i class='bi bi-person-fill'></i>",
+            name: "Problema de clasificación multiclase con Modelos Ensemble | <i class='bi bi-people-fill'></i>",
             start: 13,
-            end: 15,
+            end: 14,
+        },
+                {
+            type: "Proyecto",
+            name: "Aprendizaje no supervizado | <i class='bi bi-people-fill'></i>",
+            start: 15,
+            end: 16,
         },
         {
             type: "Transición",
@@ -144,7 +150,7 @@ const bootcampData = {
         },
         {
             type: "Course",
-            name: "<a href='https://learn.microsoft.com/es-es/credentials/certifications/azure-ai-fundamentals/?practice-assessment-type=certification'>Certificaciones de Azure</a>",
+            name: "<a href='https://learn.microsoft.com/es-es/credentials/certifications/azure-ai-engineer/?practice-assessment-type=certification'>Certificaciones de Azure</a>",
             start: 20,
             end: 32,
         },
@@ -188,7 +194,7 @@ const bootcampData = {
     },
     competencies: [
         {
-            name: "Gestionar equipos de forma eficiente",
+            name: "Gestionar equipos técnicos",
             metric: ["Planificación y gestión del proyecto"],
             indicator: {
                 typeBasic: [
