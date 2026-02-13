@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teacher Login - Bootcamp Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-header img {
+            max-width: 80px;
+            margin-bottom: 15px;
+        }
+
+        .auth-header h2 {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .btn-primary-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .btn-primary-custom:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .toggle-form {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .toggle-form a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .alert {
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .logo {
+            text-align: center;
+        }
+
+        .spinner-loading {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" class="logo-img" />
+            <h2 id="auth-title">Teacher Login</h2>
+        </div>
+
+        <div id="error-alert" class="alert alert-danger hidden" role="alert"></div>
+        <div id="success-alert" class="alert alert-success hidden" role="alert"></div>
+
+        <!-- Login Form -->
+        <form id="login-form">
+            <div class="form-group">
+                <label for="login-email" class="form-label">Email</label>
+                <input type="email" id="login-email" class="form-control" placeholder="your.email@example.com" required />
+            </div>
+            <div class="form-group">
+                <label for="login-password" class="form-label">Password</label>
+                <input type="password" id="login-password" class="form-control" placeholder="Enter your password" required />
+            </div>
+            <button type="submit" class="btn-primary-custom">
+                <span class="login-text">Sign In</span>
+                <span class="spinner-loading spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+            </button>
+        </form>
+
+        <!-- Register Form (Hidden by default) -->
+        <form id="register-form" class="hidden">
+            <div class="form-group">
+                <label for="register-name" class="form-label">Full Name</label>
+                <input type="text" id="register-name" class="form-control" placeholder="Your full name" required />
+            </div>
+            <div class="form-group">
+                <label for="register-email" class="form-label">Email</label>
+                <input type="email" id="register-email" class="form-control" placeholder="your.email@example.com" required />
+            </div>
+            <div class="form-group">
+                <label for="register-password" class="form-label">Password</label>
+                <input type="password" id="register-password" class="form-control" placeholder="Create a strong password" required />
+            </div>
+            <div class="form-group">
+                <label for="register-confirm" class="form-label">Confirm Password</label>
+                <input type="password" id="register-confirm" class="form-control" placeholder="Confirm your password" required />
+            </div>
+            <button type="submit" class="btn-primary-custom">
+                <span class="register-text">Create Account</span>
+                <span class="spinner-loading spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+            </button>
+        </form>
+
+        <div class="toggle-form">
+            <span id="toggle-text">Don't have an account? <a id="toggle-link" onclick="toggleForm()">Register</a></span>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+</body>
+</html>
