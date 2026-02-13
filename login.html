@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Bootcamp Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 450px;
+            background: white;
+            padding: 50px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-section img {
+            max-width: 80px;
+            margin-bottom: 20px;
+        }
+
+        .logo-section h1 {
+            color: #333;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .logo-section p {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .role-selection {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .role-btn {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .role-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .role-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .role-btn i {
+            display: block;
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .role-btn span {
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px 15px;
+            font-size: 0.95rem;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn-login:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .spinner-sm {
+            display: none;
+            width: 16px;
+            height: 16px;
+        }
+
+        .divider {
+            margin: 20px 0;
+            position: relative;
+            color: #999;
+        }
+
+        .divider:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #ddd;
+        }
+
+        .divider span {
+            position: relative;
+            background: white;
+            padding: 0 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .help-text {
+            color: #999;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-section">
+            <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" />
+            <h1>Bootcamp Manager</h1>
+            <p>Sign in to your account</p>
+        </div>
+
+        <div id="error-alert" class="alert alert-danger hidden" role="alert"></div>
+        <div id="success-alert" class="alert alert-success hidden" role="alert"></div>
+
+        <div class="form-group">
+            <label class="form-label">I am a:</label>
+            <div class="role-selection">
+                <button class="role-btn active" data-role="teacher" onclick="selectRole('teacher')">
+                    <i class="bi bi-person-workspace"></i>
+                    <span>Teacher</span>
+                </button>
+                <button class="role-btn" data-role="student" onclick="selectRole('student')">
+                    <i class="bi bi-person-check"></i>
+                    <span>Student</span>
+                </button>
+            </div>
+        </div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" id="email" class="form-control" placeholder="your.email@example.com" required />
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" class="form-control" placeholder="Enter your password" required />
+                <div class="help-text" id="help-text">Use your assigned password</div>
+            </div>
+
+            <button type="submit" class="btn-login">
+                <span class="login-text">Sign In</span>
+                <span class="spinner-sm spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+            </button>
+        </form>
+
+        <div class="divider"><span>Demo Access</span></div>
+        <div class="help-text" style="text-align: center; margin-top: 15px;">
+            <strong>Teacher Account:</strong> alex@gmail.com / aA12345678910*
+        </div>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>

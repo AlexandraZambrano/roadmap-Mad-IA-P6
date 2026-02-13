@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function checkAuth() {
     const token = localStorage.getItem('token');
     if (!token) {
-        window.location.href = '/auth';
+        window.location.href = '/login';
     }
 }
 
@@ -122,43 +122,101 @@ function generateGanttChart(promotion) {
     const weeks = promotion.weeks || 0;
     const modules = promotion.modules || [];
 
-    // Create header
+    if (modules.length === 0) {
+        table.innerHTML = '<tr><td class="text-muted">No modules configured</td></tr>';
+        return;
+    }
+
+    // Create header with week numbers
     const headerRow = document.createElement('tr');
-    headerRow.innerHTML = '<th>Module</th>';
+    headerRow.style.backgroundColor = '#f8f9fa';
+    const headerCell = document.createElement('th');
+    headerCell.innerHTML = '<strong>Timeline</strong>';
+    headerCell.style.minWidth = '200px';
+    headerRow.appendChild(headerCell);
 
     for (let i = 1; i <= weeks; i++) {
         const th = document.createElement('th');
         th.textContent = `W${i}`;
         th.style.textAlign = 'center';
         th.style.fontSize = '0.8rem';
+        th.style.padding = '8px 4px';
+        th.style.width = '30px';
         headerRow.appendChild(th);
     }
 
     table.appendChild(headerRow);
 
-    // Create rows for modules
+    // Create rows for modules, courses, and projects
     let weekCounter = 0;
+    const moduleColors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#feca57', '#48dbfb'];
+
     modules.forEach((module, index) => {
-        const row = document.createElement('tr');
-        const nameCell = document.createElement('td');
-        nameCell.innerHTML = `<strong>Module ${index + 1}: ${escapeHtml(module.name)}</strong>`;
-        row.appendChild(nameCell);
+        const moduleColor = moduleColors[index % moduleColors.length];
+
+        // Module row
+        const moduleRow = document.createElement('tr');
+        const moduleCell = document.createElement('td');
+        moduleCell.innerHTML = `<strong style="color: ${moduleColor};">📚 Module ${index + 1}: ${escapeHtml(module.name)}</strong>`;
+        moduleCell.style.minWidth = '200px';
+        moduleRow.appendChild(moduleCell);
 
         for (let i = 0; i < weeks; i++) {
             const cell = document.createElement('td');
             cell.style.textAlign = 'center';
-            cell.style.height = '40px';
+            cell.style.height = '35px';
+            cell.style.padding = '2px';
 
             if (i >= weekCounter && i < weekCounter + module.duration) {
-                cell.style.backgroundColor = '#667eea';
-                cell.style.color = 'white';
-                cell.innerHTML = '●';
+                cell.style.backgroundColor = moduleColor;
+                cell.style.borderRadius = '4px';
+                cell.style.opacity = '0.8';
             }
 
-            row.appendChild(cell);
+            moduleRow.appendChild(cell);
+        }
+        table.appendChild(moduleRow);
+
+        // Courses row
+        if (module.courses && module.courses.length > 0) {
+            const courseRow = document.createElement('tr');
+            const courseCell = document.createElement('td');
+            courseCell.innerHTML = `<small style="color: #666;">📖 Courses: ${module.courses.join(', ')}</small>`;
+            courseCell.style.minWidth = '200px';
+            courseCell.style.fontSize = '0.85rem';
+            courseCell.style.paddingLeft = '30px';
+            courseRow.appendChild(courseCell);
+
+            for (let i = 0; i < weeks; i++) {
+                const cell = document.createElement('td');
+                cell.style.textAlign = 'center';
+                cell.style.height = '25px';
+                cell.style.padding = '2px';
+                courseRow.appendChild(cell);
+            }
+            table.appendChild(courseRow);
         }
 
-        table.appendChild(row);
+        // Projects row
+        if (module.projects && module.projects.length > 0) {
+            const projectRow = document.createElement('tr');
+            const projectCell = document.createElement('td');
+            projectCell.innerHTML = `<small style="color: #666;">🎯 Projects: ${module.projects.join(', ')}</small>`;
+            projectCell.style.minWidth = '200px';
+            projectCell.style.fontSize = '0.85rem';
+            projectCell.style.paddingLeft = '30px';
+            projectRow.appendChild(projectCell);
+
+            for (let i = 0; i < weeks; i++) {
+                const cell = document.createElement('td');
+                cell.style.textAlign = 'center';
+                cell.style.height = '25px';
+                cell.style.padding = '2px';
+                projectRow.appendChild(cell);
+            }
+            table.appendChild(projectRow);
+        }
+
         weekCounter += module.duration;
     });
 }
@@ -190,12 +248,18 @@ function displayQuickLinks(links) {
     }
 
     links.forEach(link => {
+        const platform = link.platform || 'custom';
+        const platformInfo = platformIcons[platform] || platformIcons['custom'];
+
         const card = document.createElement('div');
         card.className = 'col-md-6 col-lg-4';
         card.innerHTML = `
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">${escapeHtml(link.name)}</h5>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="bi ${platformInfo.icon}" style="font-size: 1.3rem; color: ${platformInfo.color};"></i>
+                        <h5 class="card-title" style="margin: 0;">${escapeHtml(link.name)}</h5>
+                    </div>
                     <a href="${escapeHtml(link.url)}" target="_blank" class="btn btn-sm btn-primary">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Open Link
                     </a>
@@ -329,6 +393,7 @@ function setupForms() {
 
         const name = document.getElementById('link-name').value;
         const url = document.getElementById('link-url').value;
+        const platform = document.getElementById('link-platform').value || 'custom';
 
         const token = localStorage.getItem('token');
 
@@ -339,7 +404,7 @@ function setupForms() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ name, url })
+                body: JSON.stringify({ name, url, platform })
             });
 
             if (response.ok) {
@@ -415,6 +480,27 @@ function setupForms() {
     });
 }
 
+const platformIcons = {
+    'zoom': { name: 'Zoom', icon: 'bi-camera-video', color: '#2D8CFF' },
+    'discord': { name: 'Discord', icon: 'bi-discord', color: '#5865F2' },
+    'classroom': { name: 'Google Classroom', icon: 'bi-google', color: '#EA4335' },
+    'github': { name: 'GitHub', icon: 'bi-github', color: '#333' },
+    'custom': { name: 'Link', icon: 'bi-link', color: '#667eea' }
+};
+
+function updateLinkName() {
+    const platform = document.getElementById('link-platform').value;
+    const nameInput = document.getElementById('link-name');
+
+    if (platform && platform !== 'custom' && platformIcons[platform]) {
+        nameInput.value = platformIcons[platform].name;
+        nameInput.readOnly = true;
+    } else {
+        nameInput.readOnly = false;
+        nameInput.value = '';
+    }
+}
+
 function openModuleModal() {
     document.getElementById('module-form').reset();
     moduleModal.show();
@@ -422,6 +508,8 @@ function openModuleModal() {
 
 function openQuickLinkModal() {
     document.getElementById('quick-link-form').reset();
+    document.getElementById('link-platform').value = '';
+    document.getElementById('link-name').readOnly = false;
     quickLinkModal.show();
 }
 
@@ -461,6 +549,10 @@ async function deleteSection(sectionId) {
     } catch (error) {
         console.error('Error deleting section:', error);
     }
+}
+
+function previewPromotion() {
+    window.open(`/public-promotion?id=${promotionId}`, '_blank', 'width=1200,height=800');
 }
 
 function escapeHtml(text) {

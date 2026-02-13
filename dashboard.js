@@ -16,15 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
 function checkAuth() {
     const token = localStorage.getItem('token');
     if (!token) {
-        window.location.href = '/auth';
+        window.location.href = '/login';
         return;
     }
 }
 
 function loadTeacherInfo() {
-    const teacher = JSON.parse(localStorage.getItem('teacher'));
-    if (teacher) {
-        document.getElementById('teacher-name').textContent = teacher.name;
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (user) {
+        document.getElementById('teacher-name').textContent = user.name;
     }
 }
 
@@ -191,8 +191,9 @@ async function deletePromotion(promotionId, event) {
 
 function logout() {
     localStorage.removeItem('token');
-    localStorage.removeItem('teacher');
-    window.location.href = '/auth';
+    localStorage.removeItem('user');
+    localStorage.removeItem('role');
+    window.location.href = '/login';
 }
 
 function escapeHtml(text) {

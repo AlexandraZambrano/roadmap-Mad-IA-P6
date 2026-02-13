@@ -22,12 +22,20 @@ app.use(cors());
 app.use(express.static(__dirname));
 
 // SPA Routes - serve HTML files without extension
+app.get('/login', (req, res) => {
+  res.sendFile(join(__dirname, 'login.html'));
+});
+
 app.get('/auth', (req, res) => {
-  res.sendFile(join(__dirname, 'auth.html'));
+  res.sendFile(join(__dirname, 'login.html'));
 });
 
 app.get('/dashboard', (req, res) => {
   res.sendFile(join(__dirname, 'dashboard.html'));
+});
+
+app.get('/student-dashboard', (req, res) => {
+  res.sendFile(join(__dirname, 'student-dashboard.html'));
 });
 
 app.get('/promotion-detail', (req, res) => {
@@ -42,6 +50,29 @@ app.get('/public-promotion', (req, res) => {
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+
+// Initialize test teacher account
+async function initializeTestAccount() {
+  const teachers = readJsonFile('teachers.json', []);
+  const testEmail = 'alex@gmail.com';
+
+  // Check if test account already exists
+  if (!teachers.find(t => t.email === testEmail)) {
+    const hashedPassword = await bcrypt.hash('aA12345678910*', 10);
+    const testTeacher = {
+      id: uuidv4(),
+      name: 'Alex (Test Account)',
+      email: testEmail,
+      password: hashedPassword,
+      createdAt: new Date().toISOString()
+    };
+    teachers.push(testTeacher);
+    writeJsonFile('teachers.json', teachers);
+    console.log('Test teacher account created: alex@gmail.com / aA12345678910*');
+  }
+}
+
+initializeTestAccount();
 
 // Helper functions for file operations
 const getDataFilePath = (filename) => join(DATA_DIR, filename);
@@ -117,23 +148,137 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Login a teacher
+// Login endpoint (supports both teachers and students)
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const teachers = readJsonFile('teachers.json', []);
-    const teacher = teachers.find(t => t.email === email);
+    let user = null;
+    let userType = role || 'teacher';
 
-    if (!teacher || !(await bcrypt.compare(password, teacher.password))) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+    // Try to login as teacher
+    if (userType === 'teacher' || !role) {
+      const teachers = readJsonFile('teachers.json', []);
+      user = teachers.find(t => t.email === email);
+
+      if (user && (await bcrypt.compare(password, user.password))) {
+        const token = jwt.sign({ id: user.id, email: user.email, role: 'teacher' }, JWT_SECRET, { expiresIn: '7d' });
+        return res.json({
+          message: 'Login successful',
+          token,
+          user: { id: user.id, name: user.name, email: user.email, role: 'teacher' }
+        });
+      }
     }
 
-    const token = jwt.sign({ id: teacher.id, email: teacher.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ message: 'Login successful', token, teacher: { id: teacher.id, name: teacher.name, email: teacher.email } });
+    // Try to login as student
+    if (userType === 'student' || !role) {
+      const students = readJsonFile('students.json', []);
+      user = students.find(s => s.email === email);
+
+      if (user && (await bcrypt.compare(password, user.password))) {
+        const token = jwt.sign({ id: user.id, email: user.email, role: 'student' }, JWT_SECRET, { expiresIn: '7d' });
+        return res.json({
+          message: 'Login successful',
+          token,
+          user: { id: user.id, name: user.name, email: user.email, role: 'student' }
+        });
+      }
+    }
+
+    return res.status(401).json({ error: 'Invalid email or password' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== STUDENT MANAGEMENT ====================
+
+// Get all students for a teacher's promotions
+app.get('/api/promotions/:promotionId/students', verifyToken, (req, res) => {
+  try {
+    const promotions = readJsonFile('promotions.json', []);
+    const promotion = promotions.find(p => p.id === req.params.promotionId);
+
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Unauthorized' });
+
+    const students = readJsonFile(`students-${req.params.promotionId}.json`, []);
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add a student to a promotion
+app.post('/api/promotions/:promotionId/students', verifyToken, (req, res) => {
+  try {
+    const { email, name } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const promotions = readJsonFile('promotions.json', []);
+    const promotion = promotions.find(p => p.id === req.params.promotionId);
+
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Unauthorized' });
+
+    // Generate temporary password
+    const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
+    const hashedPassword = bcrypt.hashSync(tempPassword, 10);
+
+    const student = {
+      id: uuidv4(),
+      email,
+      name: name || email.split('@')[0],
+      password: hashedPassword,
+      promotionId: req.params.promotionId,
+      tempPassword: true,
+      createdAt: new Date().toISOString()
+    };
+
+    // Add to global students list
+    const allStudents = readJsonFile('students.json', []);
+    allStudents.push(student);
+    writeJsonFile('students.json', allStudents);
+
+    // Add to promotion-specific list
+    const promotionStudents = readJsonFile(`students-${req.params.promotionId}.json`, []);
+    promotionStudents.push(student);
+    writeJsonFile(`students-${req.params.promotionId}.json`, promotionStudents);
+
+    res.status(201).json({
+      message: 'Student added successfully',
+      student: { id: student.id, email: student.email, name: student.name },
+      tempPassword: tempPassword
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a student
+app.delete('/api/promotions/:promotionId/students/:studentId', verifyToken, (req, res) => {
+  try {
+    const promotions = readJsonFile('promotions.json', []);
+    const promotion = promotions.find(p => p.id === req.params.promotionId);
+
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Unauthorized' });
+
+    const students = readJsonFile(`students-${req.params.promotionId}.json`, []);
+    const studentIndex = students.findIndex(s => s.id === req.params.studentId);
+
+    if (studentIndex === -1) return res.status(404).json({ error: 'Student not found' });
+
+    students.splice(studentIndex, 1);
+    writeJsonFile(`students-${req.params.promotionId}.json`, students);
+
+    res.json({ message: 'Student deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

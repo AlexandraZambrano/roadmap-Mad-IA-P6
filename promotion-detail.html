@@ -63,9 +63,14 @@
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <!-- Overview Tab -->
                 <div id="overview-tab" class="section-content">
-                    <div class="my-4">
-                        <h1 id="promotion-title">Loading...</h1>
-                        <p id="promotion-desc" class="text-muted"></p>
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <div>
+                            <h1 id="promotion-title">Loading...</h1>
+                            <p id="promotion-desc" class="text-muted"></p>
+                        </div>
+                        <button class="btn btn-info" onclick="previewPromotion()" title="Preview how students will see this page">
+                            <i class="bi bi-eye me-2"></i>Preview
+                        </button>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -220,8 +225,19 @@
                 <form id="quick-link-form">
                     <div class="modal-body">
                         <div class="mb-3">
+                            <label for="link-platform" class="form-label">Platform</label>
+                            <select class="form-control" id="link-platform" onchange="updateLinkName()">
+                                <option value="">Select a platform or custom</option>
+                                <option value="zoom">Zoom</option>
+                                <option value="discord">Discord</option>
+                                <option value="classroom">Google Classroom</option>
+                                <option value="github">GitHub</option>
+                                <option value="custom">Custom Link</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label for="link-name" class="form-label">Link Name</label>
-                            <input type="text" class="form-control" id="link-name" required />
+                            <input type="text" class="form-control" id="link-name" placeholder="e.g., Zoom Class" />
                         </div>
                         <div class="mb-3">
                             <label for="link-url" class="form-label">URL</label>
