@@ -1,0 +1,45 @@
+[
+  {
+    "id": "13e9dd0e-2db8-48f3-8879-991ef5dbb4e2",
+    "name": "Promoción IA P6",
+    "description": "",
+    "startDate": "2025-11-24",
+    "endDate": "2026-08-07",
+    "weeks": 39,
+    "modules": [
+      {
+        "id": "4389373e-7d1a-4f70-9d68-6eae78d1a4a9",
+        "name": "Módulo I",
+        "duration": 8,
+        "courses": [
+          "Curso de Python"
+        ],
+        "projects": [
+          "App con Python",
+          "Un CRUD",
+          "Web Scraping"
+        ],
+        "createdAt": "2026-02-13T22:29:28.983Z"
+      },
+      {
+        "id": "43e6bfb8-d901-47bc-a081-17e3b788ed03",
+        "name": "Módulo 2",
+        "duration": 8,
+        "courses": [
+          "Curso de Machine Learning enfocado en Data Science"
+        ],
+        "projects": [
+          "Datathon",
+          "Problema de Regresión",
+          "Problema de clasificación",
+          "Problema de clasificación multiclase con Modelos Ensemble",
+          "Aprendizaje no supervizado"
+        ],
+        "createdAt": "2026-02-13T22:31:58.979Z"
+      }
+    ],
+    "teacherId": "ff7a55a7-1148-4d1f-ad76-d947f09ec71e",
+    "createdAt": "2026-02-13T22:27:47.898Z",
+    "updatedAt": "2026-02-13T22:27:47.898Z"
+  }
+]

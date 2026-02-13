@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Promotion Details - Bootcamp Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="dashboard.css" rel="stylesheet" />
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" height="40" />
+                Bootcamp Manager
+            </a>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+                <div class="sidebar-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard">
+                                <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#overview" onclick="switchTab('overview')">
+                                <i class="bi bi-eye me-2"></i>Overview
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#roadmap" onclick="switchTab('roadmap')">
+                                <i class="bi bi-map me-2"></i>Roadmap
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#quick-links" onclick="switchTab('quick-links')">
+                                <i class="bi bi-lightning me-2"></i>Quick Links
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#calendar" onclick="switchTab('calendar')">
+                                <i class="bi bi-calendar me-2"></i>Calendar
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#sections" onclick="switchTab('sections')">
+                                <i class="bi bi-file-text me-2"></i>Sections
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <!-- Overview Tab -->
+                <div id="overview-tab" class="section-content">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <div>
+                            <h1 id="promotion-title">Loading...</h1>
+                            <p id="promotion-desc" class="text-muted"></p>
+                        </div>
+                        <button class="btn btn-info" onclick="previewPromotion()" title="Preview how students will see this page">
+                            <i class="bi bi-eye me-2"></i>Preview
+                        </button>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Program Information</h5>
+                                    <p><strong>Duration:</strong> <span id="promotion-weeks">-</span> weeks</p>
+                                    <p><strong>Start Date:</strong> <span id="promotion-start">-</span></p>
+                                    <p><strong>End Date:</strong> <span id="promotion-end">-</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Statistics</h5>
+                                    <p><strong>Modules:</strong> <span id="modules-count">0</span></p>
+                                    <p><strong>Quick Links:</strong> <span id="quicklinks-count">0</span></p>
+                                    <p><strong>Sections:</strong> <span id="sections-count">0</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Roadmap Tab -->
+                <div id="roadmap-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2>Roadmap & Modules</h2>
+                        <button class="btn btn-primary" onclick="openModuleModal()">
+                            <i class="bi bi-plus-circle me-2"></i>Add Module
+                        </button>
+                    </div>
+
+                    <div id="modules-list" class="row">
+                        <!-- Modules will be loaded here -->
+                    </div>
+
+                    <div class="mt-4">
+                        <h3>Gantt Chart</h3>
+                        <div class="table-responsive">
+                            <table id="gantt-table" class="table">
+                                <!-- Gantt will be generated here -->
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Links Tab -->
+                <div id="quick-links-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2>Quick Links</h2>
+                        <button class="btn btn-primary" onclick="openQuickLinkModal()">
+                            <i class="bi bi-plus-circle me-2"></i>Add Link
+                        </button>
+                    </div>
+
+                    <div id="quick-links-list" class="row">
+                        <!-- Quick links will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Calendar Tab -->
+                <div id="calendar-tab" class="section-content hidden">
+                    <div class="my-4">
+                        <h2>Google Calendar</h2>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Calendar Configuration</h5>
+                            <form id="calendar-form">
+                                <div class="mb-3">
+                                    <label for="google-calendar-id" class="form-label">Google Calendar ID</label>
+                                    <input type="text" class="form-control" id="google-calendar-id" placeholder="your-calendar@group.calendar.google.com" />
+                                    <small class="text-muted">Get your calendar ID from Google Calendar settings</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Calendar</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="calendar-preview" class="mt-4 hidden">
+                        <h5>Calendar Preview</h5>
+                        <div class="ratio ratio-16x9">
+                            <iframe id="calendar-iframe"></iframe>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sections Tab -->
+                <div id="sections-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2>Sections</h2>
+                        <button class="btn btn-primary" onclick="openSectionModal()">
+                            <i class="bi bi-plus-circle me-2"></i>Add Section
+                        </button>
+                    </div>
+
+                    <div id="sections-list">
+                        <!-- Sections will be loaded here -->
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Module Modal -->
+    <div class="modal fade" id="moduleModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Module</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="module-form">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="module-name" class="form-label">Module Name</label>
+                            <input type="text" class="form-control" id="module-name" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="module-duration" class="form-label">Duration (weeks)</label>
+                            <input type="number" class="form-control" id="module-duration" min="1" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="module-courses" class="form-label">Courses (comma separated)</label>
+                            <input type="text" class="form-control" id="module-courses" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="module-projects" class="form-label">Projects (comma separated)</label>
+                            <input type="text" class="form-control" id="module-projects" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Module</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Link Modal -->
+    <div class="modal fade" id="quickLinkModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Quick Link</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="quick-link-form">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="link-platform" class="form-label">Platform</label>
+                            <select class="form-control" id="link-platform" onchange="updateLinkName()">
+                                <option value="">Select a platform or custom</option>
+                                <option value="zoom">Zoom</option>
+                                <option value="discord">Discord</option>
+                                <option value="classroom">Google Classroom</option>
+                                <option value="github">GitHub</option>
+                                <option value="custom">Custom Link</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="link-name" class="form-label">Link Name</label>
+                            <input type="text" class="form-control" id="link-name" placeholder="e.g., Zoom Class" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="link-url" class="form-label">URL</label>
+                            <input type="url" class="form-control" id="link-url" required />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Link</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Modal -->
+    <div class="modal fade" id="sectionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Section</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="section-form">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="section-title" class="form-label">Section Title</label>
+                            <input type="text" class="form-control" id="section-title" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="section-content" class="form-label">Content</label>
+                            <textarea class="form-control" id="section-content" rows="8" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Section</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="promotion-detail.js"></script>
+</body>
+</html>
