@@ -1,0 +1,21 @@
+{
+  "name": "code",
+  "version": "1.0.0",
+  "description": "Este repositorio contiene la visión general del Bootcamp de Inteligencia Artificial de Factoría F5 Madrid (Promoción 6).",
+  "main": "script.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://x-access-token:ghs_bkKYBfiQLONLIDlw077mpDTNp3kOVl2ZjC8h@github.com/AlexandraZambrano/roadmap-Mad-IA-P6.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AlexandraZambrano/roadmap-Mad-IA-P6/issues"
+  },
+  "homepage": "https://github.com/AlexandraZambrano/roadmap-Mad-IA-P6#readme"
+}
