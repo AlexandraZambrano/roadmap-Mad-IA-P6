@@ -1,0 +1,22 @@
+{
+  "schedule": {
+    "online": {
+      "entry": "08:16",
+      "start": "",
+      "break": "",
+      "lunch": "",
+      "finish": ""
+    },
+    "presential": {
+      "entry": "",
+      "start": "",
+      "break": "",
+      "lunch": "",
+      "finish": ""
+    },
+    "notes": ""
+  },
+  "team": [],
+  "resources": [],
+  "evaluation": ""
+}
