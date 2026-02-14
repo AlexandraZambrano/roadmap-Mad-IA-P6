@@ -244,11 +244,16 @@ async function saveExtendedInfo() {
         if (response.ok) {
             alert('Program info saved successfully!');
         } else {
-            alert('Failed to save info.');
+            try {
+                const errorData = await response.json();
+                alert(`Failed to save info: ${response.status} - ${errorData.error || 'Unknown error'}`);
+            } catch {
+                alert(`Failed to save info: ${response.status} ${response.statusText}`);
+            }
         }
     } catch (error) {
         console.error('Error saving info:', error);
-        alert('Error saving info.');
+        alert(`Error saving info: ${error.message}`);
     }
 }
 
@@ -615,7 +620,7 @@ function displaySections(sections) {
 async function loadCalendar() {
     const token = localStorage.getItem('token');
     try {
-        const response = await fetch(`${API_URL} /api/promotions / ${promotionId}/calendar`, {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/calendar`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
