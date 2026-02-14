@@ -22,6 +22,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
 }
 
 /* sidebar */
@@ -72,6 +73,9 @@ body {
 
 .card {
     height: 100%;
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .gantt-container {
@@ -161,7 +165,7 @@ body {
 }
 
 #gantt-table td.empty {
-    background-color: var(--principal-3);
+    background-color: white; /* Changed from var(--principal-3) just to be safe */
 }
 
 #gantt-table .label {
@@ -169,8 +173,9 @@ body {
     text-align: left;
     position: sticky;
     left: 0;
-    stroke: none;
+    background: white; /* Important for sticky */
     z-index: 2;
+    min-width: 150px;
 }
 
 .icon {
@@ -202,4 +207,4 @@ body {
         background-color: var(--complementario-2);
  }
 
-
+.hidden { display: none !important; }

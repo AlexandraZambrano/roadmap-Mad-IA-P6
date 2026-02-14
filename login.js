@@ -3,13 +3,13 @@ let selectedRole = 'teacher';
 
 function selectRole(role) {
     selectedRole = role;
-    
+
     // Update UI
     document.querySelectorAll('.role-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     document.querySelector(`[data-role="${role}"]`).classList.add('active');
-    
+
     // Update help text
     const helpText = document.getElementById('help-text');
     if (role === 'student') {
@@ -17,7 +17,7 @@ function selectRole(role) {
     } else {
         helpText.textContent = 'Use your assigned password';
     }
-    
+
     hideAlerts();
 }
 
@@ -32,8 +32,15 @@ function showAlert(message, type = 'danger') {
 }
 
 function hideAlerts() {
-    document.getElementById('error-alert').classList.add('hidden');
-    document.getElementById('success-alert').classList.add('hidden');
+    const danger = document.getElementById('danger-alert');
+    if (danger) danger.classList.add('hidden');
+
+    const success = document.getElementById('success-alert');
+    if (success) success.classList.add('hidden');
+
+    // Legacy support just in case
+    const error = document.getElementById('error-alert');
+    if (error) error.classList.add('hidden');
 }
 
 function setLoading(isLoading) {
@@ -49,13 +56,22 @@ function setLoading(isLoading) {
     }
 }
 
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    hideAlerts();
-    setLoading(true);
+// Expose to window for direct onclick access
+window.handleLogin = async function () {
+    console.log('handleLogin called');
 
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+        showAlert('Please enter both email and password', 'danger');
+        return;
+    }
+
+    hideAlerts();
+    setLoading(true);
+
+    console.log(`Attempting login for: ${email} as ${selectedRole}`);
 
     try {
         const response = await fetch(`${API_URL}/api/auth/login`, {
@@ -65,20 +81,21 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         });
 
         const data = await response.json();
+        console.log('Login response:', data);
 
         if (response.ok) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
             localStorage.setItem('role', selectedRole);
             showAlert('Login successful! Redirecting...', 'success');
-            
+
             setTimeout(() => {
                 if (selectedRole === 'teacher') {
                     window.location.href = '/dashboard';
                 } else {
                     window.location.href = '/student-dashboard';
                 }
-            }, 1500);
+            }, 1000);
         } else {
             showAlert(data.error || 'Login failed', 'danger');
         }
@@ -87,5 +104,20 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         showAlert('Connection error. Please try again.', 'danger');
     } finally {
         setLoading(false);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Set default role UI
+    selectRole('teacher');
+
+    // Add enter key listener
+    const form = document.getElementById('login-form');
+    if (form) {
+        form.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
     }
 });

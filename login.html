@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -176,6 +177,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
         <div class="logo-section">
@@ -184,7 +186,7 @@
             <p>Sign in to your account</p>
         </div>
 
-        <div id="error-alert" class="alert alert-danger hidden" role="alert"></div>
+        <div id="danger-alert" class="alert alert-danger hidden" role="alert"></div>
         <div id="success-alert" class="alert alert-success hidden" role="alert"></div>
 
         <div class="form-group">
@@ -213,7 +215,7 @@
                 <div class="help-text" id="help-text">Use your assigned password</div>
             </div>
 
-            <button type="submit" class="btn-login">
+            <button type="button" class="btn-login" id="login-button" onclick="handleLogin()">
                 <span class="login-text">Sign In</span>
                 <span class="spinner-sm spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
             </button>
@@ -221,10 +223,17 @@
 
         <div class="divider"><span>Demo Access</span></div>
         <div class="help-text" style="text-align: center; margin-top: 15px;">
-            <strong>Teacher Account:</strong> alex@gmail.com / aA12345678910*
+            <div class="mb-2"><strong>Teacher:</strong> alex@gmail.com / aA12345678910*</div>
+            <div><strong>Student:</strong> student@test.com / student123</div>
         </div>
     </div>
 
-    <script src="login.js"></script>
+    <script>
+        // Force reload script to avoid cache
+        const script = document.createElement('script');
+        script.src = 'login.js?v=' + new Date().getTime();
+        document.body.appendChild(script);
+    </script>
 </body>
+
 </html>

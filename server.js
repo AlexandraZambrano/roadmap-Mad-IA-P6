@@ -51,29 +51,6 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Initialize test teacher account
-async function initializeTestAccount() {
-  const teachers = readJsonFile('teachers.json', []);
-  const testEmail = 'alex@gmail.com';
-
-  // Check if test account already exists
-  if (!teachers.find(t => t.email === testEmail)) {
-    const hashedPassword = await bcrypt.hash('aA12345678910*', 10);
-    const testTeacher = {
-      id: uuidv4(),
-      name: 'Alex (Test Account)',
-      email: testEmail,
-      password: hashedPassword,
-      createdAt: new Date().toISOString()
-    };
-    teachers.push(testTeacher);
-    writeJsonFile('teachers.json', teachers);
-    console.log('Test teacher account created: alex@gmail.com / aA12345678910*');
-  }
-}
-
-initializeTestAccount();
-
 // Helper functions for file operations
 const getDataFilePath = (filename) => join(DATA_DIR, filename);
 
@@ -100,6 +77,55 @@ const writeJsonFile = (filename, data) => {
     return false;
   }
 };
+
+// Initialize test teacher account
+async function initializeTestAccount() {
+  const teachers = readJsonFile('teachers.json', []);
+  const testEmail = 'alex@gmail.com';
+
+  // Check if test account already exists
+  if (!teachers.find(t => t.email === testEmail)) {
+    const hashedPassword = await bcrypt.hash('aA12345678910*', 10);
+    const testTeacher = {
+      id: uuidv4(),
+      name: 'Alex (Test Account)',
+      email: testEmail,
+      password: hashedPassword,
+      createdAt: new Date().toISOString()
+    };
+    teachers.push(testTeacher);
+    writeJsonFile('teachers.json', teachers);
+    console.log('Test teacher account created: alex@gmail.com / aA12345678910*');
+  }
+}
+
+initializeTestAccount();
+
+// Initialize test student account
+async function initializeTestStudent() {
+  const students = readJsonFile('students.json', []);
+  const testEmail = 'student@test.com';
+
+  // Check if test account already exists
+  if (!students.find(s => s.email === testEmail)) {
+    const hashedPassword = await bcrypt.hash('student123', 10);
+    const testStudent = {
+      id: uuidv4(),
+      name: 'Test Student',
+      email: testEmail,
+      password: hashedPassword,
+      createdAt: new Date().toISOString()
+    };
+    students.push(testStudent);
+    writeJsonFile('students.json', students);
+    console.log('Test student account created: student@test.com / student123');
+  }
+}
+
+initializeTestStudent();
+
+// Helper functions for file operations
+// Helpers moved to top
 
 // Middleware to verify JWT token
 const verifyToken = (req, res, next) => {
@@ -291,6 +317,28 @@ app.get('/api/promotions', (req, res) => {
   try {
     const promotions = readJsonFile('promotions.json', []);
     res.json(promotions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get student's enrolled promotions (authenticated)
+app.get('/api/my-enrollments', verifyToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const promotions = readJsonFile('promotions.json', []);
+    const enrolledPromotions = [];
+
+    // Find promotions where student is enrolled
+    for (const promotion of promotions) {
+      const students = readJsonFile(`students-${promotion.id}.json`, []);
+      // Match by ID primarily, fallback to email if ID not present (legacy support)
+      if (students.some(s => s.id === userId || s.email === req.user.email)) {
+        enrolledPromotions.push(promotion);
+      }
+    }
+
+    res.json(enrolledPromotions);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -620,6 +668,49 @@ app.post('/api/promotions/:promotionId/calendar', verifyToken, (req, res) => {
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// ==================== EXTENDED INFO (Schedule, Team, etc.) ====================
+
+// Get extended info (public)
+app.get('/api/promotions/:promotionId/extended-info', (req, res) => {
+  try {
+    const extendedInfo = readJsonFile(`extended-info-${req.params.promotionId}.json`, {
+      schedule: {},
+      team: [],
+      resources: [],
+      evaluation: ''
+    });
+    res.json(extendedInfo);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update extended info (teacher only)
+app.post('/api/promotions/:promotionId/extended-info', verifyToken, (req, res) => {
+  try {
+    const promotions = readJsonFile('promotions.json', []);
+    const promotion = promotions.find(p => p.id === req.params.promotionId);
+
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { schedule, team, resources, evaluation } = req.body;
+
+    // Validate slightly. Schedule and others can be objects/arrays.
+    const newInfo = {
+      schedule: schedule || {},
+      team: team || [],
+      resources: resources || [],
+      evaluation: evaluation || ''
+    };
+
+    writeJsonFile(`extended-info-${req.params.promotionId}.json`, newInfo);
+    res.json(newInfo);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.listen(PORT, () => {

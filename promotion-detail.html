@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
     <link href="dashboard.css" rel="stylesheet" />
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
@@ -55,6 +57,16 @@
                                 <i class="bi bi-file-text me-2"></i>Sections
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#students" onclick="switchTab('students')">
+                                <i class="bi bi-people me-2"></i>Students
+                            </a>
+                        </li>
+                        <li class="nav-item teacher-only">
+                            <a class="nav-link" href="#info" onclick="switchTab('info')">
+                                <i class="bi bi-info-circle me-2"></i>Program Info
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </nav>
@@ -68,7 +80,8 @@
                             <h1 id="promotion-title">Loading...</h1>
                             <p id="promotion-desc" class="text-muted"></p>
                         </div>
-                        <button class="btn btn-info" onclick="previewPromotion()" title="Preview how students will see this page">
+                        <button class="btn btn-info" onclick="previewPromotion()"
+                            title="Preview how students will see this page">
                             <i class="bi bi-eye me-2"></i>Preview
                         </button>
                     </div>
@@ -145,7 +158,8 @@
                             <form id="calendar-form">
                                 <div class="mb-3">
                                     <label for="google-calendar-id" class="form-label">Google Calendar ID</label>
-                                    <input type="text" class="form-control" id="google-calendar-id" placeholder="your-calendar@group.calendar.google.com" />
+                                    <input type="text" class="form-control" id="google-calendar-id"
+                                        placeholder="your-calendar@group.calendar.google.com" />
                                     <small class="text-muted">Get your calendar ID from Google Calendar settings</small>
                                 </div>
                                 <button type="submit" class="btn btn-primary">Save Calendar</button>
@@ -172,6 +186,178 @@
 
                     <div id="sections-list">
                         <!-- Sections will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Students Tab -->
+                <div id="students-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2>Students</h2>
+                        <button class="btn btn-primary" onclick="openStudentModal()">
+                            <i class="bi bi-person-plus me-2"></i>Add Student
+                        </button>
+                    </div>
+
+                    <div id="students-list" class="row">
+                        <!-- Students will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Program Info Tab (New) -->
+                <div id="info-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2>Program Details</h2>
+                        <button class="btn btn-primary" onclick="saveExtendedInfo()">
+                            <i class="bi bi-save me-2"></i>Save All Changes
+                        </button>
+                    </div>
+
+                    <div class="row">
+                        <!-- Schedule -->
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="bi bi-clock me-2"></i>Horario (Schedule)</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 border-end">
+                                            <h6 class="text-primary mb-3">Online Days</h6>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Entry Hour</label>
+                                                <div class="col-sm-8"><input type="time" class="form-control"
+                                                        id="sched-online-entry"></div>
+                                            </div>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Start Píldoras</label>
+                                                <div class="col-sm-8"><input type="time" class="form-control"
+                                                        id="sched-online-start"></div>
+                                            </div>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Break</label>
+                                                <div class="col-sm-8"><input type="time" class="form-control"
+                                                        id="sched-online-break"></div>
+                                            </div>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Lunch (if any)</label>
+                                                <div class="col-sm-8"><input type="text" class="form-control"
+                                                        id="sched-online-lunch" placeholder="Use text if needed"></div>
+                                            </div>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Finish Hour</label>
+                                                <div class="col-sm-8"><input type="time" class="form-control"
+                                                        id="sched-online-finish"></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-success mb-3">Presential Days</h6>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Entry Hour</label>
+                                                <div class="col-sm-8"><input type="time" class="form-control"
+                                                        id="sched-presential-entry"></div>
+                                            </div>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Start Píldoras</label>
+                                                <div class="col-sm-8"><input type="time" class="form-control"
+                                                        id="sched-presential-start"></div>
+                                            </div>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Break</label>
+                                                <div class="col-sm-8"><input type="time" class="form-control"
+                                                        id="sched-presential-break"></div>
+                                            </div>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Lunch</label>
+                                                <div class="col-sm-8"><input type="time" class="form-control"
+                                                        id="sched-presential-lunch"></div>
+                                            </div>
+                                            <div class="mb-2 row">
+                                                <label class="col-sm-4 col-form-label">Finish Hour</label>
+                                                <div class="col-sm-8"><input type="time" class="form-control"
+                                                        id="sched-presential-finish"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <label class="form-label">Additional Schedule Notes</label>
+                                        <textarea class="form-control" id="sched-notes" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Team -->
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Equipo (Team)</h5>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="openTeamModal()">
+                                        <i class="bi bi-plus"></i> Add Member
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Role</th>
+                                                    <th>Email</th>
+                                                    <th>LinkedIn</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="team-list-body">
+                                                <!-- Dynamic Content -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resources -->
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-tools me-2"></i>Recursos (Resources)</h5>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="openResourceModal()">
+                                        <i class="bi bi-plus"></i> Add Resource
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Title</th>
+                                                    <th>Category (Type)</th>
+                                                    <th>URL</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="resources-list-body">
+                                                <!-- Dynamic Content -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Evaluation -->
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Evaluación (Evaluation
+                                        Criteria)</h5>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" id="evaluation-text" rows="6"
+                                        placeholder="Describe the evaluation criteria..."></textarea>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -281,7 +467,135 @@
         </div>
     </div>
 
+    <!-- Student Modal -->
+    <div class="modal fade" id="studentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Student</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="student-form">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="student-email" class="form-label">Student Email</label>
+                            <input type="email" class="form-control" id="student-email" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="student-name" class="form-label">Student Name (Optional)</label>
+                            <input type="text" class="form-control" id="student-name" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Student</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Success Modal -->
+    <div class="modal fade" id="studentSuccessModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-success">Student Added Successfully</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Please share these credentials with the student:</p>
+                    <div class="alert alert-info">
+                        <p class="mb-1"><strong>Email:</strong> <span id="new-student-email"></span></p>
+                        <p class="mb-0"><strong>Temporary Password:</strong> <span id="new-student-password"
+                                class="user-select-all fw-bold"></span></p>
+                    </div>
+                    <p class="small text-muted">The student will be prompted to change this password on first login.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="promotion-detail.js"></script>
+    <!-- Team Member Modal -->
+    <div class="modal fade" id="teamModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Team Member</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="team-form">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" id="team-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <input type="text" class="form-control" id="team-role" placeholder="e.g. Module 1 Lead">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="team-email">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">LinkedIn URL</label>
+                            <input type="url" class="form-control" id="team-linkedin">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addTeamMember()">Add Member</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Modal -->
+    <div class="modal fade" id="resourceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Resource</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="resource-form">
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-control" id="resource-title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" id="resource-category">
+                                <option value="Technical">Technical</option>
+                                <option value="Youtube">Youtube Channel</option>
+                                <option value="Book">Book</option>
+                                <option value="Podcast">Podcast</option>
+                                <option value="Tool">Tool</option>
+                                <option value="Math">Mathematics</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">URL</label>
+                            <input type="url" class="form-control" id="resource-url" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addResource()">Add Resource</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
+
 </html>

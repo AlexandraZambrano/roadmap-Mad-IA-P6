@@ -41,5 +41,30 @@
     "teacherId": "ff7a55a7-1148-4d1f-ad76-d947f09ec71e",
     "createdAt": "2026-02-13T22:27:47.898Z",
     "updatedAt": "2026-02-13T22:27:47.898Z"
+  },
+  {
+    "id": "fe164c28-d8d2-46b0-bbcc-b56450c25047",
+    "name": "IA P6",
+    "description": "",
+    "startDate": "2025-11-24",
+    "endDate": "2026-08-07",
+    "weeks": 39,
+    "modules": [
+      {
+        "id": "bc4ca700-af2e-4ee3-a9b7-9889b1ebd24f",
+        "name": "Módulo I",
+        "duration": 8,
+        "courses": [
+          "Python essentials"
+        ],
+        "projects": [
+          "App con Python"
+        ],
+        "createdAt": "2026-02-13T23:47:28.220Z"
+      }
+    ],
+    "teacherId": "34b118e5-cfa6-4df8-8831-5721d7545f08",
+    "createdAt": "2026-02-13T23:46:30.243Z",
+    "updatedAt": "2026-02-13T23:46:30.243Z"
   }
 ]
