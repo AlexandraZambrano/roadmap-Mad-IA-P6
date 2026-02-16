@@ -4,6 +4,12 @@ const StudentSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     name: { type: String },
     email: { type: String, required: true },
+    lastName: { type: String },
+    age: { type: Number },
+    nationality: { type: String },
+    paperStatus: { type: String }, // e.g., "DNI", "NIE", "Pasaporte"
+    description: { type: String },
+    workBackground: { type: String },
     promotionId: { type: String },
     notes: { type: String, default: '' }, // Teacher notes about the student
     progress: {

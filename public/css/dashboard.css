@@ -5,7 +5,7 @@
 }
 
 body {
-    background-color: #f5f7fa;
+    background-color: #ffffff;
 }
 
 .sidebar {
@@ -15,8 +15,8 @@ body {
     left: 0;
     z-index: 100;
     padding: 20px 0;
-    background-color: #f8f9fa;
-    border-right: 1px solid #e9ecef;
+    background-color: #ffffff;
+    border-right: 2px solid #FFA500;
     overflow-y: auto;
 }
 
@@ -25,20 +25,22 @@ body {
 }
 
 .sidebar .nav-link {
-    color: #495057;
+    color: #333333;
     padding: 10px 15px;
     border-radius: 5px;
     transition: all 0.3s ease;
 }
 
 .sidebar .nav-link:hover {
-    background-color: #e9ecef;
-    color: #667eea;
+    background-color: #fff5e6;
+    color: #FFA500;
+    border-left: 3px solid #FFA500;
 }
 
 .sidebar .nav-link.active {
-    background-color: #667eea;
+    background-color: #FFA500;
     color: white;
+    border-left: 3px solid #FF8C00;
 }
 
 main {
@@ -68,7 +70,7 @@ main {
 }
 
 .card-title i {
-    color: #667eea;
+    color: #FFA500;
     margin-right: 8px;
 }
 
@@ -81,7 +83,7 @@ main {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
     border: none;
     color: white;
     padding: 10px 20px;
@@ -94,7 +96,7 @@ main {
 .btn-primary:hover {
     opacity: 0.9;
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 5px 15px rgba(255, 165, 0, 0.4);
 }
 
 .navbar {
@@ -103,11 +105,13 @@ main {
     left: 0;
     right: 0;
     z-index: 101;
+    background-color: #ffffff !important;
+    border-bottom: 2px solid #FFA500 !important;
 }
 
 .navbar-brand {
     font-weight: 600;
-    color: #333 !important;
+    color: #FFA500 !important;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -122,8 +126,8 @@ main {
 
 .form-control:focus,
 .form-select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    border-color: #FFA500;
+    box-shadow: 0 0 0 0.2rem rgba(255, 165, 0, 0.25);
 }
 
 .promotion-card {
@@ -151,7 +155,7 @@ main {
 }
 
 .badge-weeks {
-    background-color: #667eea;
+    background-color: #FFA500;
     color: white;
     padding: 5px 10px;
     border-radius: 20px;
@@ -159,12 +163,47 @@ main {
 }
 
 .modal-header {
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 2px solid #FFA500;
 }
 
 .modal-title {
     color: #333;
     font-weight: 600;
+}
+
+.navbar {
+    background-color: #ffffff !important;
+    border-bottom: 2px solid #FFA500 !important;
+}
+
+/* Bootstrap color overrides for orange theme */
+.btn-warning {
+    background-color: #FFA500 !important;
+    border-color: #FFA500 !important;
+    color: white !important;
+}
+
+.btn-warning:hover {
+    background-color: #FF8C00 !important;
+    border-color: #FF8C00 !important;
+}
+
+.bg-warning {
+    background-color: #FFA500 !important;
+}
+
+.text-warning {
+    color: #FFA500 !important;
+}
+
+.alert-warning {
+    background-color: #fff5e6;
+    border-color: #FFA500;
+    color: #333;
+}
+
+.border-warning {
+    border-color: #FFA500 !important;
 }
 
 @media (max-width: 768px) {

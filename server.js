@@ -298,21 +298,21 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
 // Auto-track student when they access promotion with password
 app.post('/api/promotions/:promotionId/track-student', async (req, res) => {
   try {
-    const { name, email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const { email } = req.body;
+    // Email is optional for first access
+    const tempEmail = email || `guest-${uuidv4()}@promotion.local`;
 
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
     // Check if student already exists
-    let student = await Student.findOne({ email, promotionId: req.params.promotionId });
+    let student = await Student.findOne({ email: tempEmail, promotionId: req.params.promotionId });
 
     if (!student) {
       // Create new tracked student
       student = await Student.create({
         id: uuidv4(),
-        email,
-        name: name || email.split('@')[0],
+        email: tempEmail,
         promotionId: req.params.promotionId,
         isManuallyAdded: false
       });
@@ -394,6 +394,37 @@ app.get('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
     res.json(student);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update student detailed information
+app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { name, lastName, age, nationality, paperStatus, description, workBackground, email } = req.body;
+
+    const student = await Student.findOneAndUpdate(
+      { id: req.params.studentId, promotionId: req.params.promotionId },
+      {
+        name: name || undefined,
+        lastName: lastName || undefined,
+        age: age || undefined,
+        nationality: nationality || undefined,
+        paperStatus: paperStatus || undefined,
+        description: description || undefined,
+        workBackground: workBackground || undefined,
+        email: email || undefined
+      },
+      { new: true }
+    );
+
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    res.json({ message: 'Student profile updated', student });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

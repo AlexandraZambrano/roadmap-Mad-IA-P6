@@ -12,46 +12,75 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
+            background-color: #ffffff;
         }
 
         .admin-sidebar {
             min-height: 100vh;
-            background: #212529;
+            background: #FFA500;
             color: white;
         }
 
         .admin-sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(255, 255, 255, 0.9);
             padding: 1rem 1.5rem;
             transition: all 0.3s;
+            border-left: 3px solid transparent;
         }
 
-        .admin-sidebar .nav-link:hover,
+        .admin-sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.15);
+            border-left: 3px solid white;
+        }
+
         .admin-sidebar .nav-link.active {
             color: white;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 3px solid white;
         }
 
         .teacher-card {
             transition: transform 0.2s, box-shadow 0.2s;
-            border: none;
+            border: 2px solid #FFA500;
             border-radius: 12px;
+            background-color: #ffffff;
         }
 
         .teacher-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 20px rgba(255, 165, 0, 0.15);
+            border-color: #FF8C00;
         }
 
         .status-badge {
             font-weight: 500;
             padding: 0.4rem 0.8rem;
             border-radius: 20px;
+            background-color: #FFA500;
+            color: white;
         }
 
         .navbar-brand img {
             height: 35px;
+        }
+
+        main {
+            background-color: #ffffff;
+        }
+
+        .btn-primary {
+            background-color: #FFA500 !important;
+            border-color: #FFA500 !important;
+        }
+
+        .btn-primary:hover {
+            background-color: #FF8C00 !important;
+            border-color: #FF8C00 !important;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: #333333;
         }
     </style>
 </head>

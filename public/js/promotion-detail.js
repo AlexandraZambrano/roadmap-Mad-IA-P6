@@ -1708,39 +1708,102 @@ window.openStudentDetailModal = async function(studentId) {
 function displayStudentDetail(student) {
     const modalHtml = `
         <div class="modal fade" id="studentDetailModal" tabindex="-1">
-            <div class="modal-dialog modal-lg">
+            <div class="modal-dialog modal-xl">
                 <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Student Details: ${escapeHtml(student.name)}</h5>
+                    <div class="modal-header bg-warning bg-opacity-10 border-warning">
+                        <h5 class="modal-title">Student Profile: ${escapeHtml(student.name || 'No Name')}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <h6>Basic Information</h6>
-                                <p><strong>Name:</strong> ${escapeHtml(student.name)}</p>
-                                <p><strong>Email:</strong> ${escapeHtml(student.email)}</p>
-                                <p><strong>Type:</strong> ${student.isManuallyAdded ? 'Manually Added' : 'Auto-tracked'}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Progress</h6>
-                                <p><strong>Modules Viewed:</strong> ${(student.progress?.modulesViewed || []).length}</p>
-                                <p><strong>Sections Completed:</strong> ${(student.progress?.sectionsCompleted || []).length}</p>
-                                <p><strong>Last Accessed:</strong> ${student.progress?.lastAccessed ? new Date(student.progress.lastAccessed).toLocaleDateString() : 'Not accessed'}</p>
+                        <!-- Basic Information Section -->
+                        <div class="mb-4">
+                            <h6 class="text-warning fw-bold mb-3">Personal Information</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">First Name</label>
+                                    <input type="text" class="form-control" id="student-name" value="${escapeHtml(student.name || '')}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Last Name</label>
+                                    <input type="text" class="form-control" id="student-lastName" value="${escapeHtml(student.lastName || '')}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="student-email" value="${escapeHtml(student.email || '')}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Age</label>
+                                    <input type="number" class="form-control" id="student-age" value="${student.age || ''}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Nationality</label>
+                                    <input type="text" class="form-control" id="student-nationality" value="${escapeHtml(student.nationality || '')}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Paper Status (DNI/NIE/Pasaporte)</label>
+                                    <input type="text" class="form-control" id="student-paperStatus" value="${escapeHtml(student.paperStatus || '')}">
+                                </div>
                             </div>
                         </div>
 
-                        <hr>
+                        <!-- Additional Information Section -->
+                        <div class="mb-4">
+                            <h6 class="text-warning fw-bold mb-3">Additional Information</h6>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" id="student-description" rows="3" placeholder="Brief description about the student...">${escapeHtml(student.description || '')}</textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Work Background</label>
+                                    <textarea class="form-control" id="student-workBackground" rows="3" placeholder="Previous work experience and skills...">${escapeHtml(student.workBackground || '')}</textarea>
+                                </div>
+                            </div>
+                        </div>
 
-                        <h6>Notes</h6>
-                        <textarea class="form-control" id="student-notes" rows="4" placeholder="Add notes about this student...">${escapeHtml(student.notes || '')}</textarea>
+                        <!-- Progress Section -->
+                        <div class="mb-4">
+                            <h6 class="text-warning fw-bold mb-3">Progress & Engagement</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="card bg-light border-0">
+                                        <div class="card-body">
+                                            <p class="card-text text-muted mb-0">Modules Viewed</p>
+                                            <h5 class="text-warning">${(student.progress?.modulesViewed || []).length}</h5>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light border-0">
+                                        <div class="card-body">
+                                            <p class="card-text text-muted mb-0">Sections Completed</p>
+                                            <h5 class="text-warning">${(student.progress?.sectionsCompleted || []).length}</h5>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light border-0">
+                                        <div class="card-body">
+                                            <p class="card-text text-muted mb-0">Last Accessed</p>
+                                            <h6 class="text-warning mb-0">${student.progress?.lastAccessed ? new Date(student.progress.lastAccessed).toLocaleDateString() : 'Not yet'}</h6>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Teacher Notes Section -->
+                        <div class="mb-4">
+                            <h6 class="text-warning fw-bold mb-3">Teacher Notes</h6>
+                            <textarea class="form-control" id="student-notes" rows="4" placeholder="Add notes about this student...">${escapeHtml(student.notes || '')}</textarea>
+                        </div>
 
                         <div id="student-save-alert" class="alert alert-info mt-3 hidden"></div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer border-top">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" onclick="saveStudentNotes()">
-                            <i class="bi bi-save me-2"></i>Save Notes
+                        <button type="button" class="btn btn-warning" onclick="saveStudentProfile()">
+                            <i class="bi bi-save me-2"></i>Save All Changes
                         </button>
                     </div>
                 </div>
@@ -1757,47 +1820,70 @@ function displayStudentDetail(student) {
     modal.show();
 }
 
-window.saveStudentNotes = async function() {
-    const notes = document.getElementById('student-notes').value;
+window.saveStudentProfile = async function() {
     const token = localStorage.getItem('token');
     const alertEl = document.getElementById('student-save-alert');
 
+    const profileData = {
+        name: document.getElementById('student-name').value,
+        lastName: document.getElementById('student-lastName').value,
+        email: document.getElementById('student-email').value,
+        age: parseInt(document.getElementById('student-age').value) || null,
+        nationality: document.getElementById('student-nationality').value,
+        paperStatus: document.getElementById('student-paperStatus').value,
+        description: document.getElementById('student-description').value,
+        workBackground: document.getElementById('student-workBackground').value,
+        notes: document.getElementById('student-notes').value
+    };
+
     try {
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentId}/notes`, {
+        // Save profile information
+        const profileResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentId}/profile`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ notes })
+            body: JSON.stringify(profileData)
         });
 
-        const contentType = response.headers.get('content-type');
+        const contentType = profileResponse.headers.get('content-type');
         let data;
         try {
             data = contentType && contentType.includes('application/json')
-                ? await response.json()
+                ? await profileResponse.json()
                 : {};
         } catch (parseError) {
             data = {};
         }
 
-        if (response.ok) {
+        // Save notes separately if profile update succeeds
+        if (profileResponse.ok) {
+            await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentId}/notes`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ notes: profileData.notes })
+            });
+
             alertEl.className = 'alert alert-success';
-            alertEl.textContent = 'Notes saved successfully!';
+            alertEl.textContent = 'Student profile saved successfully!';
             alertEl.classList.remove('hidden');
             setTimeout(() => {
                 alertEl.classList.add('hidden');
+                loadStudents(); // Refresh student list
             }, 2000);
         } else {
-            const errorMsg = data.error || 'Error saving notes';
+            const errorMsg = data.error || 'Error saving student profile';
             alertEl.className = 'alert alert-danger';
             alertEl.textContent = errorMsg;
             alertEl.classList.remove('hidden');
-            console.error('Save notes response:', response.status, data);
+            console.error('Save profile response:', profileResponse.status, data);
         }
     } catch (error) {
-        console.error('Error saving notes:', error);
+        console.error('Error saving student profile:', error);
         alertEl.className = 'alert alert-danger';
         alertEl.textContent = 'Error: ' + error.message;
         alertEl.classList.remove('hidden');

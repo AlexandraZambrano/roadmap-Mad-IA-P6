@@ -94,8 +94,8 @@ window.verifyPromotionPassword = async function() {
                 passwordModal.hide();
             }
 
-            // Prompt for student email for tracking
-            promptForStudentInfo();
+            // Auto-track student without prompting for info
+            await trackStudentQuietly();
         } else {
             const errorMsg = data.error || 'Invalid password. Please try again.';
             alertEl.textContent = errorMsg;
@@ -111,59 +111,18 @@ window.verifyPromotionPassword = async function() {
     }
 };
 
-// Prompt for student email to track access
-function promptForStudentInfo() {
-    const promptHtml = `
-        <div class="modal fade" id="studentInfoModal" tabindex="-1" data-bs-backdrop="static">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header border-0">
-                        <h5 class="modal-title">Student Information</h5>
-                    </div>
-                    <div class="modal-body">
-                        <p class="text-muted mb-4">Please provide your information so we can track your progress.</p>
-                        <div class="mb-3">
-                            <label for="student-name" class="form-label">Full Name</label>
-                            <input type="text" class="form-control" id="student-name" placeholder="Your full name">
-                        </div>
-                        <div class="mb-3">
-                            <label for="student-email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="student-email" placeholder="your.email@example.com">
-                        </div>
-                    </div>
-                    <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-secondary" onclick="skipStudentInfo()">Skip</button>
-                        <button type="button" class="btn btn-primary" onclick="submitStudentInfo()">Continue</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', promptHtml);
-    const studentModal = new bootstrap.Modal(document.getElementById('studentInfoModal'));
-    studentModal.show();
-}
-
-window.submitStudentInfo = async function() {
-    const name = document.getElementById('student-name').value;
-    const email = document.getElementById('student-email').value;
-
-    if (!email) {
-        alert('Please enter your email');
-        return;
-    }
-
+// Auto-track student without prompting
+async function trackStudentQuietly() {
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/track-student`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email })
+            body: JSON.stringify({})
         });
 
         if (response.ok) {
-            sessionStorage.setItem('studentEmail', email);
-            sessionStorage.setItem('studentName', name);
+            const data = await response.json();
+            sessionStorage.setItem('studentId', data.student.id);
         } else {
             console.error('Error tracking student:', response.status);
         }
@@ -171,21 +130,9 @@ window.submitStudentInfo = async function() {
         console.error('Error tracking student:', error);
     }
 
-    // Close modal and load content
-    const modal = bootstrap.Modal.getInstance(document.getElementById('studentInfoModal'));
-    if (modal) modal.hide();
-    document.getElementById('studentInfoModal').remove();
-
+    // Load content regardless of tracking result
     loadPromotionContent();
-};
-
-window.skipStudentInfo = function() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('studentInfoModal'));
-    if (modal) modal.hide();
-    document.getElementById('studentInfoModal').remove();
-
-    loadPromotionContent();
-};
+}
 
 async function loadPromotionContent() {
     loadPromotion();
