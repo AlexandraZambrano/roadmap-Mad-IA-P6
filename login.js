@@ -1,4 +1,4 @@
-const API_URL = window.location.origin;
+const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
 let selectedRole = 'teacher';
 
 function selectRole(role) {
@@ -86,16 +86,16 @@ window.handleLogin = async function () {
         if (response.ok) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
-            localStorage.setItem('role', selectedRole);
+            localStorage.setItem('role', data.user.role);
             showAlert('Login successful! Redirecting...', 'success');
 
             setTimeout(() => {
                 if (selectedRole === 'admin') {
-                    window.location.href = '/admin';
+                    window.location.href = 'admin.html';
                 } else if (selectedRole === 'teacher') {
-                    window.location.href = '/dashboard';
+                    window.location.href = 'dashboard.html';
                 } else {
-                    window.location.href = '/student-dashboard';
+                    window.location.href = 'student-dashboard.html';
                 }
             }, 1000);
         } else {

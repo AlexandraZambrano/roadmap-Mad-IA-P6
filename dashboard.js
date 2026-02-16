@@ -1,7 +1,8 @@
-const API_URL = window.location.origin;
+const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
 
 let promotionModal;
 let currentPromotionId = null;
+let currentUser = {};
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,21 +17,26 @@ document.addEventListener('DOMContentLoaded', () => {
 function checkAuth() {
     const token = localStorage.getItem('token');
     if (!token) {
-        window.location.href = '/login';
+        window.location.href = 'login.html';
         return;
     }
 }
 
 function loadTeacherInfo() {
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (user) {
-        document.getElementById('teacher-name').textContent = user.name;
+    try {
+        const userJson = localStorage.getItem('user');
+        currentUser = userJson ? JSON.parse(userJson) : {};
+    } catch (e) {
+        console.error('Error parsing user data', e);
+    }
+    if (currentUser && currentUser.name) {
+        document.getElementById('teacher-name').textContent = currentUser.name;
     }
 }
 
 async function loadPromotions() {
     const token = localStorage.getItem('token');
-    const userId = JSON.parse(localStorage.getItem('user')).id;
+    const userId = currentUser.id;
     try {
         const response = await fetch(`${API_URL}/api/my-promotions-all`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -71,7 +77,7 @@ function displayPromotions(promotions, userId) {
         const ownerBadge = !isOwner ? '<span class="badge bg-info">Collaborator</span>' : '';
 
         card.innerHTML = `
-            <div class="card promotion-card" onclick="window.location.href = '/promotion-detail?id=${promotion.id}'">
+            <div class="card promotion-card" onclick="window.location.href = 'promotion-detail.html?id=${promotion.id}'">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <h5 class="promotion-card-title">${escapeHtml(promotion.name)}</h5>
@@ -201,7 +207,7 @@ function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('role');
-    window.location.href = '/login';
+    window.location.href = 'login.html';
 }
 
 function escapeHtml(text) {

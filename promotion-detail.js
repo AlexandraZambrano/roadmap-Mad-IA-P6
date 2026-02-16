@@ -1,12 +1,14 @@
-const API_URL = window.location.origin;
+const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
 let promotionId = null;
-<<<<<<< HEAD
 let moduleModal, quickLinkModal, sectionModal, studentModal, studentSuccessModal, teamModal, resourceModal, collaboratorModal;
-=======
-let moduleModal, quickLinkModal, sectionModal, studentModal, studentSuccessModal, teamModal, resourceModal, addCollaboratorModal;
->>>>>>> ad1cef6c4dccacbc9c4da3f36f308b1a26ae5eee
 const userRole = localStorage.getItem('role') || 'student';
-const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+let currentUser = {};
+try {
+    const userJson = localStorage.getItem('user');
+    currentUser = userJson && userJson !== 'undefined' ? JSON.parse(userJson) : {};
+} catch (e) {
+    console.error('Error parsing user data', e);
+}
 let extendedInfoData = {
     schedule: {},
     team: [],
@@ -39,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     promotionId = new URLSearchParams(window.location.search).get('id');
 
     if (!promotionId) {
-        window.location.href = '/dashboard.html';
+        window.location.href = 'dashboard.html';
         return;
     }
 
@@ -66,13 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const resourceModalEl = document.getElementById('resourceModal');
     if (resourceModalEl) resourceModal = new bootstrap.Modal(resourceModalEl);
 
-<<<<<<< HEAD
     const collaboratorModalEl = document.getElementById('collaboratorModal');
     if (collaboratorModalEl) collaboratorModal = new bootstrap.Modal(collaboratorModalEl);
-=======
-    const addCollaboratorModalEl = document.getElementById('addCollaboratorModal');
-    if (addCollaboratorModalEl) addCollaboratorModal = new bootstrap.Modal(addCollaboratorModalEl);
->>>>>>> ad1cef6c4dccacbc9c4da3f36f308b1a26ae5eee
 
     if (userRole === 'teacher') {
         loadStudents();
@@ -274,7 +271,7 @@ async function saveExtendedInfo() {
 function checkAuth() {
     const token = localStorage.getItem('token');
     if (!token) {
-        window.location.href = '/login';
+        window.location.href = 'login.html';
     }
 }
 

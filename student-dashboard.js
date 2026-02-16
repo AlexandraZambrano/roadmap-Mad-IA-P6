@@ -1,4 +1,4 @@
-const API_URL = window.location.origin;
+const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
 
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -10,7 +10,7 @@ function checkAuth() {
     const userJson = localStorage.getItem('user');
 
     if (!token || !userJson) {
-        window.location.href = '/login';
+        window.location.href = 'login.html';
         return;
     }
 
@@ -482,7 +482,7 @@ function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('role');
-    window.location.href = '/login';
+    window.location.href = 'login.html';
 }
 
 function escapeHtml(text) {

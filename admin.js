@@ -1,4 +1,4 @@
-const API_URL = window.location.origin;
+const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
 let createModal, editModal, successModal;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -21,7 +21,18 @@ function checkAuth() {
     const role = localStorage.getItem('role');
 
     if (!token || role !== 'admin') {
-        window.location.href = '/login';
+        window.location.href = 'login.html';
+        return;
+    }
+
+    try {
+        const userJson = localStorage.getItem('user');
+        if (userJson && userJson !== 'undefined') {
+            const user = JSON.parse(userJson);
+            // Optionally update UI with admin name
+        }
+    } catch (e) {
+        console.error('Error parsing admin data', e);
     }
 }
 
@@ -189,7 +200,7 @@ function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('role');
-    window.location.href = '/login';
+    window.location.href = 'login.html';
 }
 
 function escapeHtml(text) {

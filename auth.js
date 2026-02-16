@@ -1,4 +1,4 @@
-const API_URL = window.location.origin;
+const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
 
 let isLoginForm = true;
 
@@ -79,7 +79,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             localStorage.setItem('token', data.token);
             localStorage.setItem('teacher', JSON.stringify(data.teacher));
             showAlert('Login successful! Redirecting...', 'success');
-            setTimeout(() => window.location.href = '/dashboard', 1500);
+            setTimeout(() => window.location.href = 'dashboard.html', 1500);
         } else {
             showAlert(data.error || 'Login failed', 'danger');
         }
@@ -123,9 +123,10 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
 
         if (response.ok) {
             localStorage.setItem('token', data.token);
-            localStorage.setItem('teacher', JSON.stringify(data.teacher));
+            localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('role', 'teacher');
             showAlert('Account created successfully! Redirecting...', 'success');
-            setTimeout(() => window.location.href = '/dashboard', 1500);
+            setTimeout(() => window.location.href = 'dashboard.html', 1500);
         } else {
             showAlert(data.error || 'Registration failed', 'danger');
         }
