@@ -68,8 +68,21 @@ window.verifyPromotionPassword = async function() {
             body: JSON.stringify({ password })
         });
 
+        const contentType = response.headers.get('content-type');
+        let data;
+        try {
+            data = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : {};
+        } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            alertEl.textContent = 'Invalid server response. Please try again.';
+            alertEl.classList.remove('hidden');
+            btnSpinner.classList.add('hidden');
+            return;
+        }
+
         if (response.ok) {
-            const data = await response.json();
             // Store access token in session storage (not localStorage) for security
             sessionStorage.setItem('promotionAccessToken', data.accessToken);
             sessionStorage.setItem('promotionId', promotionId);
@@ -84,9 +97,10 @@ window.verifyPromotionPassword = async function() {
             // Prompt for student email for tracking
             promptForStudentInfo();
         } else {
-            const data = await response.json();
-            alertEl.textContent = data.error || 'Invalid password. Please try again.';
+            const errorMsg = data.error || 'Invalid password. Please try again.';
+            alertEl.textContent = errorMsg;
             alertEl.classList.remove('hidden');
+            console.error('Password verification failed:', response.status, data);
         }
     } catch (error) {
         console.error('Password verification error:', error);
@@ -141,14 +155,18 @@ window.submitStudentInfo = async function() {
     }
 
     try {
-        await fetch(`${API_URL}/api/promotions/${promotionId}/track-student`, {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/track-student`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, email })
         });
 
-        sessionStorage.setItem('studentEmail', email);
-        sessionStorage.setItem('studentName', name);
+        if (response.ok) {
+            sessionStorage.setItem('studentEmail', email);
+            sessionStorage.setItem('studentName', name);
+        } else {
+            console.error('Error tracking student:', response.status);
+        }
     } catch (error) {
         console.error('Error tracking student:', error);
     }

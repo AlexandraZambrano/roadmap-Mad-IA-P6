@@ -1586,12 +1586,17 @@ async function loadAccessPassword() {
         });
 
         if (response.ok) {
-            const data = await response.json();
+            const contentType = response.headers.get('content-type');
+            const data = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : {};
             const passwordInput = document.getElementById('access-password-input');
             if (passwordInput) {
                 passwordInput.value = data.accessPassword || '';
                 updateStudentAccessLink();
             }
+        } else {
+            console.error('Error loading access password:', response.status);
         }
     } catch (error) {
         console.error('Error loading access password:', error);
@@ -1613,6 +1618,18 @@ window.updateAccessPassword = async function() {
             body: JSON.stringify({ password })
         });
 
+        const contentType = response.headers.get('content-type');
+        let data;
+
+        try {
+            data = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : await response.text();
+        } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            throw new Error('Invalid server response');
+        }
+
         if (response.ok) {
             alertEl.className = 'alert alert-success mt-3';
             alertEl.textContent = 'Password updated successfully!';
@@ -1620,15 +1637,16 @@ window.updateAccessPassword = async function() {
             updateStudentAccessLink();
             setTimeout(() => alertEl.classList.add('hidden'), 3000);
         } else {
-            const data = await response.json();
+            const errorMsg = typeof data === 'object' && data.error ? data.error : 'Failed to update password';
             alertEl.className = 'alert alert-danger mt-3';
-            alertEl.textContent = data.error || 'Failed to update password';
+            alertEl.textContent = errorMsg;
             alertEl.classList.remove('hidden');
+            console.error('Password update response:', response.status, data);
         }
     } catch (error) {
         console.error('Error updating password:', error);
         alertEl.className = 'alert alert-danger mt-3';
-        alertEl.textContent = 'Error updating password';
+        alertEl.textContent = 'Error: ' + error.message;
         alertEl.classList.remove('hidden');
     }
 };
@@ -1662,12 +1680,28 @@ window.openStudentDetailModal = async function(studentId) {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.ok) {
-            const student = await response.json();
+        const contentType = response.headers.get('content-type');
+        let student;
+        try {
+            student = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : null;
+        } catch (parseError) {
+            console.error('Error parsing student data:', parseError);
+            alert('Error loading student details: Invalid response from server');
+            return;
+        }
+
+        if (response.ok && student) {
             displayStudentDetail(student);
+        } else {
+            const error = student?.error || `Error loading student details (${response.status})`;
+            alert(error);
+            console.error('Student detail response:', response.status, student);
         }
     } catch (error) {
         console.error('Error loading student details:', error);
+        alert('Error: ' + error.message);
     }
 };
 
@@ -1738,6 +1772,16 @@ window.saveStudentNotes = async function() {
             body: JSON.stringify({ notes })
         });
 
+        const contentType = response.headers.get('content-type');
+        let data;
+        try {
+            data = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : {};
+        } catch (parseError) {
+            data = {};
+        }
+
         if (response.ok) {
             alertEl.className = 'alert alert-success';
             alertEl.textContent = 'Notes saved successfully!';
@@ -1746,14 +1790,16 @@ window.saveStudentNotes = async function() {
                 alertEl.classList.add('hidden');
             }, 2000);
         } else {
+            const errorMsg = data.error || 'Error saving notes';
             alertEl.className = 'alert alert-danger';
-            alertEl.textContent = 'Error saving notes';
+            alertEl.textContent = errorMsg;
             alertEl.classList.remove('hidden');
+            console.error('Save notes response:', response.status, data);
         }
     } catch (error) {
         console.error('Error saving notes:', error);
         alertEl.className = 'alert alert-danger';
-        alertEl.textContent = 'Error saving notes';
+        alertEl.textContent = 'Error: ' + error.message;
         alertEl.classList.remove('hidden');
     }
 };
