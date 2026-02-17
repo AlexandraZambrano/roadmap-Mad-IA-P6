@@ -46,7 +46,7 @@ async function loadPromotions() {
         if (!response.ok) {
             if (response.status === 401) {
                 localStorage.removeItem('token');
-                window.location.href = '/auth.html';
+                window.location.href = 'auth.html';
             }
             return;
         }
@@ -200,7 +200,7 @@ function populateTemplateSelect(templates) {
     }
 }
 
-window.applyTemplate = function() {
+window.applyTemplate = function () {
     const templateId = document.getElementById('promotion-template').value;
 
     if (!templateId) return;
@@ -297,7 +297,7 @@ function initProfileModal() {
     profileModal = new bootstrap.Modal(document.getElementById('profileModal'));
 }
 
-window.openProfileModal = async function() {
+window.openProfileModal = async function () {
     if (!profileModal) {
         initProfileModal();
     }
@@ -324,7 +324,7 @@ window.openProfileModal = async function() {
 
             // Update save button handler
             const saveBtn = document.getElementById('profile-save-btn');
-            saveBtn.onclick = function() {
+            saveBtn.onclick = function () {
                 const activeTab = document.querySelector('.nav-link.active');
                 if (activeTab.id === 'profile-tab') {
                     saveProfileInfo();
@@ -343,7 +343,7 @@ window.openProfileModal = async function() {
     }
 };
 
-window.saveProfileInfo = async function() {
+window.saveProfileInfo = async function () {
     const token = localStorage.getItem('token');
     const name = document.getElementById('profile-name').value;
     const lastName = document.getElementById('profile-lastName').value;
@@ -392,7 +392,7 @@ window.saveProfileInfo = async function() {
     }
 };
 
-window.changePassword = async function() {
+window.changePassword = async function () {
     const token = localStorage.getItem('token');
     const currentPassword = document.getElementById('current-password').value;
     const newPassword = document.getElementById('new-password').value;

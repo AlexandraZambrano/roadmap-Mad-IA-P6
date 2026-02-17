@@ -67,19 +67,6 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.static(join(__dirname, 'public')));
-
-// Simple file serving (SPA-like)
-app.get('/login', (req, res) => res.sendFile(join(__dirname, 'public', 'login.html')));
-app.get('/auth', (req, res) => res.sendFile(join(__dirname, 'public', 'login.html')));
-app.get('/dashboard', (req, res) => res.sendFile(join(__dirname, 'public', 'dashboard.html')));
-app.get('/student-dashboard', (req, res) => res.sendFile(join(__dirname, 'public', 'student-dashboard.html')));
-app.get('/promotion-detail', (req, res) => res.sendFile(join(__dirname, 'public', 'promotion-detail.html')));
-app.get('/public-promotion', (req, res) => res.sendFile(join(__dirname, 'public', 'public-promotion.html')));
-app.get('/admin', (req, res) => res.sendFile(join(__dirname, 'public', 'admin.html')));
-// Main page - serve login
-app.get('/', (req, res) => res.sendFile(join(__dirname, 'public', 'login.html')));
-
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 

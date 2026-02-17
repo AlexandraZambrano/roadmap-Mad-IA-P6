@@ -214,8 +214,12 @@
     <div class="login-container">
         <!-- Language Switcher -->
         <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px;">
-            <button onclick="setLanguage('en')" style="padding: 8px 12px; border: 1px solid white; background: transparent; color: white; border-radius: 4px; cursor: pointer;" id="lang-en">EN</button>
-            <button onclick="setLanguage('es')" style="padding: 8px 12px; border: 1px solid white; background: transparent; color: white; border-radius: 4px; cursor: pointer;" id="lang-es">ES</button>
+            <button onclick="setLanguage('en')"
+                style="padding: 8px 12px; border: 1px solid white; background: transparent; color: white; border-radius: 4px; cursor: pointer;"
+                id="lang-en">EN</button>
+            <button onclick="setLanguage('es')"
+                style="padding: 8px 12px; border: 1px solid white; background: transparent; color: white; border-radius: 4px; cursor: pointer;"
+                id="lang-es">ES</button>
         </div>
 
         <div class="logo-section">
@@ -235,12 +239,14 @@
             <div class="form-group">
                 <label for="password" class="form-label" data-i18n="password">Password</label>
                 <div class="password-input-group">
-                    <input type="password" id="password" class="form-control" placeholder="Enter your password" required />
+                    <input type="password" id="password" class="form-control" placeholder="Enter your password"
+                        required />
                     <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password')">
                         <i class="bi bi-eye"></i>
                     </button>
                 </div>
-                <div class="help-text" id="help-text" data-i18n="your-assigned-password">Use your assigned password</div>
+                <div class="help-text" id="help-text" data-i18n="your-assigned-password">Use your assigned password
+                </div>
             </div>
 
             <button type="button" class="btn-login" id="login-button" onclick="handleLogin()">
@@ -248,13 +254,6 @@
                 <span class="spinner-sm spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
             </button>
         </form>
-
-        <div class="divider"><span>Demo Credentials</span></div>
-        <div class="help-text" style="text-align: center; margin-top: 15px;">
-            <div class="mb-2"><strong>Admin:</strong> admin@test.com / admin123</div>
-            <div><strong>Teacher:</strong> alex@gmail.com / aA12345678910*</div>
-            <p class="text-muted small mt-3">Students access promotions via password link, not login credentials.</p>
-        </div>
     </div>
 
     <script src="js/config.js"></script>
@@ -263,7 +262,7 @@
 
     <script>
         // Highlight current language button
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             updateLangButtons();
         });
 
@@ -275,7 +274,7 @@
 
         // Override setLanguage to update buttons
         const originalSetLanguage = setLanguage;
-        window.setLanguage = function(lang) {
+        window.setLanguage = function (lang) {
             originalSetLanguage(lang);
             updateLangButtons();
         };
