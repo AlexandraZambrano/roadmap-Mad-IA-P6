@@ -229,7 +229,12 @@
                             <div class="row align-items-end g-3">
                                 <div class="col-md-6">
                                     <label for="access-password-input" class="form-label">Access Password</label>
-                                    <input type="text" class="form-control" id="access-password-input" placeholder="Enter a password">
+                                    <div class="password-input-group">
+                                        <input type="text" class="form-control" id="access-password-input" placeholder="Enter a password">
+                                        <button type="button" class="password-toggle" onclick="togglePasswordVisibility('access-password-input')">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
                                     <small class="form-text text-muted">Leave empty to remove password protection</small>
                                 </div>
                                 <div class="col-md-6">

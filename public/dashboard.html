@@ -169,15 +169,30 @@
                         <div class="tab-pane fade" id="password-content" role="tabpanel">
                             <div class="mb-3">
                                 <label for="current-password" class="form-label">Current Password</label>
-                                <input type="password" class="form-control" id="current-password" placeholder="Enter your current password">
+                                <div class="password-input-group">
+                                    <input type="password" class="form-control" id="current-password" placeholder="Enter your current password">
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('current-password')">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="new-password" class="form-label">New Password</label>
-                                <input type="password" class="form-control" id="new-password" placeholder="Enter new password (min 8 characters)">
+                                <div class="password-input-group">
+                                    <input type="password" class="form-control" id="new-password" placeholder="Enter new password (min 8 characters)">
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('new-password')">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="confirm-password" class="form-label">Confirm Password</label>
-                                <input type="password" class="form-control" id="confirm-password" placeholder="Confirm new password">
+                                <div class="password-input-group">
+                                    <input type="password" class="form-control" id="confirm-password" placeholder="Confirm new password">
+                                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('confirm-password')">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div id="password-alert" class="alert hidden" role="alert"></div>
                         </div>
