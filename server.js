@@ -19,6 +19,7 @@ import Section from './backend/models/Section.js';
 import ExtendedInfo from './backend/models/ExtendedInfo.js';
 import Calendar from './backend/models/Calendar.js';
 import BootcampTemplate from './backend/models/BootcampTemplate.js';
+import { sendPasswordEmail } from './backend/utils/email.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -407,6 +408,173 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     return res.status(401).json({ error: 'Invalid email or password' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== PROFILE MANAGEMENT ====================
+
+// Get current user profile
+app.get('/api/profile', verifyToken, async (req, res) => {
+  try {
+    let user = null;
+    const { role } = req.user;
+
+    if (role === 'teacher') {
+      user = await Teacher.findOne({ id: req.user.id });
+    } else if (role === 'admin') {
+      user = await Admin.findOne({ id: req.user.id });
+    } else if (role === 'student') {
+      user = await Student.findOne({ id: req.user.id });
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Return profile without password
+    const profile = {
+      id: user.id,
+      name: user.name,
+      lastName: user.lastName || '',
+      email: user.email,
+      location: user.location || '',
+      role: role,
+      createdAt: user.createdAt
+    };
+
+    res.json(profile);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user profile
+app.put('/api/profile', verifyToken, async (req, res) => {
+  try {
+    const { name, lastName, location } = req.body;
+    const { role } = req.user;
+
+    let user = null;
+
+    if (role === 'teacher') {
+      user = await Teacher.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          name: name || undefined,
+          lastName: lastName || undefined,
+          location: location || undefined
+        },
+        { new: true }
+      );
+    } else if (role === 'admin') {
+      user = await Admin.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          name: name || undefined,
+          lastName: lastName || undefined,
+          location: location || undefined
+        },
+        { new: true }
+      );
+    } else if (role === 'student') {
+      user = await Student.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          name: name || undefined,
+          lastName: lastName || undefined
+        },
+        { new: true }
+      );
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const profile = {
+      id: user.id,
+      name: user.name,
+      lastName: user.lastName || '',
+      email: user.email,
+      location: user.location || '',
+      role: role,
+      createdAt: user.createdAt
+    };
+
+    res.json({ message: 'Profile updated successfully', profile });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Change password
+app.post('/api/change-password', verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const { role } = req.user;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    let user = null;
+
+    if (role === 'teacher') {
+      user = await Teacher.findOne({ id: req.user.id });
+    } else if (role === 'admin') {
+      user = await Admin.findOne({ id: req.user.id });
+    } else if (role === 'student') {
+      user = await Student.findOne({ id: req.user.id });
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify current password
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    if (role === 'teacher') {
+      user = await Teacher.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          password: hashedPassword,
+          passwordChangedAt: new Date()
+        },
+        { new: true }
+      );
+    } else if (role === 'admin') {
+      user = await Admin.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          password: hashedPassword,
+          passwordChangedAt: new Date()
+        },
+        { new: true }
+      );
+    } else if (role === 'student') {
+      user = await Student.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          password: hashedPassword
+        },
+        { new: true }
+      );
+    }
+
+    res.json({ message: 'Password changed successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -989,7 +1157,23 @@ app.post('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
     const hashedPassword = await bcrypt.hash(provisionalPassword, 10);
 
     const teacher = await Teacher.create({ id: uuidv4(), name, email, password: hashedPassword, provisional: true });
-    res.status(201).json({ message: 'Teacher created', teacher: { id: teacher.id, name: teacher.name, email: teacher.email }, provisionalPassword });
+
+    // Send password to email
+    const emailSent = await sendPasswordEmail(email, name, provisionalPassword);
+
+    if (emailSent) {
+      res.status(201).json({
+        message: 'Teacher created successfully. Password has been sent to their email address.',
+        teacher: { id: teacher.id, name: teacher.name, email: teacher.email }
+      });
+    } else {
+      // Still create teacher but alert admin
+      res.status(201).json({
+        message: 'Teacher created, but password email could not be sent. Please notify the teacher manually.',
+        teacher: { id: teacher.id, name: teacher.name, email: teacher.email },
+        warning: 'Email not sent'
+      });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

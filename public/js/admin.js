@@ -126,13 +126,11 @@ async function handleCreateTeacher(e) {
 
         if (response.ok) {
             createModal.hide();
-            // Show success with password
-            document.getElementById('success-email').textContent = email;
-            document.getElementById('provisional-password').textContent = data.provisionalPassword;
-            successModal.show();
+            // Show success message
+            alert(`Teacher created successfully! A welcome email with login credentials has been sent to ${email}`);
             loadTeachers();
         } else {
-            alert(data.error || 'Failed to create teacher');
+            alert(data.error || data.message || 'Failed to create teacher');
         }
     } catch (error) {
         alert('Error creating teacher');

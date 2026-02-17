@@ -288,3 +288,172 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// ==================== PROFILE MANAGEMENT ====================
+
+let profileModal;
+
+function initProfileModal() {
+    profileModal = new bootstrap.Modal(document.getElementById('profileModal'));
+}
+
+window.openProfileModal = async function() {
+    if (!profileModal) {
+        initProfileModal();
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const profile = await response.json();
+
+            // Populate form
+            document.getElementById('profile-name').value = profile.name || '';
+            document.getElementById('profile-lastName').value = profile.lastName || '';
+            document.getElementById('profile-email').value = profile.email;
+            document.getElementById('profile-location').value = profile.location || '';
+
+            // Clear password fields
+            document.getElementById('current-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-password').value = '';
+
+            // Update save button handler
+            const saveBtn = document.getElementById('profile-save-btn');
+            saveBtn.onclick = function() {
+                const activeTab = document.querySelector('.nav-link.active');
+                if (activeTab.id === 'profile-tab') {
+                    saveProfileInfo();
+                } else {
+                    changePassword();
+                }
+            };
+
+            profileModal.show();
+        } else {
+            alert('Error loading profile');
+        }
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        alert('Error loading profile');
+    }
+};
+
+window.saveProfileInfo = async function() {
+    const token = localStorage.getItem('token');
+    const name = document.getElementById('profile-name').value;
+    const lastName = document.getElementById('profile-lastName').value;
+    const location = document.getElementById('profile-location').value;
+
+    try {
+        const response = await fetch(`${API_URL}/api/profile`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ name, lastName, location })
+        });
+
+        const alertEl = document.getElementById('profile-alert');
+
+        if (response.ok) {
+            const data = await response.json();
+
+            // Update localStorage
+            const user = JSON.parse(localStorage.getItem('user'));
+            user.name = data.profile.name;
+            localStorage.setItem('user', JSON.stringify(user));
+            document.getElementById('teacher-name').textContent = user.name;
+
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = 'Profile updated successfully!';
+            alertEl.classList.remove('hidden');
+
+            setTimeout(() => {
+                alertEl.classList.add('hidden');
+            }, 3000);
+        } else {
+            const data = await response.json();
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = data.error || 'Error updating profile';
+            alertEl.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        const alertEl = document.getElementById('profile-alert');
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Error updating profile';
+        alertEl.classList.remove('hidden');
+    }
+};
+
+window.changePassword = async function() {
+    const token = localStorage.getItem('token');
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+
+    const alertEl = document.getElementById('password-alert');
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        alertEl.className = 'alert alert-warning';
+        alertEl.textContent = 'All fields are required';
+        alertEl.classList.remove('hidden');
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        alertEl.className = 'alert alert-warning';
+        alertEl.textContent = 'New passwords do not match';
+        alertEl.classList.remove('hidden');
+        return;
+    }
+
+    if (newPassword.length < 8) {
+        alertEl.className = 'alert alert-warning';
+        alertEl.textContent = 'Password must be at least 8 characters';
+        alertEl.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/change-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+
+        if (response.ok) {
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = 'Password changed successfully! Please log in again.';
+            alertEl.classList.remove('hidden');
+
+            setTimeout(() => {
+                logout();
+            }, 2000);
+        } else {
+            const data = await response.json();
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = data.error || 'Error changing password';
+            alertEl.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Error changing password';
+        alertEl.classList.remove('hidden');
+    }
+};
+
+// Initialize profile modal on page load
+document.addEventListener('DOMContentLoaded', () => {
+    initProfileModal();
+});
