@@ -49,7 +49,8 @@ const allowedOrigins = [
   'http://127.0.0.1:3001',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
-  'https://alexandrazambrano.github.io'
+  'https://alexandrazambrano.github.io',
+  'https://roadmap-manager-latest.onrender.com'
 ];
 
 app.use(cors({
@@ -57,6 +58,7 @@ app.use(cors({
     // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
+      console.log('CORS Blocked Origin:', origin);
       var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
     }
