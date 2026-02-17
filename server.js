@@ -18,6 +18,8 @@ import QuickLink from './backend/models/QuickLink.js';
 import Section from './backend/models/Section.js';
 import ExtendedInfo from './backend/models/ExtendedInfo.js';
 import Calendar from './backend/models/Calendar.js';
+import BootcampTemplate from './backend/models/BootcampTemplate.js';
+import { sendPasswordEmail } from './backend/utils/email.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,7 +31,11 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/bootcamp-m
 
 // MongoDB Connection
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
+  .then(async () => {
+    console.log('Connected to MongoDB');
+    // Initialize default templates
+    await initializeDefaultTemplates();
+  })
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Middleware
@@ -69,7 +75,8 @@ app.get('/student-dashboard', (req, res) => res.sendFile(join(__dirname, 'public
 app.get('/promotion-detail', (req, res) => res.sendFile(join(__dirname, 'public', 'promotion-detail.html')));
 app.get('/public-promotion', (req, res) => res.sendFile(join(__dirname, 'public', 'public-promotion.html')));
 app.get('/admin', (req, res) => res.sendFile(join(__dirname, 'public', 'admin.html')));
-app.get('/', (req, res) => res.sendFile(join(__dirname, 'public', 'index.html')));
+// Main page - serve login
+app.get('/', (req, res) => res.sendFile(join(__dirname, 'public', 'login.html')));
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -125,6 +132,227 @@ const canEditPromotion = (promotion, userId) => {
   return promotion.teacherId === userId || (promotion.collaborators && promotion.collaborators.includes(userId));
 };
 
+// ==================== PROMOTION PASSWORD ACCESS ====================
+
+// Set or change promotion access password (teacher only)
+app.post('/api/promotions/:promotionId/access-password', verifyToken, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    // Store old password in history
+    if (promotion.accessPassword) {
+      if (!promotion.passwordChangeHistory) promotion.passwordChangeHistory = [];
+      promotion.passwordChangeHistory.push({
+        oldPassword: promotion.accessPassword,
+        newPassword: password,
+        changedAt: new Date()
+      });
+    }
+
+    promotion.accessPassword = password;
+    await promotion.save();
+
+    res.json({ message: 'Access password updated', accessPassword: password });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Access promotion with password (session-based, no authentication required)
+app.post('/api/promotions/:promotionId/verify-password', async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+
+    if (promotion.accessPassword !== password) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    // Create a session token (valid only for this promotion access)
+    const accessToken = jwt.sign(
+      { promotionId: req.params.promotionId, accessType: 'promotion-guest' },
+      JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    res.json({ message: 'Password verified', accessToken, promotion: { id: promotion.id, name: promotion.name } });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get promotion access password (teacher only)
+app.get('/api/promotions/:promotionId/access-password', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    res.json({ accessPassword: promotion.accessPassword || null });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== BOOTCAMP TEMPLATES ====================
+
+// Initialize default templates if they don't exist
+async function initializeDefaultTemplates() {
+  const defaultTemplates = [
+    {
+      id: 'ia-bootcamp',
+      name: 'IA School Bootcamp',
+      description: 'Artificial Intelligence and Machine Learning bootcamp',
+      weeks: 39,
+      hours: 520,
+      hoursPerWeek: 35,
+      isCustom: false,
+      modules: []
+    },
+    {
+      id: 'fullstack-bootcamp',
+      name: 'Full Stack Bootcamp',
+      description: 'Full stack web development bootcamp',
+      weeks: 24,
+      hours: 320,
+      hoursPerWeek: 35,
+      isCustom: false,
+      modules: []
+    },
+    {
+      id: 'cybersecurity-bootcamp',
+      name: 'Cyber Security Bootcamp',
+      description: 'Cyber Security and Ethical Hacking bootcamp',
+      weeks: 20,
+      hours: 280,
+      hoursPerWeek: 35,
+      isCustom: false,
+      modules: []
+    },
+    {
+      id: 'datascience-bootcamp',
+      name: 'Data Science Bootcamp',
+      description: 'Data Science and Analytics bootcamp',
+      weeks: 30,
+      hours: 420,
+      hoursPerWeek: 35,
+      isCustom: false,
+      modules: []
+    },
+    {
+      id: 'frontend-bootcamp',
+      name: 'Frontend Bootcamp',
+      description: 'Frontend development with React, Vue, or Angular',
+      weeks: 16,
+      hours: 224,
+      hoursPerWeek: 35,
+      isCustom: false,
+      modules: []
+    },
+    {
+      id: 'backend-bootcamp',
+      name: 'Backend Bootcamp',
+      description: 'Backend development with Node.js, Python, or Java',
+      weeks: 20,
+      hours: 280,
+      hoursPerWeek: 35,
+      isCustom: false,
+      modules: []
+    }
+  ];
+
+  for (const template of defaultTemplates) {
+    const exists = await BootcampTemplate.findOne({ id: template.id });
+    if (!exists) {
+      await BootcampTemplate.create(template);
+    }
+  }
+}
+
+// Get all templates (system + custom)
+app.get('/api/bootcamp-templates', verifyToken, async (req, res) => {
+  try {
+    const templates = await BootcampTemplate.find({});
+    res.json(templates);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create custom template
+app.post('/api/bootcamp-templates', verifyToken, async (req, res) => {
+  try {
+    const { name, description, weeks, hours, hoursPerWeek, modules, evaluation, schedule } = req.body;
+
+    if (!name || !weeks) {
+      return res.status(400).json({ error: 'Name and weeks are required' });
+    }
+
+    const template = await BootcampTemplate.create({
+      id: `custom-${uuidv4()}`,
+      name,
+      description,
+      weeks,
+      hours: hours || weeks * (hoursPerWeek || 35),
+      hoursPerWeek: hoursPerWeek || 35,
+      modules: modules || [],
+      evaluation: evaluation || '',
+      schedule: schedule || {},
+      isCustom: true,
+      createdBy: req.user.id
+    });
+
+    res.status(201).json(template);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get template by ID
+app.get('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => {
+  try {
+    const template = await BootcampTemplate.findOne({ id: req.params.templateId });
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    res.json(template);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete custom template
+app.delete('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => {
+  try {
+    const template = await BootcampTemplate.findOne({ id: req.params.templateId });
+
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    if (!template.isCustom) {
+      return res.status(403).json({ error: 'Cannot delete system templates' });
+    }
+
+    if (template.createdBy !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    await BootcampTemplate.deleteOne({ id: req.params.templateId });
+    res.json({ message: 'Template deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ==================== AUTHENTICATION ====================
 
 app.post('/api/auth/register', async (req, res) => {
@@ -146,36 +374,207 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 
     let user = null;
-    let userRole = role;
+    let userRole = null;
 
-    if (userRole === 'teacher' || !role) {
+    // Try Admin first
+    user = await Admin.findOne({ email });
+    if (user && (await bcrypt.compare(password, user.password))) {
+      userRole = 'admin';
+    }
+
+    // Try Teacher
+    if (!user) {
       user = await Teacher.findOne({ email });
-      if (user && (await bcrypt.compare(password, user.password))) userRole = 'teacher';
-      else user = null;
+      if (user && (await bcrypt.compare(password, user.password))) {
+        userRole = 'teacher';
+      }
     }
 
-    if (!user && (userRole === 'student' || !role)) {
+    // Try Student (for reference, though students typically don't login)
+    if (!user) {
       user = await Student.findOne({ email });
-      if (user && (await bcrypt.compare(password, user.password))) userRole = 'student';
-      else user = null;
+      if (user && (await bcrypt.compare(password, user.password))) {
+        userRole = 'student';
+      }
     }
 
-    if (!user && (userRole === 'admin' || !role)) {
-      user = await Admin.findOne({ email });
-      if (user && (await bcrypt.compare(password, user.password))) userRole = 'admin';
-      else user = null;
-    }
-
-    if (user) {
+    if (user && userRole) {
       const token = jwt.sign({ id: user.id, email: user.email, role: userRole }, JWT_SECRET, { expiresIn: '7d' });
       return res.json({ message: 'Login successful', token, user: { id: user.id, name: user.name, email: user.email, role: userRole } });
     }
 
     return res.status(401).json({ error: 'Invalid email or password' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== PROFILE MANAGEMENT ====================
+
+// Get current user profile
+app.get('/api/profile', verifyToken, async (req, res) => {
+  try {
+    let user = null;
+    const { role } = req.user;
+
+    if (role === 'teacher') {
+      user = await Teacher.findOne({ id: req.user.id });
+    } else if (role === 'admin') {
+      user = await Admin.findOne({ id: req.user.id });
+    } else if (role === 'student') {
+      user = await Student.findOne({ id: req.user.id });
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Return profile without password
+    const profile = {
+      id: user.id,
+      name: user.name,
+      lastName: user.lastName || '',
+      email: user.email,
+      location: user.location || '',
+      role: role,
+      createdAt: user.createdAt
+    };
+
+    res.json(profile);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user profile
+app.put('/api/profile', verifyToken, async (req, res) => {
+  try {
+    const { name, lastName, location } = req.body;
+    const { role } = req.user;
+
+    let user = null;
+
+    if (role === 'teacher') {
+      user = await Teacher.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          name: name || undefined,
+          lastName: lastName || undefined,
+          location: location || undefined
+        },
+        { new: true }
+      );
+    } else if (role === 'admin') {
+      user = await Admin.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          name: name || undefined,
+          lastName: lastName || undefined,
+          location: location || undefined
+        },
+        { new: true }
+      );
+    } else if (role === 'student') {
+      user = await Student.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          name: name || undefined,
+          lastName: lastName || undefined
+        },
+        { new: true }
+      );
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const profile = {
+      id: user.id,
+      name: user.name,
+      lastName: user.lastName || '',
+      email: user.email,
+      location: user.location || '',
+      role: role,
+      createdAt: user.createdAt
+    };
+
+    res.json({ message: 'Profile updated successfully', profile });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Change password
+app.post('/api/change-password', verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const { role } = req.user;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    let user = null;
+
+    if (role === 'teacher') {
+      user = await Teacher.findOne({ id: req.user.id });
+    } else if (role === 'admin') {
+      user = await Admin.findOne({ id: req.user.id });
+    } else if (role === 'student') {
+      user = await Student.findOne({ id: req.user.id });
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify current password
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    if (role === 'teacher') {
+      user = await Teacher.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          password: hashedPassword,
+          passwordChangedAt: new Date()
+        },
+        { new: true }
+      );
+    } else if (role === 'admin') {
+      user = await Admin.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          password: hashedPassword,
+          passwordChangedAt: new Date()
+        },
+        { new: true }
+      );
+    } else if (role === 'student') {
+      user = await Student.findOneAndUpdate(
+        { id: req.user.id },
+        {
+          password: hashedPassword
+        },
+        { new: true }
+      );
+    }
+
+    res.json({ message: 'Password changed successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -196,6 +595,7 @@ app.get('/api/promotions/:promotionId/students', verifyToken, async (req, res) =
   }
 });
 
+// Add student manually (teacher adds student for tracking)
 app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) => {
   try {
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
@@ -205,19 +605,155 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
     const { email, name } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
-    const tempPassword = Math.random().toString(36).slice(-12) + 'A1!';
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    // Check if student already exists
+    const existing = await Student.findOne({ email, promotionId: req.params.promotionId });
+    if (existing) return res.status(400).json({ error: 'Student already added to this promotion' });
 
     const student = await Student.create({
       id: uuidv4(),
       email,
       name: name || email.split('@')[0],
-      password: hashedPassword,
       promotionId: req.params.promotionId,
-      tempPassword: true
+      isManuallyAdded: true,
+      notes: ''
     });
 
-    res.status(201).json({ message: 'Student added successfully', student: { id: student.id, email: student.email, name: student.name }, tempPassword });
+    res.status(201).json({ message: 'Student added successfully', student: { id: student.id, email: student.email, name: student.name } });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Auto-track student when they access promotion with password
+app.post('/api/promotions/:promotionId/track-student', async (req, res) => {
+  try {
+    const { email } = req.body;
+    // Email is optional for first access
+    const tempEmail = email || `guest-${uuidv4()}@promotion.local`;
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+
+    // Check if student already exists
+    let student = await Student.findOne({ email: tempEmail, promotionId: req.params.promotionId });
+
+    if (!student) {
+      // Create new tracked student
+      student = await Student.create({
+        id: uuidv4(),
+        email: tempEmail,
+        promotionId: req.params.promotionId,
+        isManuallyAdded: false
+      });
+    }
+
+    // Update last accessed and access log
+    student.progress.lastAccessed = new Date();
+    if (!student.accessLog) student.accessLog = [];
+
+    student.accessLog.push({
+      accessedAt: new Date(),
+      ipAddress: req.ip || req.connection.remoteAddress,
+      userAgent: req.headers['user-agent']
+    });
+
+    await student.save();
+
+    res.json({ message: 'Student tracked', student: { id: student.id, email: student.email, name: student.name } });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add or update student notes
+app.put('/api/promotions/:promotionId/students/:studentId/notes', verifyToken, async (req, res) => {
+  try {
+    const { notes } = req.body;
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const student = await Student.findOneAndUpdate(
+      { id: req.params.studentId, promotionId: req.params.promotionId },
+      { notes: notes || '' },
+      { new: true }
+    );
+
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    res.json({ message: 'Student notes updated', student });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update student progress
+app.put('/api/promotions/:promotionId/students/:studentId/progress', async (req, res) => {
+  try {
+    const { modulesViewed, sectionsCompleted } = req.body;
+
+    const student = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    if (modulesViewed) {
+      student.progress.modulesViewed = [...new Set([...(student.progress.modulesViewed || []), ...modulesViewed])];
+    }
+
+    if (sectionsCompleted) {
+      student.progress.sectionsCompleted = [...new Set([...(student.progress.sectionsCompleted || []), ...sectionsCompleted])];
+    }
+
+    student.progress.lastAccessed = new Date();
+    await student.save();
+
+    res.json({ message: 'Student progress updated', student });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get student details
+app.get('/api/promotions/:promotionId/students/:studentId', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const student = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    res.json(student);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update student detailed information
+app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { name, lastName, age, nationality, paperStatus, description, workBackground, email } = req.body;
+
+    const student = await Student.findOneAndUpdate(
+      { id: req.params.studentId, promotionId: req.params.promotionId },
+      {
+        name: name || undefined,
+        lastName: lastName || undefined,
+        age: age || undefined,
+        nationality: nationality || undefined,
+        paperStatus: paperStatus || undefined,
+        description: description || undefined,
+        workBackground: workBackground || undefined,
+        email: email || undefined
+      },
+      { new: true }
+    );
+
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    res.json({ message: 'Student profile updated', student });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -621,7 +1157,23 @@ app.post('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
     const hashedPassword = await bcrypt.hash(provisionalPassword, 10);
 
     const teacher = await Teacher.create({ id: uuidv4(), name, email, password: hashedPassword, provisional: true });
-    res.status(201).json({ message: 'Teacher created', teacher: { id: teacher.id, name: teacher.name, email: teacher.email }, provisionalPassword });
+
+    // Send password to email
+    const emailSent = await sendPasswordEmail(email, name, provisionalPassword);
+
+    if (emailSent) {
+      res.status(201).json({
+        message: 'Teacher created successfully. Password has been sent to their email address.',
+        teacher: { id: teacher.id, name: teacher.name, email: teacher.email }
+      });
+    } else {
+      // Still create teacher but alert admin
+      res.status(201).json({
+        message: 'Teacher created, but password email could not be sent. Please notify the teacher manually.',
+        teacher: { id: teacher.id, name: teacher.name, email: teacher.email },
+        warning: 'Email not sent'
+      });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

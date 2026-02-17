@@ -1,5 +1,8 @@
 const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
 let promotionId = null;
+let passwordModal = null;
+let promotionHasPassword = false;
+let isAccessVerified = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,12 +13,134 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    // Initialize password modal
+    const modalEl = document.getElementById('passwordModal');
+    if (modalEl) {
+        passwordModal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+    }
+
+    // Check if promotion requires password
+    checkPasswordRequirement();
+});
+
+async function checkPasswordRequirement() {
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`);
+
+        if (response.ok) {
+            const promotion = await response.json();
+            promotionHasPassword = !!promotion.accessPassword;
+
+            if (promotionHasPassword && !isAccessVerified) {
+                // Show password modal
+                if (passwordModal) {
+                    passwordModal.show();
+                }
+            } else {
+                // Load promotion content
+                loadPromotionContent();
+            }
+        }
+    } catch (error) {
+        console.error('Error checking password requirement:', error);
+    }
+}
+
+// Verify promotion password
+window.verifyPromotionPassword = async function() {
+    const password = document.getElementById('access-password').value;
+    const alertEl = document.getElementById('password-alert');
+    const btnSpinner = document.querySelector('.modal-footer .spinner-border');
+
+    if (!password) {
+        alertEl.textContent = 'Please enter the password';
+        alertEl.classList.remove('hidden');
+        return;
+    }
+
+    alertEl.classList.add('hidden');
+    btnSpinner.classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/verify-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+
+        const contentType = response.headers.get('content-type');
+        let data;
+        try {
+            data = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : {};
+        } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            alertEl.textContent = 'Invalid server response. Please try again.';
+            alertEl.classList.remove('hidden');
+            btnSpinner.classList.add('hidden');
+            return;
+        }
+
+        if (response.ok) {
+            // Store access token in session storage (not localStorage) for security
+            sessionStorage.setItem('promotionAccessToken', data.accessToken);
+            sessionStorage.setItem('promotionId', promotionId);
+
+            isAccessVerified = true;
+
+            // Hide modal and load content
+            if (passwordModal) {
+                passwordModal.hide();
+            }
+
+            // Auto-track student without prompting for info
+            await trackStudentQuietly();
+        } else {
+            const errorMsg = data.error || 'Invalid password. Please try again.';
+            alertEl.textContent = errorMsg;
+            alertEl.classList.remove('hidden');
+            console.error('Password verification failed:', response.status, data);
+        }
+    } catch (error) {
+        console.error('Password verification error:', error);
+        alertEl.textContent = 'Connection error. Please try again.';
+        alertEl.classList.remove('hidden');
+    } finally {
+        btnSpinner.classList.add('hidden');
+    }
+};
+
+// Auto-track student without prompting
+async function trackStudentQuietly() {
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/track-student`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            sessionStorage.setItem('studentId', data.student.id);
+        } else {
+            console.error('Error tracking student:', response.status);
+        }
+    } catch (error) {
+        console.error('Error tracking student:', error);
+    }
+
+    // Load content regardless of tracking result
+    loadPromotionContent();
+}
+
+async function loadPromotionContent() {
     loadPromotion();
     loadModules();
     loadQuickLinks();
     loadSections();
     loadCalendar();
-});
+}
 
 async function loadPromotion() {
     try {

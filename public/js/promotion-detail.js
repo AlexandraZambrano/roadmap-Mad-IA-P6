@@ -122,7 +122,33 @@ async function loadExtendedInfo() {
             displayResources();
 
             // Populate Evaluation
-            document.getElementById('evaluation-text').value = extendedInfoData.evaluation || '';
+            const defaultEvaluation = `Evaluación del Proyecto
+
+Se brindará retroalimentación oral el mismo día de la presentación del proyecto, mientras que la autoevaluación (en proyectos individuales) y evaluación grupal (en proyectos grupales) se realizará al día siguiente y posteriormente, el equipo formativo compartirá las impresiones finales. Todo ello deberá almacenarse en Google Classroom.
+
+Se tendrán en cuenta los siguientes aspectos:
+
+• Análisis de los commits realizados por los coders, valorando tanto la cantidad como la calidad
+• Participación individual en la presentación del proyecto
+• Capacidad de responder preguntas específicas de manera clara y fundamentada
+• Desarrollo y demostración de las competencias adquiridas durante el proyecto
+
+Evaluación de las Píldoras
+
+Las píldoras se asignarán la primera semana, se apuntarán en el calendario y se valorarán los siguientes aspectos:
+• Que tenga un poco de inglés (hablado, no solo en la presentación)
+• Que tenga parte teórica y parte práctica. Énfasis en la práctica
+• Tiempo mínimo 1 hora
+• Crear un repositorio en Github y/o publicar un artículo en Medium
+
+Evaluación Global al Final del Bootcamp
+
+• Valoración de los proyectos entregados
+• Valoración de los cursos realizados
+• Valoración de las píldoras realizadas
+• Valoración de competencias transversales`;
+
+            document.getElementById('evaluation-text').value = extendedInfoData.evaluation || defaultEvaluation;
         }
     } catch (error) {
         console.error('Error loading extended info:', error);
@@ -285,6 +311,11 @@ function switchTab(tabName) {
     const tabElement = document.getElementById(tabName + '-tab');
     if (tabElement) {
         tabElement.classList.remove('hidden');
+    }
+
+    // Load specific tab data if needed
+    if (tabName === 'access-settings' && userRole === 'teacher') {
+        loadAccessPassword();
     }
 
     // Update active nav link
@@ -1529,15 +1560,26 @@ function displayStudents(students) {
     students.forEach(student => {
         const card = document.createElement('div');
         card.className = 'col-md-6 mb-3';
+        const badge = student.isManuallyAdded ? '<span class="badge bg-secondary">Manual</span>' : '<span class="badge bg-info">Auto-tracked</span>';
+        const lastAccessed = student.progress?.lastAccessed ? new Date(student.progress.lastAccessed).toLocaleDateString() : 'Not accessed';
+
         card.innerHTML = `
             <div class="card">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title mb-1">${escapeHtml(student.name)}</h5>
-                        <p class="card-text text-muted mb-0">${escapeHtml(student.email)}</p>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h5 class="card-title mb-1">${escapeHtml(student.name)}</h5>
+                            <p class="card-text text-muted mb-2">${escapeHtml(student.email)}</p>
+                            ${badge}
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </div>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}')">
-                        <i class="bi bi-trash"></i>
+                    <hr class="my-2">
+                    <small class="text-muted">Last accessed: ${lastAccessed}</small><br>
+                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="openStudentDetailModal('${student.id}')">
+                        <i class="bi bi-eye me-1"></i>View Details
                     </button>
                 </div>
             </div>
@@ -1561,4 +1603,332 @@ async function deleteStudent(studentId) {
     }
 }
 
+// Access Settings Functions
+async function loadAccessPassword() {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/access-password`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
+        if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            const data = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : {};
+            const passwordInput = document.getElementById('access-password-input');
+            if (passwordInput) {
+                passwordInput.value = data.accessPassword || '';
+                updateStudentAccessLink();
+            }
+        } else {
+            console.error('Error loading access password:', response.status);
+        }
+    } catch (error) {
+        console.error('Error loading access password:', error);
+    }
+}
+
+window.updateAccessPassword = async function() {
+    const password = document.getElementById('access-password-input').value;
+    const token = localStorage.getItem('token');
+    const alertEl = document.getElementById('password-alert');
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/access-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ password })
+        });
+
+        const contentType = response.headers.get('content-type');
+        let data;
+
+        try {
+            data = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : await response.text();
+        } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            throw new Error('Invalid server response');
+        }
+
+        if (response.ok) {
+            alertEl.className = 'alert alert-success mt-3';
+            alertEl.textContent = 'Password updated successfully!';
+            alertEl.classList.remove('hidden');
+            updateStudentAccessLink();
+            setTimeout(() => alertEl.classList.add('hidden'), 3000);
+        } else {
+            const errorMsg = typeof data === 'object' && data.error ? data.error : 'Failed to update password';
+            alertEl.className = 'alert alert-danger mt-3';
+            alertEl.textContent = errorMsg;
+            alertEl.classList.remove('hidden');
+            console.error('Password update response:', response.status, data);
+        }
+    } catch (error) {
+        console.error('Error updating password:', error);
+        alertEl.className = 'alert alert-danger mt-3';
+        alertEl.textContent = 'Error: ' + error.message;
+        alertEl.classList.remove('hidden');
+    }
+};
+
+function updateStudentAccessLink() {
+    const linkInput = document.getElementById('student-access-link');
+    if (linkInput) {
+        const baseUrl = window.location.origin;
+        linkInput.value = `${baseUrl}/public-promotion.html?id=${promotionId}`;
+    }
+}
+
+window.copyAccessLink = function() {
+    const linkInput = document.getElementById('student-access-link');
+    if (linkInput && linkInput.value) {
+        navigator.clipboard.writeText(linkInput.value).then(() => {
+            alert('Link copied to clipboard!');
+        });
+    }
+};
+
+// Student Detail Functions
+let currentStudentId = null;
+
+window.openStudentDetailModal = async function(studentId) {
+    currentStudentId = studentId;
+    const token = localStorage.getItem('token');
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const contentType = response.headers.get('content-type');
+        let student;
+        try {
+            student = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : null;
+        } catch (parseError) {
+            console.error('Error parsing student data:', parseError);
+            alert('Error loading student details: Invalid response from server');
+            return;
+        }
+
+        if (response.ok && student) {
+            displayStudentDetail(student);
+        } else {
+            const error = student?.error || `Error loading student details (${response.status})`;
+            alert(error);
+            console.error('Student detail response:', response.status, student);
+        }
+    } catch (error) {
+        console.error('Error loading student details:', error);
+        alert('Error: ' + error.message);
+    }
+};
+
+function displayStudentDetail(student) {
+    const modalHtml = `
+        <div class="modal fade" id="studentDetailModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning bg-opacity-10 border-warning">
+                        <h5 class="modal-title">Student Profile: ${escapeHtml(student.name || 'No Name')}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Basic Information Section -->
+                        <div class="mb-4">
+                            <h6 class="text-warning fw-bold mb-3">Personal Information</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">First Name</label>
+                                    <input type="text" class="form-control" id="student-name" value="${escapeHtml(student.name || '')}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Last Name</label>
+                                    <input type="text" class="form-control" id="student-lastName" value="${escapeHtml(student.lastName || '')}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="student-email" value="${escapeHtml(student.email || '')}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Age</label>
+                                    <input type="number" class="form-control" id="student-age" value="${student.age || ''}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Nationality</label>
+                                    <input type="text" class="form-control" id="student-nationality" value="${escapeHtml(student.nationality || '')}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Paper Status (DNI/NIE/Pasaporte)</label>
+                                    <input type="text" class="form-control" id="student-paperStatus" value="${escapeHtml(student.paperStatus || '')}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Information Section -->
+                        <div class="mb-4">
+                            <h6 class="text-warning fw-bold mb-3">Additional Information</h6>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" id="student-description" rows="3" placeholder="Brief description about the student...">${escapeHtml(student.description || '')}</textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Work Background</label>
+                                    <textarea class="form-control" id="student-workBackground" rows="3" placeholder="Previous work experience and skills...">${escapeHtml(student.workBackground || '')}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Section -->
+                        <div class="mb-4">
+                            <h6 class="text-warning fw-bold mb-3">Progress & Engagement</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="card bg-light border-0">
+                                        <div class="card-body">
+                                            <p class="card-text text-muted mb-0">Modules Viewed</p>
+                                            <h5 class="text-warning">${(student.progress?.modulesViewed || []).length}</h5>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light border-0">
+                                        <div class="card-body">
+                                            <p class="card-text text-muted mb-0">Sections Completed</p>
+                                            <h5 class="text-warning">${(student.progress?.sectionsCompleted || []).length}</h5>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light border-0">
+                                        <div class="card-body">
+                                            <p class="card-text text-muted mb-0">Last Accessed</p>
+                                            <h6 class="text-warning mb-0">${student.progress?.lastAccessed ? new Date(student.progress.lastAccessed).toLocaleDateString() : 'Not yet'}</h6>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Teacher Notes Section -->
+                        <div class="mb-4">
+                            <h6 class="text-warning fw-bold mb-3">Teacher Notes</h6>
+                            <textarea class="form-control" id="student-notes" rows="4" placeholder="Add notes about this student...">${escapeHtml(student.notes || '')}</textarea>
+                        </div>
+
+                        <div id="student-save-alert" class="alert alert-info mt-3 hidden"></div>
+                    </div>
+                    <div class="modal-footer border-top">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-warning" onclick="saveStudentProfile()">
+                            <i class="bi bi-save me-2"></i>Save All Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existing = document.getElementById('studentDetailModal');
+    if (existing) existing.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('studentDetailModal'));
+    modal.show();
+}
+
+window.saveStudentProfile = async function() {
+    const token = localStorage.getItem('token');
+    const alertEl = document.getElementById('student-save-alert');
+
+    const profileData = {
+        name: document.getElementById('student-name').value,
+        lastName: document.getElementById('student-lastName').value,
+        email: document.getElementById('student-email').value,
+        age: parseInt(document.getElementById('student-age').value) || null,
+        nationality: document.getElementById('student-nationality').value,
+        paperStatus: document.getElementById('student-paperStatus').value,
+        description: document.getElementById('student-description').value,
+        workBackground: document.getElementById('student-workBackground').value,
+        notes: document.getElementById('student-notes').value
+    };
+
+    try {
+        // Save profile information
+        const profileResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentId}/profile`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(profileData)
+        });
+
+        const contentType = profileResponse.headers.get('content-type');
+        let data;
+        try {
+            data = contentType && contentType.includes('application/json')
+                ? await profileResponse.json()
+                : {};
+        } catch (parseError) {
+            data = {};
+        }
+
+        // Save notes separately if profile update succeeds
+        if (profileResponse.ok) {
+            await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentId}/notes`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ notes: profileData.notes })
+            });
+
+            alertEl.className = 'alert alert-success';
+            alertEl.textContent = 'Student profile saved successfully!';
+            alertEl.classList.remove('hidden');
+            setTimeout(() => {
+                alertEl.classList.add('hidden');
+                loadStudents(); // Refresh student list
+            }, 2000);
+        } else {
+            const errorMsg = data.error || 'Error saving student profile';
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = errorMsg;
+            alertEl.classList.remove('hidden');
+            console.error('Save profile response:', profileResponse.status, data);
+        }
+    } catch (error) {
+        console.error('Error saving student profile:', error);
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Error: ' + error.message;
+        alertEl.classList.remove('hidden');
+    }
+};
+
+// Toggle password visibility
+function togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    const button = event.currentTarget;
+    const icon = button.querySelector('i');
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+    }
+}
