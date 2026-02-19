@@ -1,15 +1,16 @@
 :root {
-    --principal-1: #FF4700; 
+    --principal-1: #FF4700;
     --principal-2: #020100;
     --principal-3: #FFFFFF;
     --complementario-1: #9c9c9c;
-    --complementario-2:#FFA37F;;
-   
+    --complementario-2: #FFA37F;
+    ;
+
 
     /* colores fuera de la paleta oficial */
     --complementario-1-light: #f9dccd;
     --complementario-1-extra-light: #f5f2f2;
-    --green-f5:#9af6c2;
+    --green-f5: #9af6c2;
     --purple-f5: #6f42c1;
     --purple-light-f5: #d1c4e9;
     --blue-light-f5: #c0f6f8;
@@ -39,6 +40,7 @@ body {
     padding-top: 1rem;
     padding-bottom: 1rem;
 }
+
 .nav {
     /* ¿porqué da prioridad a el color de bootstrap? */
     /* color:var(--principal-3) !important; */
@@ -50,7 +52,7 @@ body {
 }
 
 .nav-link {
-    color: var( --principal-3);
+    color: var(--principal-3);
     /* font-size: large; */
     border-radius: 5px;
 
@@ -58,13 +60,13 @@ body {
 
 .nav-link:hover {
     background-color: var(--principal-3);
-    color:black
+    color: black
 }
 
 /* main */
 
-.section-title{
-    color:var(--principal-1);
+.section-title {
+    color: var(--principal-1);
 }
 
 .section-container {
@@ -72,10 +74,16 @@ body {
 }
 
 .card {
-    height: 100%;
+    min-height: 100%;
+    /* Better than fixed height */
     border-radius: 10px;
     border: none;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 24px;
+}
+
+.card-body p {
+    white-space: pre-wrap;
 }
 
 .gantt-container {
@@ -89,7 +97,8 @@ body {
     min-width: 100%;
 }
 
-#gantt-table th, #gantt-table td {
+#gantt-table th,
+#gantt-table td {
     border: 1px solid #dddddd;
     text-align: center;
     padding: 8px;
@@ -98,7 +107,7 @@ body {
 }
 
 #gantt-table th {
-    background-color: var(--complementario-1-extra-light); 
+    background-color: var(--complementario-1-extra-light);
     font-size: 10px;
     position: sticky;
     top: 0;
@@ -165,7 +174,8 @@ body {
 }
 
 #gantt-table td.empty {
-    background-color: white; /* Changed from var(--principal-3) just to be safe */
+    background-color: white;
+    /* Changed from var(--principal-3) just to be safe */
 }
 
 #gantt-table .label {
@@ -173,7 +183,8 @@ body {
     text-align: left;
     position: sticky;
     left: 0;
-    background: white; /* Important for sticky */
+    background: white;
+    /* Important for sticky */
     z-index: 2;
     min-width: 150px;
 }
@@ -191,20 +202,23 @@ body {
     background-color: #adcbf9;
 }
 
-.btn a{
-    color:var(--bs-primary); 
+.btn a {
+    color: var(--bs-primary);
 }
 
- .badge-soft-success {
-     background-color: rgba(25, 135, 84, 0.3);
- }
+.badge-soft-success {
+    background-color: rgba(25, 135, 84, 0.3);
+}
 
- .badge-soft-danger {
-     background-color: rgba(220, 53, 69, 0.3);
- }
+.badge-soft-danger {
+    background-color: rgba(220, 53, 69, 0.3);
+}
 
- .accordion-item:first-of-type .accordion-button, .accordion-button:not(.collapsed) {
-        background-color: var(--complementario-2);
- }
+.accordion-item:first-of-type .accordion-button,
+.accordion-button:not(.collapsed) {
+    background-color: var(--complementario-2);
+}
 
-.hidden { display: none !important; }
+.hidden {
+    display: none !important;
+}

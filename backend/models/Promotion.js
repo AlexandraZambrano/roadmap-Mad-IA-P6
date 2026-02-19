@@ -6,11 +6,15 @@ const ModuleSchema = new mongoose.Schema({
     duration: { type: Number, required: true },
     courses: [{
         name: { type: String },
-        url: { type: String }
+        url: { type: String },
+        duration: { type: Number, default: 1 },
+        startOffset: { type: Number, default: 0 }
     }],
     projects: [{
         name: { type: String },
-        url: { type: String }
+        url: { type: String },
+        duration: { type: Number, default: 1 },
+        startOffset: { type: Number, default: 0 }
     }],
     createdAt: { type: Date, default: Date.now }
 });

@@ -272,22 +272,18 @@ function generateGantt(promotion) {
         const row = document.createElement('tr');
         const label = document.createElement('td');
         label.className = 'label';
-        label.innerHTML = `<strong>${escapeHtml(module.name)}</strong>`;
+        label.innerHTML = `<strong>Module ${index + 1}: ${escapeHtml(module.name)}</strong>`;
         row.appendChild(label);
 
         // Calculate start and end week for this module
-        // We assume modules are sequential
-        const startWeek = weekCounter;
-        const endWeek = weekCounter + module.duration;
+        const moduleStart = weekCounter;
+        const moduleEnd = weekCounter + module.duration;
 
         for (let i = 0; i < weeks; i++) {
             const cell = document.createElement('td');
-            if (i >= startWeek && i < endWeek) {
-                // Just cycle through styles for variety or use specific logic
-                // Using 'tema' (orange) as default for modules
+            if (i >= moduleStart && i < moduleEnd) {
                 cell.className = 'block tema';
                 cell.title = module.name;
-                // Optional: Inner text if needed, but user CSS hides text mostly or colors it white
             } else {
                 cell.className = 'empty';
             }
@@ -297,9 +293,12 @@ function generateGantt(promotion) {
 
         // Show individual courses
         if (module.courses && module.courses.length > 0) {
-            module.courses.forEach(course => {
-                const courseName = typeof course === 'string' ? course : course.name || course;
-                const courseUrl = typeof course === 'object' ? course.url : '';
+            module.courses.forEach(courseObj => {
+                const isObj = courseObj && typeof courseObj === 'object';
+                const courseName = isObj ? (courseObj.name || 'Unnamed') : String(courseObj);
+                const courseUrl = isObj ? (courseObj.url || '') : '';
+                const courseDur = isObj ? (Number(courseObj.duration) || 1) : 1;
+                const courseOff = isObj ? (Number(courseObj.startOffset) || 0) : 0;
 
                 const courseRow = document.createElement('tr');
                 const courseLabel = document.createElement('td');
@@ -308,10 +307,13 @@ function generateGantt(promotion) {
                 courseLabel.innerHTML = courseLink;
                 courseRow.appendChild(courseLabel);
 
+                const absoluteStart = weekCounter + courseOff;
+                const absoluteEnd = absoluteStart + courseDur;
+
                 for (let i = 0; i < weeks; i++) {
                     const cell = document.createElement('td');
-                    if (i >= startWeek && i < endWeek) {
-                        cell.className = 'block tema'; // Green for courses
+                    if (i >= absoluteStart && i < absoluteEnd) {
+                        cell.className = 'block tema';
                     } else {
                         cell.className = 'empty';
                     }
@@ -323,9 +325,12 @@ function generateGantt(promotion) {
 
         // Show individual projects
         if (module.projects && module.projects.length > 0) {
-            module.projects.forEach(project => {
-                const projectName = typeof project === 'string' ? project : project.name || project;
-                const projectUrl = typeof project === 'object' ? project.url : '';
+            module.projects.forEach(projectObj => {
+                const isObj = projectObj && typeof projectObj === 'object';
+                const projectName = isObj ? (projectObj.name || 'Unnamed') : String(projectObj);
+                const projectUrl = isObj ? (projectObj.url || '') : '';
+                const projectDur = isObj ? (Number(projectObj.duration) || 1) : 1;
+                const projectOff = isObj ? (Number(projectObj.startOffset) || 0) : 0;
 
                 const projRow = document.createElement('tr');
                 const projLabel = document.createElement('td');
@@ -334,10 +339,13 @@ function generateGantt(promotion) {
                 projLabel.innerHTML = projectLink;
                 projRow.appendChild(projLabel);
 
+                const absoluteStart = weekCounter + projectOff;
+                const absoluteEnd = absoluteStart + projectDur;
+
                 for (let i = 0; i < weeks; i++) {
                     const cell = document.createElement('td');
-                    if (i >= startWeek && i < endWeek) {
-                        cell.className = 'block proyecto'; // Orange for projects
+                    if (i >= absoluteStart && i < absoluteEnd) {
+                        cell.className = 'block proyecto';
                     } else {
                         cell.className = 'empty';
                     }

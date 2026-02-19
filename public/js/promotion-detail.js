@@ -384,13 +384,16 @@ function displayModules(modules) {
     modules.forEach((module, index) => {
         const card = document.createElement('div');
         card.className = 'col-md-6 mb-3';
+        const coursesText = (module.courses || []).map(c => typeof c === 'string' ? c : (c.name || 'Unnamed Course')).join(', ');
+        const projectsText = (module.projects || []).map(p => typeof p === 'string' ? p : (p.name || 'Unnamed Project')).join(', ');
+
         card.innerHTML = `
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Module ${index + 1}: ${escapeHtml(module.name)}</h5>
                     <p><strong>Duration:</strong> ${module.duration} weeks</p>
-                    ${module.courses && module.courses.length > 0 ? `<p><strong>Courses:</strong> ${module.courses.join(', ')}</p>` : ''}
-                    ${module.projects && module.projects.length > 0 ? `<p><strong>Projects:</strong> ${module.projects.join(', ')}</p>` : ''}
+                    ${coursesText ? `<p><strong>Courses:</strong> ${escapeHtml(coursesText)}</p>` : ''}
+                    ${projectsText ? `<p><strong>Projects:</strong> ${escapeHtml(projectsText)}</p>` : ''}
                 </div>
             </div>
         `;
@@ -471,6 +474,7 @@ function generateGanttChart(promotion) {
         moduleCell.style.zIndex = '5';
         moduleRow.appendChild(moduleCell);
 
+        // Module bars
         for (let i = 0; i < weeks; i++) {
             const cell = document.createElement('td');
             cell.style.textAlign = 'center';
@@ -484,7 +488,6 @@ function generateGanttChart(promotion) {
                 cell.style.borderRadius = '4px';
                 cell.style.opacity = '0.8';
             }
-
             moduleRow.appendChild(cell);
         }
         table.appendChild(moduleRow);
@@ -492,8 +495,10 @@ function generateGanttChart(promotion) {
         // Courses rows
         if (module.courses && module.courses.length > 0) {
             module.courses.forEach((courseObj, courseIndex) => {
-                const courseName = typeof courseObj === 'string' ? courseObj : courseObj.name || courseObj;
+                const courseName = typeof courseObj === 'string' ? courseObj : (courseObj.name || 'Unnamed');
                 const courseUrl = typeof courseObj === 'object' ? courseObj.url : '';
+                const courseDur = typeof courseObj === 'object' ? (courseObj.duration || 1) : 1;
+                const courseOff = typeof courseObj === 'object' ? (courseObj.startOffset || 0) : 0;
 
                 const courseRow = document.createElement('tr');
                 const courseCell = document.createElement('td');
@@ -515,6 +520,10 @@ function generateGanttChart(promotion) {
                 courseCell.style.zIndex = '5';
                 courseRow.appendChild(courseCell);
 
+                // Use weekCounter as the base for the module's timeline
+                const absoluteStart = weekCounter + courseOff;
+                const absoluteEnd = absoluteStart + courseDur;
+
                 for (let i = 0; i < weeks; i++) {
                     const cell = document.createElement('td');
                     cell.style.textAlign = 'center';
@@ -523,7 +532,7 @@ function generateGanttChart(promotion) {
                     cell.style.borderRight = '1px solid #dee2e6';
                     cell.style.minWidth = '50px';
 
-                    if (i >= weekCounter && i < weekCounter + module.duration) {
+                    if (i >= absoluteStart && i < absoluteEnd) {
                         cell.style.backgroundColor = '#d1e7dd';
                         cell.style.borderRadius = '2px';
                     }
@@ -536,8 +545,10 @@ function generateGanttChart(promotion) {
         // Projects rows
         if (module.projects && module.projects.length > 0) {
             module.projects.forEach((projectObj, projectIndex) => {
-                const projectName = typeof projectObj === 'string' ? projectObj : projectObj.name || projectObj;
+                const projectName = typeof projectObj === 'string' ? projectObj : (projectObj.name || 'Unnamed');
                 const projectUrl = typeof projectObj === 'object' ? projectObj.url : '';
+                const projectDur = typeof projectObj === 'object' ? (projectObj.duration || 1) : 1;
+                const projectOff = typeof projectObj === 'object' ? (projectObj.startOffset || 0) : 0;
 
                 const projectRow = document.createElement('tr');
                 const projectCell = document.createElement('td');
@@ -559,6 +570,9 @@ function generateGanttChart(promotion) {
                 projectCell.style.zIndex = '5';
                 projectRow.appendChild(projectCell);
 
+                const absoluteStart = weekCounter + projectOff;
+                const absoluteEnd = absoluteStart + projectDur;
+
                 for (let i = 0; i < weeks; i++) {
                     const cell = document.createElement('td');
                     cell.style.textAlign = 'center';
@@ -567,7 +581,7 @@ function generateGanttChart(promotion) {
                     cell.style.borderRight = '1px solid #dee2e6';
                     cell.style.minWidth = '50px';
 
-                    if (i >= weekCounter && i < weekCounter + module.duration) {
+                    if (i >= absoluteStart && i < absoluteEnd) {
                         cell.style.backgroundColor = '#fce4e4';
                         cell.style.borderRadius = '2px';
                     }
@@ -599,23 +613,31 @@ async function editModule(moduleId) {
             document.getElementById('module-duration').value = module.duration;
             document.getElementById('moduleModalTitle').textContent = 'Edit Module';
 
-            // Clear and populate courses
+            // Clear containers
             document.getElementById('courses-container').innerHTML = '';
+            document.getElementById('projects-container').innerHTML = '';
+
+            // Populate courses
             if (module.courses && module.courses.length > 0) {
                 module.courses.forEach(course => {
-                    const courseName = typeof course === 'string' ? course : course.name || course;
-                    const courseUrl = typeof course === 'object' ? course.url : '';
-                    addCoursField(courseName, courseUrl);
+                    const isObj = course && typeof course === 'object';
+                    const courseName = isObj ? (course.name || '') : String(course);
+                    const courseUrl = isObj ? (course.url || '') : '';
+                    const courseDur = isObj ? (Number(course.duration) || 1) : 1;
+                    const courseOff = isObj ? (Number(course.startOffset) || 0) : 0;
+                    addCoursField(courseName, courseUrl, courseDur, courseOff);
                 });
             }
 
-            // Clear and populate projects
-            document.getElementById('projects-container').innerHTML = '';
+            // Populate projects
             if (module.projects && module.projects.length > 0) {
                 module.projects.forEach(project => {
-                    const projectName = typeof project === 'string' ? project : project.name || project;
-                    const projectUrl = typeof project === 'object' ? project.url : '';
-                    addProjectField(projectName, projectUrl);
+                    const isObj = project && typeof project === 'object';
+                    const projectName = isObj ? (project.name || '') : String(project);
+                    const projectUrl = isObj ? (project.url || '') : '';
+                    const projectDur = isObj ? (Number(project.duration) || 1) : 1;
+                    const projectOff = isObj ? (Number(project.startOffset) || 0) : 0;
+                    addProjectField(projectName, projectUrl, projectDur, projectOff);
                 });
             }
 
@@ -852,7 +874,7 @@ function displaySections(sections) {
                 </div>
             </div>
             <div class="card-body">
-                <p>${escapeHtml(section.content)}</p>
+                <div style="white-space: pre-wrap;">${escapeHtml(section.content)}</div>
             </div>
         `;
         list.appendChild(card);
@@ -888,22 +910,34 @@ function displayCalendar(calendarId) {
 
 let currentEditingModuleId = null;
 
-function addCoursField(courseName = '', courseUrl = '') {
+function addCoursField(courseName = '', courseUrl = '', courseDuration = 1, courseOffset = 0) {
     const container = document.getElementById('courses-container');
-    const id = Date.now();
     const courseItem = document.createElement('div');
     courseItem.className = 'course-item mb-3 p-2 border rounded bg-white';
+
+    // Reverse calculate UI values from stored values (force Number to avoid string concat)
+    const semanaInicio = Number(courseOffset) + 1;
+    const semanaFinal = Number(courseOffset) + Number(courseDuration);
+
     courseItem.innerHTML = `
         <div class="row align-items-end g-2">
-            <div class="col-md-6">
-                <label class="form-label form-label-sm">Course Name</label>
+            <div class="col-md-4">
+                <label class="form-label form-label-sm">Nombre Curso</label>
                 <input type="text" class="form-control form-control-sm course-name" placeholder="e.g., JavaScript Basics" value="${escapeHtml(courseName)}" required />
             </div>
-            <div class="col-md-4">
-                <label class="form-label form-label-sm">Course URL (optional)</label>
+            <div class="col-md-3">
+                <label class="form-label form-label-sm">URL (opt)</label>
                 <input type="url" class="form-control form-control-sm course-url" placeholder="https://..." value="${escapeHtml(courseUrl)}" />
             </div>
-            <div class="col-md-2 text-end">
+            <div class="col-md-2">
+                <label class="form-label form-label-sm">Semana Inicio</label>
+                <input type="number" class="form-control form-control-sm course-start-week" min="1" value="${semanaInicio}" required />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label form-label-sm">Semana Final</label>
+                <input type="number" class="form-control form-control-sm course-end-week" min="1" value="${semanaFinal}" required />
+            </div>
+            <div class="col-md-1 text-end">
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeCoursField(this)">
                     <i class="bi bi-trash"></i>
                 </button>
@@ -917,22 +951,34 @@ function removeCoursField(button) {
     button.closest('.course-item').remove();
 }
 
-function addProjectField(projectName = '', projectUrl = '') {
+function addProjectField(projectName = '', projectUrl = '', projectDuration = 1, projectOffset = 0) {
     const container = document.getElementById('projects-container');
-    const id = Date.now();
     const projectItem = document.createElement('div');
     projectItem.className = 'project-item mb-3 p-2 border rounded bg-white';
+
+    // Reverse calculate UI values from stored values (force Number to avoid string concat)
+    const semanaInicio = Number(projectOffset) + 1;
+    const semanaFinal = Number(projectOffset) + Number(projectDuration);
+
     projectItem.innerHTML = `
         <div class="row align-items-end g-2">
-            <div class="col-md-6">
-                <label class="form-label form-label-sm">Project Name</label>
+            <div class="col-md-4">
+                <label class="form-label form-label-sm">Nombre Proyecto</label>
                 <input type="text" class="form-control form-control-sm project-name" placeholder="e.g., Build a Todo App" value="${escapeHtml(projectName)}" required />
             </div>
-            <div class="col-md-4">
-                <label class="form-label form-label-sm">Project URL (optional)</label>
+            <div class="col-md-3">
+                <label class="form-label form-label-sm">URL (opt)</label>
                 <input type="url" class="form-control form-control-sm project-url" placeholder="https://github.com/..." value="${escapeHtml(projectUrl)}" />
             </div>
-            <div class="col-md-2 text-end">
+            <div class="col-md-2">
+                <label class="form-label form-label-sm">Semana Inicio</label>
+                <input type="number" class="form-control form-control-sm project-start-week" min="1" value="${semanaInicio}" required />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label form-label-sm">Semana Final</label>
+                <input type="number" class="form-control form-control-sm project-end-week" min="1" value="${semanaFinal}" required />
+            </div>
+            <div class="col-md-1 text-end">
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeProjectField(this)">
                     <i class="bi bi-trash"></i>
                 </button>
@@ -954,23 +1000,41 @@ function setupForms() {
         const name = document.getElementById('module-name').value;
         const duration = parseInt(document.getElementById('module-duration').value);
 
-        // Collect courses with URLs
+        // Collect courses with URLs, duration, and offset (calculated from semana inicio/final)
         const courses = [];
         document.querySelectorAll('#courses-container .course-item').forEach(item => {
             const courseName = item.querySelector('.course-name')?.value || '';
             const courseUrl = item.querySelector('.course-url')?.value || '';
+            const valInicio = item.querySelector('.course-start-week')?.value;
+            const valFinal = item.querySelector('.course-end-week')?.value;
+
+            const semanaInicio = parseInt(valInicio) || 1;
+            const semanaFinal = parseInt(valFinal) || 1;
+
+            const startOffset = Math.max(0, semanaInicio - 1);
+            const duration = Math.max(1, semanaFinal - semanaInicio + 1);
+
             if (courseName) {
-                courses.push({ name: courseName, url: courseUrl });
+                courses.push({ name: courseName, url: courseUrl, duration: Number(duration), startOffset: Number(startOffset) });
             }
         });
 
-        // Collect projects with URLs
+        // Collect projects with URLs, duration, and offset
         const projects = [];
         document.querySelectorAll('#projects-container .project-item').forEach(item => {
             const projectName = item.querySelector('.project-name')?.value || '';
             const projectUrl = item.querySelector('.project-url')?.value || '';
+            const valInicio = item.querySelector('.project-start-week')?.value;
+            const valFinal = item.querySelector('.project-end-week')?.value;
+
+            const semanaInicio = parseInt(valInicio) || 1;
+            const semanaFinal = parseInt(valFinal) || 1;
+
+            const startOffset = Math.max(0, semanaInicio - 1);
+            const duration = Math.max(1, semanaFinal - semanaInicio + 1);
+
             if (projectName) {
-                projects.push({ name: projectName, url: projectUrl });
+                projects.push({ name: projectName, url: projectUrl, duration: Number(duration), startOffset: Number(startOffset) });
             }
         });
 

@@ -47,7 +47,7 @@ async function checkPasswordRequirement() {
 }
 
 // Verify promotion password
-window.verifyPromotionPassword = async function() {
+window.verifyPromotionPassword = async function () {
     const password = document.getElementById('access-password').value;
     const alertEl = document.getElementById('password-alert');
     const btnSpinner = document.querySelector('.modal-footer .spinner-border');
@@ -222,39 +222,68 @@ function generateGanttChart(promotion) {
         }
 
         table.appendChild(row);
-        weekCounter += module.duration;
 
-        // Add courses row if available
+        // Create rows for courses and projects
         if (module.courses && module.courses.length > 0) {
-            const coursesRow = document.createElement('tr');
-            const coursesLabel = document.createElement('td');
-            coursesLabel.innerHTML = `<small class="text-muted">Courses</small>`;
-            coursesRow.appendChild(coursesLabel);
-            for (let i = 0; i < weeks; i++) {
-                const cell = document.createElement('td');
-                if (i >= weekCounter - module.duration && i < weekCounter) {
-                    cell.innerHTML = `<small>${module.courses.join(', ')}</small>`;
+            module.courses.forEach(courseObj => {
+                const isObj = courseObj && typeof courseObj === 'object';
+                const courseName = isObj ? (courseObj.name || 'Unnamed') : String(courseObj);
+                const courseUrl = isObj ? (courseObj.url || '') : '';
+                const courseDur = isObj ? (Number(courseObj.duration) || 1) : 1;
+                const courseOff = isObj ? (Number(courseObj.startOffset) || 0) : 0;
+
+                const coursesRow = document.createElement('tr');
+                const coursesLabel = document.createElement('td');
+                const courseLink = courseUrl ? `<a href="${escapeHtml(courseUrl)}" target="_blank" class="text-decoration-none">📖 ${escapeHtml(courseName)}</a>` : `📖 ${escapeHtml(courseName)}`;
+                coursesLabel.innerHTML = `<small>${courseLink}</small>`;
+                coursesRow.appendChild(coursesLabel);
+
+                const absoluteStart = weekCounter + courseOff;
+                const absoluteEnd = absoluteStart + courseDur;
+
+                for (let i = 0; i < weeks; i++) {
+                    const cell = document.createElement('td');
+                    if (i >= absoluteStart && i < absoluteEnd) {
+                        cell.style.backgroundColor = '#d1e7dd';
+                        cell.innerHTML = '●';
+                    }
+                    coursesRow.appendChild(cell);
                 }
-                coursesRow.appendChild(cell);
-            }
-            table.appendChild(coursesRow);
+                table.appendChild(coursesRow);
+            });
         }
 
-        // Add projects row if available
         if (module.projects && module.projects.length > 0) {
-            const projectsRow = document.createElement('tr');
-            const projectsLabel = document.createElement('td');
-            projectsLabel.innerHTML = `<small class="text-muted">Projects</small>`;
-            projectsRow.appendChild(projectsLabel);
-            for (let i = 0; i < weeks; i++) {
-                const cell = document.createElement('td');
-                if (i >= weekCounter - module.duration && i < weekCounter) {
-                    cell.innerHTML = `<small>${module.projects.join(', ')}</small>`;
+            module.projects.forEach(projectObj => {
+                const isObj = projectObj && typeof projectObj === 'object';
+                const projectName = isObj ? (projectObj.name || 'Unnamed') : String(projectObj);
+                const projectUrl = isObj ? (projectObj.url || '') : '';
+                const projectDur = isObj ? (Number(projectObj.duration) || 1) : 1;
+                const projectOff = isObj ? (Number(projectObj.startOffset) || 0) : 0;
+
+                const projectsRow = document.createElement('tr');
+                const projectsLabel = document.createElement('td');
+                const projectLink = projectUrl ? `<a href="${escapeHtml(projectUrl)}" target="_blank" class="text-decoration-none">🎯 ${escapeHtml(projectName)}</a>` : `🎯 ${escapeHtml(projectName)}`;
+                projectsLabel.innerHTML = `<small>${projectLink}</small>`;
+                projectsRow.appendChild(projectsLabel);
+
+                const absoluteStart = weekCounter + projectOff;
+                const absoluteEnd = absoluteStart + projectDur;
+
+                for (let i = 0; i < weeks; i++) {
+                    const cell = document.createElement('td');
+                    if (i >= absoluteStart && i < absoluteEnd) {
+                        cell.style.backgroundColor = '#fce4e4';
+                        cell.innerHTML = '●';
+                    }
+                    projectsRow.appendChild(cell);
                 }
-                projectsRow.appendChild(cell);
-            }
-            table.appendChild(projectsRow);
+                table.appendChild(projectsRow);
+            });
         }
+
+        // Correct position for weekCounter update
+        weekCounter += module.duration;
     });
 }
 
