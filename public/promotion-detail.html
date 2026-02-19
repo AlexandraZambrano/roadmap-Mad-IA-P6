@@ -123,9 +123,14 @@
                 <div id="roadmap-tab" class="section-content hidden">
                     <div class="d-flex justify-content-between align-items-center my-4">
                         <h2>Roadmap & Modules</h2>
-                        <button class="btn btn-primary" onclick="openModuleModal()">
-                            <i class="bi bi-plus-circle me-2"></i>Add Module
-                        </button>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-warning" onclick="openEmployabilityModal()">
+                                <i class="bi bi-briefcase me-2"></i>Sesiones Empleabilidad
+                            </button>
+                            <button class="btn btn-primary" onclick="openModuleModal()">
+                                <i class="bi bi-plus-circle me-2"></i>Add Module
+                            </button>
+                        </div>
                     </div>
 
                     <div id="modules-list" class="row">
@@ -785,18 +790,18 @@
         </div>
     </div>
 
-    <!-- Employability Modal -->
+    <!-- Sesiones Empleabilidad Modal -->
     <div class="modal fade" id="employabilityModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="employabilityModalTitle">Add Employability Item</h5>
+                    <h5 class="modal-title" id="employabilityModalTitle">Add Employability Session</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="employability-form">
                         <div class="mb-3">
-                            <label for="employability-name" class="form-label">Item Name</label>
+                            <label for="employability-name" class="form-label">Session Name</label>
                             <input type="text" class="form-control" id="employability-name" placeholder="e.g., CV Preparation" required />
                         </div>
                         <div class="mb-3">

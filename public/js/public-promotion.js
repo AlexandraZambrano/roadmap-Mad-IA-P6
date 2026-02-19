@@ -239,7 +239,52 @@ function generateGanttChart(promotion) {
 
     table.appendChild(headerRow);
 
-    // Create rows for modules
+    // Sesiones Empleabilidad before modules
+    if (employability && employability.length > 0) {
+        // Separator row
+        const separatorRow = document.createElement('tr');
+        separatorRow.style.height = '10px';
+        const separatorCell = document.createElement('td');
+        separatorCell.colSpan = weeks + 1;
+        separatorRow.appendChild(separatorCell);
+        table.appendChild(separatorRow);
+
+        // Section header (Sesiones Empleabilidad)
+        const sectionHeaderRow = document.createElement('tr');
+        const sectionHeaderCell = document.createElement('td');
+        sectionHeaderCell.innerHTML = '<strong>💼 Sesiones Empleabilidad</strong>';
+        sectionHeaderCell.colSpan = weeks + 1;
+        sectionHeaderRow.appendChild(sectionHeaderCell);
+        table.appendChild(sectionHeaderRow);
+
+        // Employability items
+        employability.forEach((item) => {
+            const itemRow = document.createElement('tr');
+            const itemLabel = document.createElement('td');
+            const itemUrl = item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)}</a>` : escapeHtml(item.name);
+            itemLabel.innerHTML = `<small>${itemUrl}</small>`;
+            itemRow.appendChild(itemLabel);
+
+            // Convert months to weeks: startMonth is 1-indexed
+            const startWeek = (item.startMonth - 1) * 4;
+            const endWeek = startWeek + (item.duration * 4);
+
+            for (let i = 0; i < weeks; i++) {
+                const cell = document.createElement('td');
+                cell.style.textAlign = 'center';
+                cell.style.height = '30px';
+
+                if (i >= startWeek && i < endWeek) {
+                    cell.style.backgroundColor = '#fff3cd';
+                    cell.innerHTML = '●';
+                }
+                itemRow.appendChild(cell);
+            }
+            table.appendChild(itemRow);
+        });
+    }
+
+    // Create rows for modules (below Sesiones Empleabilidad)
     let weekCounter = 0;
     modules.forEach((module, index) => {
         const row = document.createElement('tr');
@@ -326,51 +371,6 @@ function generateGanttChart(promotion) {
         // Correct position for weekCounter update
         weekCounter += module.duration;
     });
-
-    // Employability Section
-    if (employability && employability.length > 0) {
-        // Separator row
-        const separatorRow = document.createElement('tr');
-        separatorRow.style.height = '10px';
-        const separatorCell = document.createElement('td');
-        separatorCell.colSpan = weeks + 1;
-        separatorRow.appendChild(separatorCell);
-        table.appendChild(separatorRow);
-
-        // Section header
-        const sectionHeaderRow = document.createElement('tr');
-        const sectionHeaderCell = document.createElement('td');
-        sectionHeaderCell.innerHTML = '<strong>💼 Empleabilidad</strong>';
-        sectionHeaderCell.colSpan = weeks + 1;
-        sectionHeaderRow.appendChild(sectionHeaderCell);
-        table.appendChild(sectionHeaderRow);
-
-        // Employability items
-        employability.forEach((item) => {
-            const itemRow = document.createElement('tr');
-            const itemLabel = document.createElement('td');
-            const itemUrl = item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)}</a>` : escapeHtml(item.name);
-            itemLabel.innerHTML = `<small>${itemUrl}</small>`;
-            itemRow.appendChild(itemLabel);
-
-            // Convert months to weeks: startMonth is 1-indexed
-            const startWeek = (item.startMonth - 1) * 4;
-            const endWeek = startWeek + (item.duration * 4);
-
-            for (let i = 0; i < weeks; i++) {
-                const cell = document.createElement('td');
-                cell.style.textAlign = 'center';
-                cell.style.height = '30px';
-
-                if (i >= startWeek && i < endWeek) {
-                    cell.style.backgroundColor = '#fff3cd';
-                    cell.innerHTML = '●';
-                }
-                itemRow.appendChild(cell);
-            }
-            table.appendChild(itemRow);
-        });
-    }
 }
 
 async function loadQuickLinks() {

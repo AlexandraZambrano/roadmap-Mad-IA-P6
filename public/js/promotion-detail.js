@@ -254,7 +254,7 @@ function initEmployabilityModal() {
 function openEmployabilityModal() {
     if (!employabilityModal) initEmployabilityModal();
     document.getElementById('employability-form').reset();
-    document.getElementById('employabilityModalTitle').textContent = 'Add Employability Item';
+    document.getElementById('employabilityModalTitle').textContent = 'Add Employability Session';
     currentEditingEmployabilityIndex = -1;
     employabilityModal.show();
 }
@@ -274,7 +274,7 @@ function editEmployabilityItem(index) {
     document.getElementById('employability-url').value = item.url || '';
     document.getElementById('employability-start-month').value = item.startMonth || 1;
     document.getElementById('employability-duration').value = item.duration || 1;
-    document.getElementById('employabilityModalTitle').textContent = 'Edit Employability Item';
+    document.getElementById('employabilityModalTitle').textContent = 'Edit Employability Session';
 
     currentEditingEmployabilityIndex = index;
     employabilityModal.show();
@@ -646,7 +646,78 @@ function generateGanttChart(promotion) {
     table.style.width = '100%';
     table.style.borderCollapse = 'collapse';
 
-    // 3. Modules Row
+    // 3. Sesiones Empleabilidad Section (always visible on dashboard, before modules)
+    const separatorRow = document.createElement('tr');
+    separatorRow.style.height = '10px';
+    const separatorCell = document.createElement('td');
+    separatorCell.colSpan = weeks + 1;
+    separatorCell.style.backgroundColor = '#fff';
+    separatorRow.appendChild(separatorCell);
+    table.appendChild(separatorRow);
+
+    const headerRow = document.createElement('tr');
+    const headerCell = document.createElement('td');
+    headerCell.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: flex-start;">
+            <strong style="color: #2c3e50;">💼 Sesiones Empleabilidad</strong>
+        </div>
+    `;
+    headerCell.style.minWidth = '300px';
+    headerCell.style.position = 'sticky';
+    headerCell.style.left = '0';
+    headerCell.style.backgroundColor = '#fef3e2';
+    headerCell.style.zIndex = '5';
+    headerCell.colSpan = weeks + 1;
+    headerRow.appendChild(headerCell);
+    table.appendChild(headerRow);
+
+    // Employability sessions (defined by months, rendered on weekly axis)
+    if (employability && employability.length > 0) {
+        employability.forEach((item, index) => {
+            const itemRow = document.createElement('tr');
+            const itemCell = document.createElement('td');
+            const editBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-warning ms-2" onclick="editEmployabilityItem(${index})"><i class="bi bi-pencil"></i></button>` : '';
+            const delBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-danger" onclick="deleteEmployabilityItem(${index})"><i class="bi bi-trash"></i></button>` : '';
+            const itemUrl = item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)} <i class="bi bi-box-arrow-up-right"></i></a>` : escapeHtml(item.name);
+
+            itemCell.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <small style="color: #666;">${itemUrl}</small>
+                    <div>${editBtn} ${delBtn}</div>
+                </div>
+            `;
+            itemCell.style.minWidth = '300px';
+            itemCell.style.fontSize = '0.85rem';
+            itemCell.style.paddingLeft = '20px';
+            itemCell.style.position = 'sticky';
+            itemCell.style.left = '0';
+            itemCell.style.backgroundColor = '#fff';
+            itemCell.style.zIndex = '5';
+            itemRow.appendChild(itemCell);
+
+            // Convert months to weeks: startMonth is 1-indexed, week index is 0-based
+            const startWeek = (item.startMonth - 1) * 4;
+            const endWeek = startWeek + (item.duration * 4);
+
+            for (let i = 0; i < weeks; i++) {
+                const cell = document.createElement('td');
+                cell.style.textAlign = 'center';
+                cell.style.height = '30px';
+                cell.style.padding = '2px';
+                cell.style.borderRight = '1px solid #dee2e6';
+                cell.style.minWidth = '50px';
+
+                if (i >= startWeek && i < endWeek) {
+                    cell.style.backgroundColor = '#fff3cd';
+                    cell.style.borderRadius = '2px';
+                }
+                itemRow.appendChild(cell);
+            }
+            table.appendChild(itemRow);
+        });
+    }
+
+    // 4. Modules Row (below Sesiones Empleabilidad)
     let weekCounter = 0;
     const moduleColors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#feca57', '#48dbfb'];
 
@@ -790,81 +861,6 @@ function generateGanttChart(promotion) {
 
         weekCounter += module.duration;
     });
-
-    // 4. Employability Section
-    if (employability && employability.length > 0) {
-        // Add separator row
-        const separatorRow = document.createElement('tr');
-        separatorRow.style.height = '10px';
-        const separatorCell = document.createElement('td');
-        separatorCell.colSpan = weeks + 1;
-        separatorCell.style.backgroundColor = '#fff';
-        separatorRow.appendChild(separatorCell);
-        table.appendChild(separatorRow);
-
-        // Section header
-        const headerRow = document.createElement('tr');
-        const headerCell = document.createElement('td');
-        const deleteBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-primary ms-2" onclick="openEmployabilityModal()"><i class="bi bi-plus"></i> Add Item</button>` : '';
-        headerCell.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <strong style="color: #2c3e50;">💼 Empleabilidad</strong>
-                <div>${deleteBtn}</div>
-            </div>
-        `;
-        headerCell.style.minWidth = '300px';
-        headerCell.style.position = 'sticky';
-        headerCell.style.left = '0';
-        headerCell.style.backgroundColor = '#fef3e2';
-        headerCell.style.zIndex = '5';
-        headerCell.colSpan = weeks + 1;
-        headerRow.appendChild(headerCell);
-        table.appendChild(headerRow);
-
-        // Employability items
-        employability.forEach((item, index) => {
-            const itemRow = document.createElement('tr');
-            const itemCell = document.createElement('td');
-            const editBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-warning ms-2" onclick="editEmployabilityItem(${index})"><i class="bi bi-pencil"></i></button>` : '';
-            const delBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-danger" onclick="deleteEmployabilityItem(${index})"><i class="bi bi-trash"></i></button>` : '';
-            const itemUrl = item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)} <i class="bi bi-box-arrow-up-right"></i></a>` : escapeHtml(item.name);
-
-            itemCell.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <small style="color: #666;">${itemUrl}</small>
-                    <div>${editBtn} ${delBtn}</div>
-                </div>
-            `;
-            itemCell.style.minWidth = '300px';
-            itemCell.style.fontSize = '0.85rem';
-            itemCell.style.paddingLeft = '20px';
-            itemCell.style.position = 'sticky';
-            itemCell.style.left = '0';
-            itemCell.style.backgroundColor = '#fff';
-            itemCell.style.zIndex = '5';
-            itemRow.appendChild(itemCell);
-
-            // Convert months to weeks: startMonth is 1-indexed, week is 0-indexed
-            const startWeek = (item.startMonth - 1) * 4;
-            const endWeek = startWeek + (item.duration * 4);
-
-            for (let i = 0; i < weeks; i++) {
-                const cell = document.createElement('td');
-                cell.style.textAlign = 'center';
-                cell.style.height = '30px';
-                cell.style.padding = '2px';
-                cell.style.borderRight = '1px solid #dee2e6';
-                cell.style.minWidth = '50px';
-
-                if (i >= startWeek && i < endWeek) {
-                    cell.style.backgroundColor = '#fff3cd';
-                    cell.style.borderRadius = '2px';
-                }
-                itemRow.appendChild(cell);
-            }
-            table.appendChild(itemRow);
-        });
-    }
 }
 
 async function editModule(moduleId) {

@@ -106,10 +106,8 @@ main {
 }
 
 .navbar {
-    position: fixed;
+    position: sticky;
     top: 0;
-    left: 0;
-    right: 0;
     z-index: 101;
     background-color: #ffffff !important;
     border-bottom: 2px solid #ff4700 !important;
