@@ -420,6 +420,9 @@ async function saveExtendedInfo() {
     extendedInfoData.schedule = schedule;
     extendedInfoData.evaluation = evaluation;
 
+    console.log('Saving extended info for promotion:', promotionId);
+    console.log('Data to save:', extendedInfoData);
+
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
             method: 'POST',
@@ -430,11 +433,16 @@ async function saveExtendedInfo() {
             body: JSON.stringify(extendedInfoData)
         });
 
+        console.log('Save response status:', response.status);
+
         if (response.ok) {
+            const savedData = await response.json();
+            console.log('Data saved successfully:', savedData);
             alert('Program info saved successfully!');
         } else {
             try {
                 const errorData = await response.json();
+                console.error('Save error:', errorData);
                 alert(`Failed to save info: ${response.status} - ${errorData.error || 'Unknown error'}`);
             } catch {
                 alert(`Failed to save info: ${response.status} ${response.statusText}`);

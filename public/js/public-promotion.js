@@ -148,6 +148,7 @@ async function loadPromotionContent() {
     loadQuickLinks();
     loadSections();
     loadCalendar();
+    loadExtendedInfo(); // Add this line to load Program Info
 }
 
 async function loadPromotion() {
@@ -201,7 +202,7 @@ function generateGanttChart(promotion) {
     // Create month header
     const monthRow = document.createElement('tr');
     const monthHeaderCell = document.createElement('th');
-    monthHeaderCell.innerHTML = '<strong>Months</strong>';
+    monthHeaderCell.innerHTML = '<strong>Meses</strong>';
     monthRow.appendChild(monthHeaderCell);
 
     let currentMonth = 0;
@@ -220,7 +221,6 @@ function generateGanttChart(promotion) {
             monthCell.innerHTML = `<strong>M${month}</strong>`;
             monthCell.style.textAlign = 'center';
             monthCell.style.fontSize = '0.8rem';
-            monthCell.style.borderRight = '2px solid #0e7a9f';
             monthRow.appendChild(monthCell);
             monthSpan = 1;
         } else {
@@ -235,11 +235,11 @@ function generateGanttChart(promotion) {
 
     // Create week header
     const headerRow = document.createElement('tr');
-    headerRow.innerHTML = '<th>Module</th>';
+    headerRow.innerHTML = '<th>Semanas:</th>';
 
     for (let i = 1; i <= weeks; i++) {
         const th = document.createElement('th');
-        th.textContent = `W${i}`;
+        th.textContent = `${i}`;
         th.style.textAlign = 'center';
         th.style.fontSize = '0.8rem';
         headerRow.appendChild(th);
@@ -249,28 +249,13 @@ function generateGanttChart(promotion) {
 
     // Sesiones Empleabilidad before modules
     if (employability && employability.length > 0) {
-        // Separator row
-        const separatorRow = document.createElement('tr');
-        separatorRow.style.height = '10px';
-        const separatorCell = document.createElement('td');
-        separatorCell.colSpan = weeks + 1;
-        separatorRow.appendChild(separatorCell);
-        table.appendChild(separatorRow);
-
-        // Section header (Sesiones Empleabilidad)
-        const sectionHeaderRow = document.createElement('tr');
-        const sectionHeaderCell = document.createElement('td');
-        sectionHeaderCell.innerHTML = '<strong>💼 Sesiones Empleabilidad</strong>';
-        sectionHeaderCell.colSpan = weeks + 1;
-        sectionHeaderRow.appendChild(sectionHeaderCell);
-        table.appendChild(sectionHeaderRow);
 
         // Employability items
         employability.forEach((item) => {
             const itemRow = document.createElement('tr');
             const itemLabel = document.createElement('td');
             const itemUrl = item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)}</a>` : escapeHtml(item.name);
-            itemLabel.innerHTML = `<small>${itemUrl}</small>`;
+            itemLabel.innerHTML = `<small><strong>Sesiones Empleabilidad:</strong> ${itemUrl}</small>`;
             itemRow.appendChild(itemLabel);
 
             // Convert months to weeks: startMonth is 1-indexed
@@ -283,8 +268,7 @@ function generateGanttChart(promotion) {
                 cell.style.height = '30px';
 
                 if (i >= startWeek && i < endWeek) {
-                    cell.style.backgroundColor = '#fff3cd';
-                    cell.innerHTML = '●';
+                    cell.style.backgroundColor = '#fff3cd'
                 }
                 itemRow.appendChild(cell);
             }
@@ -309,7 +293,6 @@ function generateGanttChart(promotion) {
             if (i >= weekCounter && i < weekCounter + module.duration) {
                 cell.style.backgroundColor = '#667eea';
                 cell.style.color = 'white';
-                cell.innerHTML = '●';
             }
 
             row.appendChild(cell);
@@ -339,7 +322,6 @@ function generateGanttChart(promotion) {
                     const cell = document.createElement('td');
                     if (i >= absoluteStart && i < absoluteEnd) {
                         cell.style.backgroundColor = '#d1e7dd';
-                        cell.innerHTML = '●';
                     }
                     coursesRow.appendChild(cell);
                 }
@@ -368,7 +350,6 @@ function generateGanttChart(promotion) {
                     const cell = document.createElement('td');
                     if (i >= absoluteStart && i < absoluteEnd) {
                         cell.style.backgroundColor = '#fce4e4';
-                        cell.innerHTML = '●';
                     }
                     projectsRow.appendChild(cell);
                 }
@@ -469,10 +450,74 @@ function updateSidebar(sections) {
         nav.appendChild(li);
     });
 
+    // Note: Program Info sections will be added by updateSidebarWithExtendedInfo()
+
     const li = document.createElement('li');
     li.className = 'nav-item';
     li.innerHTML = '<a class="nav-link" href="#quick-links"><i class="bi bi-lightning-charge me-2"></i>Quick Links</a>';
     nav.appendChild(li);
+}
+
+// Update sidebar with only the Program Info sections that have data
+function updateSidebarWithExtendedInfo(info) {
+    const nav = document.getElementById('sidebar-nav');
+    if (!nav) {
+        console.error('Sidebar navigation not found');
+        return;
+    }
+    
+    // Find Quick Links item as reference point, or append at the end if not found
+    const quickLinksAnchor = nav.querySelector('a[href="#quick-links"]');
+    const quickLinksItem = quickLinksAnchor ? quickLinksAnchor.parentElement : null;
+    
+    // Add Program Info sections only if they have data
+    if (info.schedule && hasScheduleData(info.schedule)) {
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        li.innerHTML = '<a class="nav-link" href="#horario"><i class="bi bi-clock me-2"></i>Horario</a>';
+        
+        if (quickLinksItem) {
+            nav.insertBefore(li, quickLinksItem);
+        } else {
+            nav.appendChild(li);
+        }
+    }
+    
+    if (info.team && info.team.length > 0) {
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        li.innerHTML = '<a class="nav-link" href="#equipo"><i class="bi bi-people me-2"></i>Equipo</a>';
+        
+        if (quickLinksItem) {
+            nav.insertBefore(li, quickLinksItem);
+        } else {
+            nav.appendChild(li);
+        }
+    }
+    
+    if (info.evaluation && info.evaluation.trim()) {
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        li.innerHTML = '<a class="nav-link" href="#evaluacion"><i class="bi bi-clipboard-check me-2"></i>Evaluación</a>';
+        
+        if (quickLinksItem) {
+            nav.insertBefore(li, quickLinksItem);
+        } else {
+            nav.appendChild(li);
+        }
+    }
+    
+    if (info.resources && info.resources.length > 0) {
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        li.innerHTML = '<a class="nav-link" href="#resources"><i class="bi bi-tools me-2"></i>Recursos</a>';
+        
+        if (quickLinksItem) {
+            nav.insertBefore(li, quickLinksItem);
+        } else {
+            nav.appendChild(li);
+        }
+    }
 }
 
 async function loadCalendar() {
@@ -494,4 +539,214 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Load Program Info (Extended Info) data
+async function loadExtendedInfo() {
+    try {
+        console.log('Loading extended info for promotion:', promotionId);
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`);
+
+        if (response.ok) {
+            const info = await response.json();
+            console.log('Extended info loaded:', info);
+            displayExtendedInfo(info);
+        } else {
+            console.log('No extended info found or error loading:', response.status);
+        }
+    } catch (error) {
+        console.error('Error loading extended info:', error);
+    }
+}
+
+// Display Program Info sections
+function displayExtendedInfo(info) {
+    const sectionsContainer = document.getElementById('sections-container');
+    
+    // Create Program Info sections and add them to the page
+    const programInfoSections = createProgramInfoSections(info);
+    programInfoSections.forEach(section => {
+        sectionsContainer.appendChild(section);
+    });
+    
+    // Update sidebar to only show sections that exist
+    updateSidebarWithExtendedInfo(info);
+}
+
+// Create Program Info sections HTML
+function createProgramInfoSections(info) {
+    const sections = [];
+    
+    // Schedule Section
+    if (info.schedule && hasScheduleData(info.schedule)) {
+        const scheduleSection = document.createElement('div');
+        scheduleSection.className = 'col-md-12';
+        scheduleSection.id = 'horario';
+        scheduleSection.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title section-title">
+                        <i class="bi bi-clock me-2"></i>Horario
+                    </h5>
+                    ${generateScheduleHTML(info.schedule)}
+                </div>
+            </div>
+        `;
+        sections.push(scheduleSection);
+    }
+    
+    // Team Section
+    if (info.team && info.team.length > 0) {
+        const teamSection = document.createElement('div');
+        teamSection.className = 'col-md-12';
+        teamSection.id = 'equipo';
+        teamSection.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title section-title">
+                        <i class="bi bi-people me-2"></i>Equipo
+                    </h5>
+                    ${generateTeamHTML(info.team)}
+                </div>
+            </div>
+        `;
+        sections.push(teamSection);
+    }
+    
+    // Evaluation Section
+    if (info.evaluation && info.evaluation.trim()) {
+        const evaluationSection = document.createElement('div');
+        evaluationSection.className = 'col-md-12';
+        evaluationSection.id = 'evaluacion';
+        evaluationSection.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title section-title">
+                        <i class="bi bi-clipboard-check me-2"></i>Evaluación
+                    </h5>
+                    <div class="mt-3">
+                        ${escapeHtml(info.evaluation).replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            </div>
+        `;
+        sections.push(evaluationSection);
+    }
+    
+    // Resources Section
+    if (info.resources && info.resources.length > 0) {
+        const resourcesSection = document.createElement('div');
+        resourcesSection.className = 'col-md-12';
+        resourcesSection.id = 'resources';
+        resourcesSection.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title section-title">
+                        <i class="bi bi-tools me-2"></i>Recursos
+                    </h5>
+                    ${generateResourcesHTML(info.resources)}
+                </div>
+            </div>
+        `;
+        sections.push(resourcesSection);
+    }
+    
+    return sections;
+}
+
+// Helper function to check if schedule has data
+function hasScheduleData(schedule) {
+    if (!schedule) return false;
+    
+    const hasOnline = schedule.online && Object.values(schedule.online).some(v => v && v.trim());
+    const hasPresential = schedule.presential && Object.values(schedule.presential).some(v => v && v.trim());
+    const hasNotes = schedule.notes && schedule.notes.trim();
+    
+    return hasOnline || hasPresential || hasNotes;
+}
+
+// Generate Schedule HTML
+function generateScheduleHTML(schedule) {
+    let html = '';
+    
+    if (schedule.online && Object.values(schedule.online).some(v => v && v.trim())) {
+        html += `
+            <div class="mb-3">
+                <h6 class="text-primary">📱 Online Schedule</h6>
+                <ul>
+                    ${schedule.online.entry ? `<li><strong>Entry:</strong> ${escapeHtml(schedule.online.entry)}</li>` : ''}
+                    ${schedule.online.start ? `<li><strong>Start:</strong> ${escapeHtml(schedule.online.start)}</li>` : ''}
+                    ${schedule.online.break ? `<li><strong>Break:</strong> ${escapeHtml(schedule.online.break)}</li>` : ''}
+                    ${schedule.online.lunch ? `<li><strong>Lunch:</strong> ${escapeHtml(schedule.online.lunch)}</li>` : ''}
+                    ${schedule.online.finish ? `<li><strong>Finish:</strong> ${escapeHtml(schedule.online.finish)}</li>` : ''}
+                </ul>
+            </div>
+        `;
+    }
+    
+    if (schedule.presential && Object.values(schedule.presential).some(v => v && v.trim())) {
+        html += `
+            <div class="mb-3">
+                <h6 class="text-success">🏢 Presential Schedule</h6>
+                <ul>
+                    ${schedule.presential.entry ? `<li><strong>Entry:</strong> ${escapeHtml(schedule.presential.entry)}</li>` : ''}
+                    ${schedule.presential.start ? `<li><strong>Start:</strong> ${escapeHtml(schedule.presential.start)}</li>` : ''}
+                    ${schedule.presential.break ? `<li><strong>Break:</strong> ${escapeHtml(schedule.presential.break)}</li>` : ''}
+                    ${schedule.presential.lunch ? `<li><strong>Lunch:</strong> ${escapeHtml(schedule.presential.lunch)}</li>` : ''}
+                    ${schedule.presential.finish ? `<li><strong>Finish:</strong> ${escapeHtml(schedule.presential.finish)}</li>` : ''}
+                </ul>
+            </div>
+        `;
+    }
+    
+    if (schedule.notes && schedule.notes.trim()) {
+        html += `<div class="alert alert-info"><strong>Notes:</strong> ${escapeHtml(schedule.notes)}</div>`;
+    }
+    
+    return html;
+}
+
+// Generate Team HTML
+function generateTeamHTML(team) {
+    let html = '<div class="row">';
+    
+    team.forEach(member => {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title text-primary">${escapeHtml(member.name || 'Unknown')}</h6>
+                        ${member.role ? `<p class="card-text"><span class="badge bg-secondary">${escapeHtml(member.role)}</span></p>` : ''}
+                        ${member.email ? `<p class="card-text"><i class="bi bi-envelope me-2"></i><a href="mailto:${escapeHtml(member.email)}">${escapeHtml(member.email)}</a></p>` : ''}
+                        ${member.linkedin ? `<p class="card-text"><a href="${escapeHtml(member.linkedin)}" target="_blank" class="text-decoration-none"><i class="bi bi-linkedin me-2"></i>LinkedIn Profile</a></p>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    return html;
+}
+
+// Generate Resources HTML
+function generateResourcesHTML(resources) {
+    let html = '<div class="list-group">';
+    
+    resources.forEach(resource => {
+        html += `
+            <a href="${escapeHtml(resource.url || '#')}" target="_blank" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${escapeHtml(resource.title || 'Untitled Resource')}</h6>
+                        ${resource.url ? `<small class="text-muted">${escapeHtml(resource.url)}</small>` : ''}
+                    </div>
+                    ${resource.category ? `<span class="badge bg-primary">${escapeHtml(resource.category)}</span>` : ''}
+                </div>
+            </a>
+        `;
+    });
+    
+    html += '</div>';
+    return html;
 }

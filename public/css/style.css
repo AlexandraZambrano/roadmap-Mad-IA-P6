@@ -107,7 +107,6 @@ body {
 }
 
 #gantt-table th {
-    background-color: var(--complementario-1-extra-light);
     font-size: 10px;
     position: sticky;
     top: 0;
