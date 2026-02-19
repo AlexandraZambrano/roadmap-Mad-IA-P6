@@ -279,9 +279,19 @@ function generateGanttChart(promotion) {
     // Create rows for modules (below Sesiones Empleabilidad)
     let weekCounter = 0;
     modules.forEach((module, index) => {
+        const moduleId = `module-${index}`;
+        
+        // Main module row with dropdown toggle
         const row = document.createElement('tr');
         const nameCell = document.createElement('td');
-        nameCell.innerHTML = `<strong>Module ${index + 1}: ${escapeHtml(module.name)}</strong>`;
+        nameCell.innerHTML = `
+            <div class="d-flex align-items-center">
+                <button class="btn btn-link p-0 me-2" type="button" data-bs-toggle="collapse" data-bs-target="#${moduleId}" aria-expanded="false">
+                    <i class="bi bi-chevron-right" id="chevron-${moduleId}"></i>
+                </button>
+                <strong>Module ${index + 1}: ${escapeHtml(module.name)}</strong>
+            </div>
+        `;
         nameCell.style.maxWidth = '200px';
         row.appendChild(nameCell);
 
@@ -300,60 +310,88 @@ function generateGanttChart(promotion) {
 
         table.appendChild(row);
 
-        // Create rows for courses and projects
-        if (module.courses && module.courses.length > 0) {
-            module.courses.forEach(courseObj => {
-                const isObj = courseObj && typeof courseObj === 'object';
-                const courseName = isObj ? (courseObj.name || 'Unnamed') : String(courseObj);
-                const courseUrl = isObj ? (courseObj.url || '') : '';
-                const courseDur = isObj ? (Number(courseObj.duration) || 1) : 1;
-                const courseOff = isObj ? (Number(courseObj.startOffset) || 0) : 0;
+        // Create collapsible section for courses and projects
+        const hasSubItems = (module.courses && module.courses.length > 0) || (module.projects && module.projects.length > 0);
+        
+        if (hasSubItems) {
+            const collapseContainer = document.createElement('tbody');
+            collapseContainer.className = 'collapse';
+            collapseContainer.id = moduleId;
+            
+            // Create rows for courses
+            if (module.courses && module.courses.length > 0) {
+                module.courses.forEach(courseObj => {
+                    const isObj = courseObj && typeof courseObj === 'object';
+                    const courseName = isObj ? (courseObj.name || 'Unnamed') : String(courseObj);
+                    const courseUrl = isObj ? (courseObj.url || '') : '';
+                    const courseDur = isObj ? (Number(courseObj.duration) || 1) : 1;
+                    const courseOff = isObj ? (Number(courseObj.startOffset) || 0) : 0;
 
-                const coursesRow = document.createElement('tr');
-                const coursesLabel = document.createElement('td');
-                const courseLink = courseUrl ? `<a href="${escapeHtml(courseUrl)}" target="_blank" class="text-decoration-none">📖 ${escapeHtml(courseName)}</a>` : `📖 ${escapeHtml(courseName)}`;
-                coursesLabel.innerHTML = `<small>${courseLink}</small>`;
-                coursesRow.appendChild(coursesLabel);
+                    const coursesRow = document.createElement('tr');
+                    const coursesLabel = document.createElement('td');
+                    const courseLink = courseUrl ? `<a href="${escapeHtml(courseUrl)}" target="_blank" class="text-decoration-none"> ${escapeHtml(courseName)}</a>` : ` ${escapeHtml(courseName)}`;
+                    coursesLabel.innerHTML = `<small style="margin-left: 2rem;">${courseLink}</small>`;
+                    coursesRow.appendChild(coursesLabel);
 
-                const absoluteStart = weekCounter + courseOff;
-                const absoluteEnd = absoluteStart + courseDur;
+                    const absoluteStart = weekCounter + courseOff;
+                    const absoluteEnd = absoluteStart + courseDur;
 
-                for (let i = 0; i < weeks; i++) {
-                    const cell = document.createElement('td');
-                    if (i >= absoluteStart && i < absoluteEnd) {
-                        cell.style.backgroundColor = '#d1e7dd';
+                    for (let i = 0; i < weeks; i++) {
+                        const cell = document.createElement('td');
+                        if (i >= absoluteStart && i < absoluteEnd) {
+                            cell.style.backgroundColor = '#d1e7dd';
+        
+                        }
+                        coursesRow.appendChild(cell);
                     }
-                    coursesRow.appendChild(cell);
-                }
-                table.appendChild(coursesRow);
-            });
-        }
+                    collapseContainer.appendChild(coursesRow);
+                });
+            }
 
-        if (module.projects && module.projects.length > 0) {
-            module.projects.forEach(projectObj => {
-                const isObj = projectObj && typeof projectObj === 'object';
-                const projectName = isObj ? (projectObj.name || 'Unnamed') : String(projectObj);
-                const projectUrl = isObj ? (projectObj.url || '') : '';
-                const projectDur = isObj ? (Number(projectObj.duration) || 1) : 1;
-                const projectOff = isObj ? (Number(projectObj.startOffset) || 0) : 0;
+            // Create rows for projects
+            if (module.projects && module.projects.length > 0) {
+                module.projects.forEach(projectObj => {
+                    const isObj = projectObj && typeof projectObj === 'object';
+                    const projectName = isObj ? (projectObj.name || 'Unnamed') : String(projectObj);
+                    const projectUrl = isObj ? (projectObj.url || '') : '';
+                    const projectDur = isObj ? (Number(projectObj.duration) || 1) : 1;
+                    const projectOff = isObj ? (Number(projectObj.startOffset) || 0) : 0;
 
-                const projectsRow = document.createElement('tr');
-                const projectsLabel = document.createElement('td');
-                const projectLink = projectUrl ? `<a href="${escapeHtml(projectUrl)}" target="_blank" class="text-decoration-none">🎯 ${escapeHtml(projectName)}</a>` : `🎯 ${escapeHtml(projectName)}`;
-                projectsLabel.innerHTML = `<small>${projectLink}</small>`;
-                projectsRow.appendChild(projectsLabel);
+                    const projectsRow = document.createElement('tr');
+                    const projectsLabel = document.createElement('td');
+                    const projectLink = projectUrl ? `<a href="${escapeHtml(projectUrl)}" target="_blank" class="text-decoration-none">${escapeHtml(projectName)}</a>` : `${escapeHtml(projectName)}`;
+                    projectsLabel.innerHTML = `<small style="margin-left: 2rem;">${projectLink}</small>`;
+                    projectsRow.appendChild(projectsLabel);
 
-                const absoluteStart = weekCounter + projectOff;
-                const absoluteEnd = absoluteStart + projectDur;
+                    const absoluteStart = weekCounter + projectOff;
+                    const absoluteEnd = absoluteStart + projectDur;
 
-                for (let i = 0; i < weeks; i++) {
-                    const cell = document.createElement('td');
-                    if (i >= absoluteStart && i < absoluteEnd) {
-                        cell.style.backgroundColor = '#fce4e4';
+                    for (let i = 0; i < weeks; i++) {
+                        const cell = document.createElement('td');
+                        if (i >= absoluteStart && i < absoluteEnd) {
+                            cell.style.backgroundColor = '#fce4e4';
+        
+                        }
+                        projectsRow.appendChild(cell);
                     }
-                    projectsRow.appendChild(cell);
-                }
-                table.appendChild(projectsRow);
+                    collapseContainer.appendChild(projectsRow);
+                });
+            }
+            
+            table.appendChild(collapseContainer);
+            
+            // Add event listener for chevron rotation
+            const toggleButton = nameCell.querySelector(`[data-bs-target="#${moduleId}"]`);
+            const chevron = document.getElementById(`chevron-${moduleId}`);
+            
+            toggleButton.addEventListener('click', function() {
+                setTimeout(() => {
+                    if (collapseContainer.classList.contains('show')) {
+                        chevron.className = 'bi bi-chevron-down';
+                    } else {
+                        chevron.className = 'bi bi-chevron-right';
+                    }
+                }, 10);
             });
         }
 
