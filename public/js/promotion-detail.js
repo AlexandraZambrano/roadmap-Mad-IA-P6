@@ -578,8 +578,10 @@ function generateGanttChart(promotion) {
     monthHeaderCell.style.minWidth = '300px';
     monthHeaderCell.style.position = 'sticky';
     monthHeaderCell.style.left = '0';
+    monthHeaderCell.style.borderBottom = '1px solid #dee2e6';
+    monthHeaderCell.style.borderRight = '1px solid #dee2e6';
     monthHeaderCell.style.zIndex = '10';
-    monthHeaderCell.style.backgroundColor = '#e8f4f8';
+    monthHeaderCell.style.backgroundColor = '#ffff';
     monthRow.appendChild(monthHeaderCell);
 
     let currentMonth = 0;
@@ -600,8 +602,9 @@ function generateGanttChart(promotion) {
             monthCell.style.fontSize = '0.85rem';
             monthCell.style.padding = '10px 4px';
             monthCell.style.fontWeight = 'bold';
-            monthCell.style.borderRight = '2px solid #0e7a9f';
-            monthCell.style.backgroundColor = '#e8f4f8';
+            monthCell.style.borderRight = '1px solid #dee2e6';
+            monthCell.style.borderBottom = '1px solid #dee2e6';
+            monthCell.style.backgroundColor = '#ffff';
             monthRow.appendChild(monthCell);
             monthSpan = 1;
         } else {
@@ -622,10 +625,11 @@ function generateGanttChart(promotion) {
     const weekHeaderCell = document.createElement('th');
     weekHeaderCell.innerHTML = '<strong>Weeks</strong>';
     weekHeaderCell.style.minWidth = '300px';
+    weekHeaderCell.style.borderRight = '1px solid #dee2e6';
     weekHeaderCell.style.position = 'sticky';
     weekHeaderCell.style.left = '0';
     weekHeaderCell.style.zIndex = '10';
-    weekHeaderCell.style.backgroundColor = '#f8f9fa';
+    weekHeaderCell.style.backgroundColor = '#ffff';
     weekRow.appendChild(weekHeaderCell);
 
     for (let i = 1; i <= weeks; i++) {
