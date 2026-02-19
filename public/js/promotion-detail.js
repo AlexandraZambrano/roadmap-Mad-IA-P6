@@ -71,6 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const collaboratorModalEl = document.getElementById('collaboratorModal');
     if (collaboratorModalEl) collaboratorModal = new bootstrap.Modal(collaboratorModalEl);
 
+    initEmployabilityModal();
+
     if (userRole === 'teacher') {
         loadStudents();
         loadExtendedInfo();
@@ -239,6 +241,147 @@ function deleteResource(index) {
     }
 }
 
+let employabilityModal;
+let currentEditingEmployabilityIndex = -1;
+
+function initEmployabilityModal() {
+    const modalEl = document.getElementById('employabilityModal');
+    if (modalEl) {
+        employabilityModal = new bootstrap.Modal(modalEl);
+    }
+}
+
+function openEmployabilityModal() {
+    if (!employabilityModal) initEmployabilityModal();
+    document.getElementById('employability-form').reset();
+    document.getElementById('employabilityModalTitle').textContent = 'Add Employability Item';
+    currentEditingEmployabilityIndex = -1;
+    employabilityModal.show();
+}
+
+function editEmployabilityItem(index) {
+    if (!employabilityModal) initEmployabilityModal();
+
+    const promotion = window.currentPromotion; // Will store this globally
+    const item = promotion.employability[index];
+
+    if (!item) {
+        alert('Item not found');
+        return;
+    }
+
+    document.getElementById('employability-name').value = item.name || '';
+    document.getElementById('employability-url').value = item.url || '';
+    document.getElementById('employability-start-month').value = item.startMonth || 1;
+    document.getElementById('employability-duration').value = item.duration || 1;
+    document.getElementById('employabilityModalTitle').textContent = 'Edit Employability Item';
+
+    currentEditingEmployabilityIndex = index;
+    employabilityModal.show();
+}
+
+async function saveEmployabilityItem() {
+    const token = localStorage.getItem('token');
+    const name = document.getElementById('employability-name').value;
+    const url = document.getElementById('employability-url').value;
+    const startMonth = parseInt(document.getElementById('employability-start-month').value) || 1;
+    const duration = parseInt(document.getElementById('employability-duration').value) || 1;
+
+    if (!name) {
+        alert('Item name is required');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            alert('Error loading promotion');
+            return;
+        }
+
+        const promotion = await response.json();
+
+        if (!promotion.employability) {
+            promotion.employability = [];
+        }
+
+        const item = { name, url, startMonth, duration };
+
+        if (currentEditingEmployabilityIndex >= 0) {
+            // Update existing
+            promotion.employability[currentEditingEmployabilityIndex] = item;
+        } else {
+            // Add new
+            promotion.employability.push(item);
+        }
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            employabilityModal.hide();
+            loadPromotion();
+            loadModules();
+        } else {
+            alert('Error saving employability item');
+        }
+    } catch (error) {
+        console.error('Error saving employability item:', error);
+        alert('Error saving employability item');
+    }
+}
+
+async function deleteEmployabilityItem(index) {
+    if (!confirm('Delete this employability item?')) return;
+
+    const token = localStorage.getItem('token');
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            alert('Error loading promotion');
+            return;
+        }
+
+        const promotion = await response.json();
+
+        if (promotion.employability && promotion.employability[index]) {
+            promotion.employability.splice(index, 1);
+
+            const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(promotion)
+            });
+
+            if (updateResponse.ok) {
+                loadPromotion();
+                loadModules();
+            } else {
+                alert('Error deleting employability item');
+            }
+        }
+    } catch (error) {
+        console.error('Error deleting employability item:', error);
+        alert('Error deleting employability item');
+    }
+}
+
 async function saveExtendedInfo() {
     const token = localStorage.getItem('token');
 
@@ -334,6 +477,7 @@ async function loadPromotion() {
 
         if (response.ok) {
             const promotion = await response.json();
+            window.currentPromotion = promotion; // Store globally for editing
             document.getElementById('promotion-title').textContent = promotion.name;
             document.getElementById('promotion-desc').textContent = promotion.description || '';
             document.getElementById('promotion-weeks').textContent = promotion.weeks || '-';
@@ -407,6 +551,7 @@ function generateGanttChart(promotion) {
 
     const weeks = promotion.weeks || 0;
     const modules = promotion.modules || [];
+    const employability = promotion.employability || [];
 
     if (modules.length === 0) {
         table.innerHTML = '<tr><td class="text-muted">No modules configured</td></tr>';
@@ -417,11 +562,63 @@ function generateGanttChart(promotion) {
     const wrapper = table.parentElement;
     wrapper.style.overflowX = 'auto';
 
-    // 1. Weeks Row (Top)
+    // Helper function to get month for a week (1-indexed)
+    function getMonthForWeek(weekNum) {
+        return Math.ceil(weekNum / 4);
+    }
+
+    // 1. Month Row (Top)
+    const monthRow = document.createElement('tr');
+    monthRow.style.backgroundColor = '#e8f4f8';
+    monthRow.style.position = 'sticky';
+    monthRow.style.top = '0';
+    monthRow.style.zIndex = '11';
+    const monthHeaderCell = document.createElement('th');
+    monthHeaderCell.innerHTML = '<strong>Months</strong>';
+    monthHeaderCell.style.minWidth = '300px';
+    monthHeaderCell.style.position = 'sticky';
+    monthHeaderCell.style.left = '0';
+    monthHeaderCell.style.zIndex = '10';
+    monthHeaderCell.style.backgroundColor = '#e8f4f8';
+    monthRow.appendChild(monthHeaderCell);
+
+    let currentMonth = 0;
+    let monthSpan = 0;
+    let monthCell = null;
+
+    for (let i = 1; i <= weeks; i++) {
+        const month = getMonthForWeek(i);
+
+        if (month !== currentMonth) {
+            if (monthCell) {
+                monthCell.colSpan = monthSpan;
+            }
+            currentMonth = month;
+            monthCell = document.createElement('th');
+            monthCell.innerHTML = `<strong>M${month}</strong>`;
+            monthCell.style.textAlign = 'center';
+            monthCell.style.fontSize = '0.85rem';
+            monthCell.style.padding = '10px 4px';
+            monthCell.style.fontWeight = 'bold';
+            monthCell.style.borderRight = '2px solid #0e7a9f';
+            monthCell.style.backgroundColor = '#e8f4f8';
+            monthRow.appendChild(monthCell);
+            monthSpan = 1;
+        } else {
+            monthSpan++;
+        }
+    }
+    if (monthCell) {
+        monthCell.colSpan = monthSpan;
+    }
+    table.appendChild(monthRow);
+
+    // 2. Weeks Row (Below Months)
     const weekRow = document.createElement('tr');
     weekRow.style.backgroundColor = '#f8f9fa';
     weekRow.style.position = 'sticky';
-    weekRow.style.top = '0';
+    weekRow.style.top = '37px';
+    weekRow.style.zIndex = '10';
     const weekHeaderCell = document.createElement('th');
     weekHeaderCell.innerHTML = '<strong>Weeks</strong>';
     weekHeaderCell.style.minWidth = '300px';
@@ -449,7 +646,7 @@ function generateGanttChart(promotion) {
     table.style.width = '100%';
     table.style.borderCollapse = 'collapse';
 
-    // 2. Modules Row
+    // 3. Modules Row
     let weekCounter = 0;
     const moduleColors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#feca57', '#48dbfb'];
 
@@ -593,6 +790,81 @@ function generateGanttChart(promotion) {
 
         weekCounter += module.duration;
     });
+
+    // 4. Employability Section
+    if (employability && employability.length > 0) {
+        // Add separator row
+        const separatorRow = document.createElement('tr');
+        separatorRow.style.height = '10px';
+        const separatorCell = document.createElement('td');
+        separatorCell.colSpan = weeks + 1;
+        separatorCell.style.backgroundColor = '#fff';
+        separatorRow.appendChild(separatorCell);
+        table.appendChild(separatorRow);
+
+        // Section header
+        const headerRow = document.createElement('tr');
+        const headerCell = document.createElement('td');
+        const deleteBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-primary ms-2" onclick="openEmployabilityModal()"><i class="bi bi-plus"></i> Add Item</button>` : '';
+        headerCell.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <strong style="color: #2c3e50;">💼 Empleabilidad</strong>
+                <div>${deleteBtn}</div>
+            </div>
+        `;
+        headerCell.style.minWidth = '300px';
+        headerCell.style.position = 'sticky';
+        headerCell.style.left = '0';
+        headerCell.style.backgroundColor = '#fef3e2';
+        headerCell.style.zIndex = '5';
+        headerCell.colSpan = weeks + 1;
+        headerRow.appendChild(headerCell);
+        table.appendChild(headerRow);
+
+        // Employability items
+        employability.forEach((item, index) => {
+            const itemRow = document.createElement('tr');
+            const itemCell = document.createElement('td');
+            const editBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-warning ms-2" onclick="editEmployabilityItem(${index})"><i class="bi bi-pencil"></i></button>` : '';
+            const delBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-danger" onclick="deleteEmployabilityItem(${index})"><i class="bi bi-trash"></i></button>` : '';
+            const itemUrl = item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)} <i class="bi bi-box-arrow-up-right"></i></a>` : escapeHtml(item.name);
+
+            itemCell.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <small style="color: #666;">${itemUrl}</small>
+                    <div>${editBtn} ${delBtn}</div>
+                </div>
+            `;
+            itemCell.style.minWidth = '300px';
+            itemCell.style.fontSize = '0.85rem';
+            itemCell.style.paddingLeft = '20px';
+            itemCell.style.position = 'sticky';
+            itemCell.style.left = '0';
+            itemCell.style.backgroundColor = '#fff';
+            itemCell.style.zIndex = '5';
+            itemRow.appendChild(itemCell);
+
+            // Convert months to weeks: startMonth is 1-indexed, week is 0-indexed
+            const startWeek = (item.startMonth - 1) * 4;
+            const endWeek = startWeek + (item.duration * 4);
+
+            for (let i = 0; i < weeks; i++) {
+                const cell = document.createElement('td');
+                cell.style.textAlign = 'center';
+                cell.style.height = '30px';
+                cell.style.padding = '2px';
+                cell.style.borderRight = '1px solid #dee2e6';
+                cell.style.minWidth = '50px';
+
+                if (i >= startWeek && i < endWeek) {
+                    cell.style.backgroundColor = '#fff3cd';
+                    cell.style.borderRadius = '2px';
+                }
+                itemRow.appendChild(cell);
+            }
+            table.appendChild(itemRow);
+        });
+    }
 }
 
 async function editModule(moduleId) {

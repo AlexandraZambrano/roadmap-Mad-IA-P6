@@ -27,6 +27,12 @@ const PromotionSchema = new mongoose.Schema({
     endDate: { type: String },
     weeks: { type: Number },
     modules: [ModuleSchema],
+    employability: [{
+        name: { type: String },
+        url: { type: String },
+        startMonth: { type: Number, default: 1 },
+        duration: { type: Number, default: 1 }
+    }],
     teacherId: { type: String, required: true },
     collaborators: [{ type: String }],
     accessPassword: { type: String }, // Password for students to access promotion
