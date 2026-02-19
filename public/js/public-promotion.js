@@ -178,13 +178,54 @@ function generateGanttChart(promotion) {
 
     const weeks = promotion.weeks || 0;
     const modules = promotion.modules || [];
+    const employability = promotion.employability || [];
 
     if (modules.length === 0) {
         table.innerHTML = '<tr><td class="text-muted">No modules configured</td></tr>';
         return;
     }
 
-    // Create header
+    // Helper function to get month for a week (1-indexed)
+    function getMonthForWeek(weekNum) {
+        return Math.ceil(weekNum / 4);
+    }
+
+    // Create month header
+    const monthRow = document.createElement('tr');
+    const monthHeaderCell = document.createElement('th');
+    monthHeaderCell.innerHTML = '<strong>Months</strong>';
+    monthRow.appendChild(monthHeaderCell);
+
+    let currentMonth = 0;
+    let monthSpan = 0;
+    let monthCell = null;
+
+    for (let i = 1; i <= weeks; i++) {
+        const month = getMonthForWeek(i);
+
+        if (month !== currentMonth) {
+            if (monthCell) {
+                monthCell.colSpan = monthSpan;
+            }
+            currentMonth = month;
+            monthCell = document.createElement('th');
+            monthCell.innerHTML = `<strong>M${month}</strong>`;
+            monthCell.style.textAlign = 'center';
+            monthCell.style.fontSize = '0.8rem';
+            monthCell.style.borderRight = '2px solid #0e7a9f';
+            monthRow.appendChild(monthCell);
+            monthSpan = 1;
+        } else {
+            monthSpan++;
+        }
+    }
+    if (monthCell) {
+        monthCell.colSpan = monthSpan;
+    }
+
+    table.appendChild(monthRow);
+
+    // Create week header
     const headerRow = document.createElement('tr');
     headerRow.innerHTML = '<th>Module</th>';
 
@@ -285,6 +326,51 @@ function generateGanttChart(promotion) {
         // Correct position for weekCounter update
         weekCounter += module.duration;
     });
+
+    // Employability Section
+    if (employability && employability.length > 0) {
+        // Separator row
+        const separatorRow = document.createElement('tr');
+        separatorRow.style.height = '10px';
+        const separatorCell = document.createElement('td');
+        separatorCell.colSpan = weeks + 1;
+        separatorRow.appendChild(separatorCell);
+        table.appendChild(separatorRow);
+
+        // Section header
+        const sectionHeaderRow = document.createElement('tr');
+        const sectionHeaderCell = document.createElement('td');
+        sectionHeaderCell.innerHTML = '<strong>💼 Empleabilidad</strong>';
+        sectionHeaderCell.colSpan = weeks + 1;
+        sectionHeaderRow.appendChild(sectionHeaderCell);
+        table.appendChild(sectionHeaderRow);
+
+        // Employability items
+        employability.forEach((item) => {
+            const itemRow = document.createElement('tr');
+            const itemLabel = document.createElement('td');
+            const itemUrl = item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)}</a>` : escapeHtml(item.name);
+            itemLabel.innerHTML = `<small>${itemUrl}</small>`;
+            itemRow.appendChild(itemLabel);
+
+            // Convert months to weeks: startMonth is 1-indexed
+            const startWeek = (item.startMonth - 1) * 4;
+            const endWeek = startWeek + (item.duration * 4);
+
+            for (let i = 0; i < weeks; i++) {
+                const cell = document.createElement('td');
+                cell.style.textAlign = 'center';
+                cell.style.height = '30px';
+
+                if (i >= startWeek && i < endWeek) {
+                    cell.style.backgroundColor = '#fff3cd';
+                    cell.innerHTML = '●';
+                }
+                itemRow.appendChild(cell);
+            }
+            table.appendChild(itemRow);
+        });
+    }
 }
 
 async function loadQuickLinks() {

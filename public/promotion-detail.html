@@ -785,6 +785,42 @@
         </div>
     </div>
 
+    <!-- Employability Modal -->
+    <div class="modal fade" id="employabilityModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="employabilityModalTitle">Add Employability Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="employability-form">
+                        <div class="mb-3">
+                            <label for="employability-name" class="form-label">Item Name</label>
+                            <input type="text" class="form-control" id="employability-name" placeholder="e.g., CV Preparation" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="employability-url" class="form-label">URL (Optional)</label>
+                            <input type="url" class="form-control" id="employability-url" placeholder="https://..." />
+                        </div>
+                        <div class="mb-3">
+                            <label for="employability-start-month" class="form-label">Start Month</label>
+                            <input type="number" class="form-control" id="employability-start-month" min="1" value="1" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="employability-duration" class="form-label">Duration (Months)</label>
+                            <input type="number" class="form-control" id="employability-duration" min="1" value="1" required />
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEmployabilityItem()">Save Item</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/config.js"></script>
     <script src="js/promotion-detail.js"></script>
