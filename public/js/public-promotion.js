@@ -194,6 +194,17 @@ function generateGanttChart(promotion) {
         return;
     }
 
+    // Add responsive wrapper styling to the table
+    table.style.fontSize = '0.75rem';
+    table.className = 'table table-sm table-bordered';
+    
+    // Ensure parent container has proper overflow handling
+    const tableContainer = table.closest('.table-responsive') || table.parentElement;
+    if (tableContainer) {
+        tableContainer.style.overflowX = 'auto';
+        tableContainer.style.maxWidth = '100%';
+    }
+
     // Helper function to get month for a week (1-indexed)
     function getMonthForWeek(weekNum) {
         return Math.ceil(weekNum / 4);
@@ -203,6 +214,9 @@ function generateGanttChart(promotion) {
     const monthRow = document.createElement('tr');
     const monthHeaderCell = document.createElement('th');
     monthHeaderCell.innerHTML = '<strong>Meses</strong>';
+    monthHeaderCell.style.minWidth = '150px';
+    monthHeaderCell.style.maxWidth = '200px';
+    monthHeaderCell.style.fontSize = '0.7rem';
     monthRow.appendChild(monthHeaderCell);
 
     let currentMonth = 0;
@@ -220,7 +234,9 @@ function generateGanttChart(promotion) {
             monthCell = document.createElement('th');
             monthCell.innerHTML = `<strong>M${month}</strong>`;
             monthCell.style.textAlign = 'center';
-            monthCell.style.fontSize = '0.8rem';
+            monthCell.style.fontSize = '0.65rem';
+            monthCell.style.minWidth = '20px';
+            monthCell.style.padding = '2px';
             monthRow.appendChild(monthCell);
             monthSpan = 1;
         } else {
@@ -235,13 +251,23 @@ function generateGanttChart(promotion) {
 
     // Create week header
     const headerRow = document.createElement('tr');
-    headerRow.innerHTML = '<th>Semanas:</th>';
+    const weekHeaderCell = document.createElement('th');
+    weekHeaderCell.innerHTML = 'Semanas:';
+    weekHeaderCell.style.minWidth = '150px';
+    weekHeaderCell.style.maxWidth = '200px';
+    weekHeaderCell.style.fontSize = '0.7rem';
+    headerRow.appendChild(weekHeaderCell);
 
     for (let i = 1; i <= weeks; i++) {
         const th = document.createElement('th');
         th.textContent = `${i}`;
         th.style.textAlign = 'center';
-        th.style.fontSize = '0.8rem';
+        th.style.fontSize = '0.6rem';
+        th.style.minWidth = '20px';
+        th.style.maxWidth = '25px';
+        th.style.padding = '2px';
+        th.style.writingMode = 'vertical-rl';
+        th.style.textOrientation = 'mixed';
         headerRow.appendChild(th);
     }
 
@@ -256,6 +282,10 @@ function generateGanttChart(promotion) {
             const itemLabel = document.createElement('td');
             const itemUrl = item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)}</a>` : escapeHtml(item.name);
             itemLabel.innerHTML = `<small><strong>Sesiones Empleabilidad:</strong> ${itemUrl}</small>`;
+            itemLabel.style.minWidth = '150px';
+            itemLabel.style.maxWidth = '200px';
+            itemLabel.style.fontSize = '0.65rem';
+            itemLabel.style.padding = '4px';
             itemRow.appendChild(itemLabel);
 
             // Convert months to weeks: startMonth is 1-indexed
@@ -265,10 +295,14 @@ function generateGanttChart(promotion) {
             for (let i = 0; i < weeks; i++) {
                 const cell = document.createElement('td');
                 cell.style.textAlign = 'center';
-                cell.style.height = '30px';
+                cell.style.height = '25px';
+                cell.style.minWidth = '20px';
+                cell.style.maxWidth = '25px';
+                cell.style.padding = '1px';
+                cell.style.fontSize = '0.7rem';
 
                 if (i >= startWeek && i < endWeek) {
-                    cell.style.backgroundColor = '#fff3cd'
+                    cell.style.backgroundColor = '#fff3cd';
                 }
                 itemRow.appendChild(cell);
             }
@@ -286,23 +320,29 @@ function generateGanttChart(promotion) {
         const nameCell = document.createElement('td');
         nameCell.innerHTML = `
             <div class="d-flex align-items-center">
-                <button class="btn btn-link p-0 me-2" type="button" data-bs-toggle="collapse" data-bs-target="#${moduleId}" aria-expanded="false">
+                <button class="btn btn-link p-0 me-1" type="button" data-bs-toggle="collapse" data-bs-target="#${moduleId}" aria-expanded="false" style="font-size: 0.7rem;">
                     <i class="bi bi-chevron-right" id="chevron-${moduleId}"></i>
                 </button>
-                <strong>Module ${index + 1}: ${escapeHtml(module.name)}</strong>
+                <strong style="font-size: 0.7rem;">M${index + 1}: ${escapeHtml(module.name)}</strong>
             </div>
         `;
+        nameCell.style.minWidth = '150px';
         nameCell.style.maxWidth = '200px';
+        nameCell.style.padding = '4px';
         row.appendChild(nameCell);
 
         for (let i = 0; i < weeks; i++) {
             const cell = document.createElement('td');
             cell.style.textAlign = 'center';
-            cell.style.height = '40px';
+            cell.style.height = '30px';
+            cell.style.minWidth = '20px';
+            cell.style.maxWidth = '25px';
+            cell.style.padding = '1px';
+            cell.style.fontSize = '0.7rem';
 
             if (i >= weekCounter && i < weekCounter + module.duration) {
                 cell.style.backgroundColor = '#667eea';
-                cell.style.color = 'white';
+                cell.style.color = 'white'
             }
 
             row.appendChild(cell);
@@ -330,7 +370,10 @@ function generateGanttChart(promotion) {
                     const coursesRow = document.createElement('tr');
                     const coursesLabel = document.createElement('td');
                     const courseLink = courseUrl ? `<a href="${escapeHtml(courseUrl)}" target="_blank" class="text-decoration-none"> ${escapeHtml(courseName)}</a>` : ` ${escapeHtml(courseName)}`;
-                    coursesLabel.innerHTML = `<small style="margin-left: 2rem;">${courseLink}</small>`;
+                    coursesLabel.innerHTML = `<small style="margin-left: 1.5rem; font-size: 0.6rem;">${courseLink}</small>`;
+                    coursesLabel.style.minWidth = '150px';
+                    coursesLabel.style.maxWidth = '200px';
+                    coursesLabel.style.padding = '2px';
                     coursesRow.appendChild(coursesLabel);
 
                     const absoluteStart = weekCounter + courseOff;
@@ -338,9 +381,14 @@ function generateGanttChart(promotion) {
 
                     for (let i = 0; i < weeks; i++) {
                         const cell = document.createElement('td');
+                        cell.style.minWidth = '20px';
+                        cell.style.maxWidth = '25px';
+                        cell.style.padding = '1px';
+                        cell.style.height = '20px';
+                        cell.style.fontSize = '0.6rem';
                         if (i >= absoluteStart && i < absoluteEnd) {
                             cell.style.backgroundColor = '#d1e7dd';
-        
+    
                         }
                         coursesRow.appendChild(cell);
                     }
@@ -360,7 +408,10 @@ function generateGanttChart(promotion) {
                     const projectsRow = document.createElement('tr');
                     const projectsLabel = document.createElement('td');
                     const projectLink = projectUrl ? `<a href="${escapeHtml(projectUrl)}" target="_blank" class="text-decoration-none">${escapeHtml(projectName)}</a>` : `${escapeHtml(projectName)}`;
-                    projectsLabel.innerHTML = `<small style="margin-left: 2rem;">${projectLink}</small>`;
+                    projectsLabel.innerHTML = `<small style="margin-left: 1.5rem; font-size: 0.6rem;"> ${projectLink}</small>`;
+                    projectsLabel.style.minWidth = '150px';
+                    projectsLabel.style.maxWidth = '200px';
+                    projectsLabel.style.padding = '2px';
                     projectsRow.appendChild(projectsLabel);
 
                     const absoluteStart = weekCounter + projectOff;
@@ -368,9 +419,14 @@ function generateGanttChart(promotion) {
 
                     for (let i = 0; i < weeks; i++) {
                         const cell = document.createElement('td');
+                        cell.style.minWidth = '20px';
+                        cell.style.maxWidth = '25px';
+                        cell.style.padding = '1px';
+                        cell.style.height = '20px';
+                        cell.style.fontSize = '0.6rem';
                         if (i >= absoluteStart && i < absoluteEnd) {
                             cell.style.backgroundColor = '#fce4e4';
-        
+    
                         }
                         projectsRow.appendChild(cell);
                     }
@@ -477,7 +533,6 @@ function displaySections(sections) {
 function updateSidebar(sections) {
     const nav = document.getElementById('sidebar-nav');
     nav.innerHTML = `
-        <li class="nav-item"><a class="nav-link" href="#overview"><i class="bi bi-eye me-2"></i>Overview</a></li>
         <li class="nav-item"><a class="nav-link" href="#roadmap"><i class="bi bi-map me-2"></i>Roadmap</a></li>
     `;
 
