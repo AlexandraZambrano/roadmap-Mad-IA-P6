@@ -535,12 +535,17 @@ function updateSidebarWithExtendedInfo(info) {
         return;
     }
     
+    console.log('Updating sidebar with extended info:', info);
+    
     // Find Quick Links item as reference point, or append at the end if not found
     const quickLinksAnchor = nav.querySelector('a[href="#quick-links"]');
     const quickLinksItem = quickLinksAnchor ? quickLinksAnchor.parentElement : null;
     
+    console.log('Quick links item found:', !!quickLinksItem);
+    
     // Add Program Info sections only if they have data
     if (info.schedule && hasScheduleData(info.schedule)) {
+        console.log('Adding schedule section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#horario"><i class="bi bi-clock me-2"></i>Horario</a>';
@@ -553,6 +558,7 @@ function updateSidebarWithExtendedInfo(info) {
     }
     
     if (info.team && info.team.length > 0) {
+        console.log('Adding team section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#equipo"><i class="bi bi-people me-2"></i>Equipo</a>';
@@ -565,6 +571,7 @@ function updateSidebarWithExtendedInfo(info) {
     }
     
     if (info.evaluation && info.evaluation.trim()) {
+        console.log('Adding evaluation section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#evaluacion"><i class="bi bi-clipboard-check me-2"></i>Evaluación</a>';
@@ -577,6 +584,7 @@ function updateSidebarWithExtendedInfo(info) {
     }
     
     if (info.resources && info.resources.length > 0) {
+        console.log('Adding resources section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#resources"><i class="bi bi-tools me-2"></i>Recursos</a>';
@@ -589,6 +597,7 @@ function updateSidebarWithExtendedInfo(info) {
     }
 
     if (Array.isArray(info.pildoras) && info.pildoras.length > 0) {
+        console.log('Adding pildoras section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#pildoras"><i class="bi bi-lightbulb me-2"></i>Píldoras</a>';
@@ -650,8 +659,10 @@ function displayExtendedInfo(info) {
         sectionsContainer.appendChild(section);
     });
     
-    // Update sidebar to only show sections that exist
+    // Update sidebar to include the new sections
     updateSidebarWithExtendedInfo(info);
+    
+    console.log('Extended info sections displayed:', programInfoSections.length);
 }
 
 // Create Program Info sections HTML

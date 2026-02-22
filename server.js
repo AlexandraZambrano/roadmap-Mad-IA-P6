@@ -7,6 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import multer from 'multer';
+import xlsx from 'xlsx';
 import 'dotenv/config';
 
 // Models
@@ -40,6 +42,25 @@ mongoose.connect(MONGO_URI)
 
 // Middleware
 app.use(bodyParser.json());
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only Excel files
+    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+        file.mimetype === 'application/vnd.ms-excel' ||
+        file.originalname.match(/\.(xlsx|xls)$/)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel files are allowed!'), false);
+    }
+  }
+});
 
 // CORS configuration
 const allowedOrigins = [
@@ -977,6 +998,117 @@ app.put('/api/promotions/:promotionId/students/:studentId/projects/:assignmentId
 });
 
 // ==================== PÍLDORAS MANAGEMENT ====================
+// Upload Excel file for píldoras
+app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, upload.single('excelFile'), async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No Excel file provided' });
+    }
+
+    // Parse Excel file
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet);
+
+    if (data.length === 0) {
+      return res.status(400).json({ error: 'Excel file is empty' });
+    }
+
+    // Get current students for validation
+    const students = await Student.find({ promotionId: req.params.promotionId });
+    const studentMap = new Map();
+    students.forEach(student => {
+      const fullName = `${student.name || ''} ${student.lastname || ''}`.trim().toLowerCase();
+      studentMap.set(fullName, student);
+    });
+
+    const pildoras = [];
+    
+    for (const row of data) {
+      // Handle different column name variations
+      const mode = row['Presentación'] || row['Presentacion'] || row['presentación'] || row['presentacion'] || 'Virtual';
+      const dateText = row['Fecha'] || row['fecha'] || '';
+      const title = row['Píldora'] || row['Pildora'] || row['píldora'] || row['pildora'] || '';
+      const studentText = row['Student'] || row['student'] || row['Coders'] || row['coders'] || '';
+      const status = row['Estado'] || row['estado'] || '';
+
+      // Process assigned students
+      const assignedStudents = [];
+      if (studentText && studentText.toLowerCase() !== 'desierta') {
+        const studentNames = studentText.split(',').map(name => name.trim().toLowerCase());
+        
+        for (const name of studentNames) {
+          const student = studentMap.get(name);
+          if (student) {
+            assignedStudents.push({
+              id: student.id,
+              name: student.name,
+              lastname: student.lastname
+            });
+          }
+        }
+      }
+
+      // Process date
+      let isoDate = '';
+      if (dateText) {
+        try {
+          const date = new Date(dateText);
+          if (!isNaN(date.getTime())) {
+            isoDate = date.toISOString().split('T')[0];
+          }
+        } catch (e) {
+          console.warn('Invalid date format:', dateText);
+        }
+      }
+
+      if (title) { // Only add if title is provided
+        pildoras.push({
+          mode: mode || 'Virtual',
+          date: isoDate,
+          title,
+          students: assignedStudents,
+          status: status || ''
+        });
+      }
+    }
+
+    // Get current extended info and update píldoras
+    let extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    if (!extendedInfo) {
+      extendedInfo = await ExtendedInfo.create({
+        promotionId: req.params.promotionId,
+        schedule: {},
+        team: [],
+        resources: [],
+        evaluation: '',
+        pildoras: pildoras
+      });
+    } else {
+      extendedInfo.pildoras = pildoras;
+      await extendedInfo.save();
+    }
+
+    res.json({
+      message: `Successfully imported ${pildoras.length} píldoras from Excel file`,
+      pildoras: pildoras,
+      studentsNotFound: data.length - pildoras.length
+    });
+
+  } catch (error) {
+    console.error('Error uploading Excel file:', error);
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get pildoras for a module
 app.get('/api/promotions/:promotionId/modules/:moduleId/pildoras', verifyToken, async (req, res) => {
   try {

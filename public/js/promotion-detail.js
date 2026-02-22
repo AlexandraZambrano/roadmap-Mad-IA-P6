@@ -237,13 +237,6 @@ function displayPildoras() {
 
     pildoras.forEach((p, index) => {
         const selectedIds = (p.students || []).map(s => s.id);
-        const options = students.map(s => {
-            const value = s.id || '';
-            const label = `${s.name || ''} ${s.lastname || ''}`.trim() || value;
-            const selected = selectedIds.includes(value) ? 'selected' : '';
-            return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)}</option>`;
-        }).join('');
-
         const modeValue = p.mode || 'Virtual';
         const statusValue = p.status || '';
 
@@ -257,15 +250,45 @@ function displayPildoras() {
                 </select>
             </td>
             <td>
-                <input type="text" class="form-control form-control-sm pildora-date" value="${escapeHtml(p.date || '')}" placeholder="e.g., 02 dic de 2025">
+                <input type="date" class="form-control form-control-sm pildora-date" value="${escapeHtml(p.date || '')}">
             </td>
             <td>
                 <input type="text" class="form-control form-control-sm pildora-title" value="${escapeHtml(p.title || '')}" placeholder="Título de la píldora">
             </td>
             <td>
-                <select class="form-select form-select-sm pildora-students" multiple size="3">
-                    ${options}
-                </select>
+                <div class="dropdown pildora-students-dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        ${selectedIds.length > 0 
+                            ? (selectedIds.length === 1 
+                                ? students.find(s => s.id === selectedIds[0])?.name + ' ' + (students.find(s => s.id === selectedIds[0])?.lastname || '')
+                                : `${selectedIds.length} estudiantes seleccionados`)
+                            : 'Seleccionar estudiantes'}
+                    </button>
+                    <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                        ${students.length === 0
+                            ? '<li><span class="dropdown-item-text text-muted">No students available</span></li>'
+                            : students.map(s => {
+                                const value = s.id || '';
+                                const label = `${s.name || ''} ${s.lastname || ''}`.trim() || value;
+                                const checked = selectedIds.includes(value) ? 'checked' : '';
+                                const inputId = `pild-${index}-${escapeHtml(value)}`;
+                                return `
+                                    <li class="dropdown-item-custom">
+                                        <div class="form-check">
+                                            <input class="form-check-input pildora-student-checkbox" 
+                                                   type="checkbox" 
+                                                   value="${escapeHtml(value)}" 
+                                                   id="${inputId}" 
+                                                   ${checked}
+                                                   data-pildora-index="${index}">
+                                            <label class="form-check-label" for="${inputId}">${escapeHtml(label)}</label>
+                                        </div>
+                                    </li>
+                                `;
+                            }).join('')
+                        }
+                    </ul>
+                </div>
             </td>
             <td>
                 <select class="form-select form-select-sm pildora-status">
@@ -281,6 +304,50 @@ function displayPildoras() {
             </td>
         `;
         tbody.appendChild(tr);
+    });
+
+    // Add event listeners for student checkboxes
+    document.querySelectorAll('.pildora-student-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const pildoraIndex = parseInt(this.dataset.pildoraIndex);
+            const studentId = this.value;
+            const isChecked = this.checked;
+            
+            if (!extendedInfoData.pildoras[pildoraIndex]) return;
+            
+            if (!extendedInfoData.pildoras[pildoraIndex].students) {
+                extendedInfoData.pildoras[pildoraIndex].students = [];
+            }
+            
+            if (isChecked) {
+                // Add student if not already present
+                const student = students.find(s => s.id === studentId);
+                if (student && !extendedInfoData.pildoras[pildoraIndex].students.some(s => s.id === studentId)) {
+                    extendedInfoData.pildoras[pildoraIndex].students.push({
+                        id: student.id,
+                        name: student.name,
+                        lastname: student.lastname
+                    });
+                }
+            } else {
+                // Remove student
+                extendedInfoData.pildoras[pildoraIndex].students = extendedInfoData.pildoras[pildoraIndex].students.filter(s => s.id !== studentId);
+            }
+            
+            // Update dropdown button text
+            const dropdown = this.closest('.dropdown');
+            const button = dropdown.querySelector('.dropdown-toggle');
+            const selectedStudents = extendedInfoData.pildoras[pildoraIndex].students || [];
+            
+            if (selectedStudents.length === 0) {
+                button.textContent = 'Seleccionar estudiantes';
+            } else if (selectedStudents.length === 1) {
+                const student = selectedStudents[0];
+                button.textContent = `${student.name} ${student.lastname || ''}`.trim();
+            } else {
+                button.textContent = `${selectedStudents.length} estudiantes seleccionados`;
+            }
+        });
     });
 }
 
@@ -303,6 +370,140 @@ function deletePildoraRow(index) {
     if (index < 0 || index >= extendedInfoData.pildoras.length) return;
     extendedInfoData.pildoras.splice(index, 1);
     displayPildoras();
+}
+
+function importPildorasFromCsv(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const text = e.target.result || '';
+            const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+            if (lines.length <= 1) {
+                alert('CSV file is empty or missing data.');
+                return;
+            }
+
+            const headerCols = lines[0].split(';').map(h => h.trim().toLowerCase());
+            const idxPresentacion = headerCols.indexOf('presentación') !== -1 ? headerCols.indexOf('presentación') : headerCols.indexOf('presentacion');
+            const idxFecha = headerCols.indexOf('fecha');
+            const idxPildora = headerCols.indexOf('píldora') !== -1 ? headerCols.indexOf('píldora') : headerCols.indexOf('pildora');
+            const idxStudent = headerCols.indexOf('student') !== -1 ? headerCols.indexOf('student') : headerCols.indexOf('coders');
+            const idxEstado = headerCols.indexOf('estado');
+
+            if (idxPresentacion === -1 || idxFecha === -1 || idxPildora === -1 || idxStudent === -1 || idxEstado === -1) {
+                alert('CSV header must include: Presentación;Fecha;Píldora;Student;Estado');
+                return;
+            }
+
+            const students = window.currentStudents || [];
+            const pildoras = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const raw = lines[i];
+                if (!raw) continue;
+                const cols = raw.split(';');
+                if (cols.length <= Math.min(idxPresentacion, idxFecha, idxPildora, idxStudent, idxEstado)) continue;
+
+                const mode = (cols[idxPresentacion] || '').trim();
+                const dateText = (cols[idxFecha] || '').trim();
+                const title = (cols[idxPildora] || '').trim();
+                const studentText = (cols[idxStudent] || '').trim();
+                const status = (cols[idxEstado] || '').trim();
+
+                const studentsForPildora = [];
+                if (studentText && studentText.toLowerCase() !== 'desierta') {
+                    const parts = studentText.split(',').map(p => p.trim()).filter(Boolean);
+                    parts.forEach(part => {
+                        const lowerPart = part.toLowerCase();
+                        const s = students.find(st => {
+                            const full = `${st.name || ''} ${st.lastname || ''}`.trim().toLowerCase();
+                            return full && (full === lowerPart || full.includes(lowerPart) || lowerPart.includes(full));
+                        });
+                        if (s) {
+                            if (!studentsForPildora.some(x => x.id === s.id)) {
+                                studentsForPildora.push({
+                                    id: s.id,
+                                    name: s.name || '',
+                                    lastname: s.lastname || ''
+                                });
+                            }
+                        }
+                    });
+                }
+
+                let isoDate = '';
+                if (dateText && /^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
+                    isoDate = dateText;
+                }
+
+                pildoras.push({
+                    mode: mode || 'Virtual',
+                    date: isoDate,
+                    title,
+                    students: studentsForPildora,
+                    status
+                });
+            }
+
+            extendedInfoData.pildoras = pildoras;
+            displayPildoras();
+            input.value = '';
+        } catch (err) {
+            console.error('Error importing CSV:', err);
+            alert('Error importing CSV file');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function importPildorasFromExcel(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('excelFile', file);
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('Authentication token not found. Please login again.');
+        return;
+    }
+
+    // Show loading indicator
+    const originalText = document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML;
+    document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML = 
+        '<i class="bi bi-hourglass-split"></i> Importing...';
+
+    fetch(`${API_URL}/api/promotions/${promotionId}/pildoras/upload-excel`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(`Error importing Excel file: ${data.error}`);
+        } else {
+            alert(`Successfully imported ${data.pildoras.length} píldoras from Excel file`);
+            extendedInfoData.pildoras = data.pildoras;
+            displayPildoras();
+        }
+        input.value = ''; // Clear input
+    })
+    .catch(error => {
+        console.error('Error importing Excel:', error);
+        alert('Error importing Excel file');
+        input.value = ''; // Clear input
+    })
+    .finally(() => {
+        // Restore button text
+        document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML = originalText;
+    });
 }
 
 function openTeamModal() {
@@ -527,16 +728,19 @@ async function saveExtendedInfo() {
         const dateEl = row.querySelector('.pildora-date');
         const titleEl = row.querySelector('.pildora-title');
         const statusEl = row.querySelector('.pildora-status');
-        const studentsSelect = row.querySelector('.pildora-students');
+        const dropdown = row.querySelector('.pildora-students-dropdown');
 
-        if (!modeEl || !dateEl || !titleEl || !statusEl || !studentsSelect) return;
+        if (!modeEl || !dateEl || !titleEl || !statusEl || !dropdown) return;
 
         const mode = modeEl.value || '';
         const date = dateEl.value || '';
         const title = titleEl.value || '';
         const status = statusEl.value || '';
 
-        const selectedIds = Array.from(studentsSelect.selectedOptions).map(opt => opt.value).filter(Boolean);
+        // Get selected students from checkboxes in dropdown
+        const selectedIds = Array.from(dropdown.querySelectorAll('input[type="checkbox"]:checked'))
+            .map(input => input.value)
+            .filter(Boolean);
         const studentsForPildora = selectedIds.map(id => {
             const s = students.find(st => st.id === id);
             return {
