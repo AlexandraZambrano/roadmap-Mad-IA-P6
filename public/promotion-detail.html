@@ -63,18 +63,8 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#quick-links" onclick="switchTab('quick-links')">
-                                <i class="bi bi-lightning me-2"></i>Quick Links
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link" href="#calendar" onclick="switchTab('calendar')">
                                 <i class="bi bi-calendar me-2"></i>Calendar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#sections" onclick="switchTab('sections')">
-                                <i class="bi bi-file-text me-2"></i>Sections
                             </a>
                         </li>
                         <li class="nav-item">
@@ -176,20 +166,6 @@
                     </div>
                 </div>
 
-                <!-- Quick Links Tab -->
-                <div id="quick-links-tab" class="section-content hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Quick Links</h2>
-                        <button class="btn btn-primary" onclick="openQuickLinkModal()">
-                            <i class="bi bi-plus-circle me-2"></i>Add Link
-                        </button>
-                    </div>
-
-                    <div id="quick-links-list" class="row">
-                        <!-- Quick links will be loaded here -->
-                    </div>
-                </div>
-
                 <!-- Calendar Tab -->
                 <div id="calendar-tab" class="section-content hidden">
                     <div class="my-4">
@@ -216,20 +192,6 @@
                         <div class="ratio ratio-16x9">
                             <iframe id="calendar-iframe"></iframe>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Sections Tab -->
-                <div id="sections-tab" class="section-content hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Sections</h2>
-                        <button class="btn btn-primary" onclick="openSectionModal()">
-                            <i class="bi bi-plus-circle me-2"></i>Add Section
-                        </button>
-                    </div>
-
-                    <div id="sections-list">
-                        <!-- Sections will be loaded here -->
                     </div>
                 </div>
 
@@ -550,6 +512,40 @@
                                 <div class="card-body">
                                     <textarea class="form-control" id="evaluation-text" rows="6"
                                         placeholder="Describe the evaluation criteria..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Links Section -->
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h5>
+                                    <button class="btn btn-sm btn-primary" onclick="openQuickLinkModal()">
+                                        <i class="bi bi-plus-circle me-2"></i>Add Link
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="quick-links-list" class="row">
+                                        <!-- Quick links will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sections -->
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Sections</h5>
+                                    <button class="btn btn-sm btn-primary" onclick="openSectionModal()">
+                                        <i class="bi bi-plus-circle me-2"></i>Add Section
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="sections-list">
+                                        <!-- Sections will be loaded here -->
+                                    </div>
                                 </div>
                             </div>
                         </div>

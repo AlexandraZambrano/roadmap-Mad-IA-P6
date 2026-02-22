@@ -1099,6 +1099,12 @@ function switchTab(tabName) {
     if (tabName === 'access-settings' && userRole === 'teacher') {
         loadAccessPassword();
     }
+    
+    // Load Quick Links and Sections when Program Info tab is accessed
+    if (tabName === 'info' && userRole === 'teacher') {
+        loadQuickLinks();
+        loadSections();
+    }
 
     // Update active nav link
     document.querySelectorAll('.sidebar .nav-link').forEach(link => {
