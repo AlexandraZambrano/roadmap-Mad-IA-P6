@@ -2748,7 +2748,7 @@ async function displayCollaborators(collaborators) {
                 const div = document.createElement('div');
                 div.className = 'list-group-item d-flex justify-content-between align-items-center';
                 const ownerBadge = teacher.isOwner ? '<span class="badge bg-primary ms-2">Owner</span>' : '';
-                const deleteBtn = isOwner && !teacher.isOwner ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${teacher.id}')"><i class="bi bi-trash"></i> Remove</button>` : '';
+                const deleteBtn = isOwner && !teacher.isOwner ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${teacher.id}')"><i class="bi bi-trash"></i></button>` : '';
 
                 div.innerHTML = `
                     <div>
@@ -2876,655 +2876,255 @@ async function removeCollaborator(teacherId) {
     }
 }
 
-// ==================== STUDENT PROGRESS TRACKING ====================
+// ==================== ACCESS SETTINGS ====================
 
-let currentStudentForProgress = null;
-
-// Track student progress - show modal with student progress data
-async function trackStudentProgress(studentId, studentName) {
+async function loadAccessPassword() {
+    if (userRole !== 'teacher') return;
+    
+    const token = localStorage.getItem('token');
     try {
-        const token = localStorage.getItem('token');
-        
-        // Get student details including progress
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/access-password`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const student = await response.json();
-        console.log('Student progress data:', student);
-        
-        currentStudentForProgress = student;
-        
-        // Populate the progress modal
-        await displayStudentProgress(student, studentName);
-        
-        // Show the modal
-        studentProgressModal.show();
-        
-    } catch (error) {
-        console.error('Error loading student progress:', error);
-        alert(`Error loading student progress: ${error.message}`);
-    }
-}
 
-// Display student progress in the modal
-async function displayStudentProgress(student, studentName) {
-    // Update modal title
-    document.getElementById('progressModalTitle').textContent = `Progress Tracking - ${studentName}`;
-    
-    // Update basic info
-    document.getElementById('progress-student-name').textContent = student.name || 'N/A';
-    document.getElementById('progress-student-lastname').textContent = student.lastname || 'N/A';
-    document.getElementById('progress-student-email').textContent = student.email || 'N/A';
-    
-    // Get promotion data to calculate total modules and sections
-    let totalModules = 0;
-    let totalSections = 0;
-    
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
         if (response.ok) {
-            const promotion = await response.json();
-            totalModules = promotion.modules ? promotion.modules.length : 0;
-            totalSections = promotion.sections ? promotion.sections.length : 0;
-        }
-    } catch (error) {
-        console.error('Error loading promotion data:', error);
-    }
-    
-    // Update progress info with calculations
-    const progress = student.progress || {};
-    const modulesCompleted = progress.modulesCompleted || 0;
-    const modulesViewedCount = (progress.modulesViewed || []).length;
-    const sectionsCompletedCount = (progress.sectionsCompleted || []).length;
-    
-    // Calculate percentages
-    const moduleCompletionPercentage = totalModules > 0 ? Math.round((modulesCompleted / totalModules) * 100) : 0;
-    const moduleViewedPercentage = totalModules > 0 ? Math.round((modulesViewedCount / totalModules) * 100) : 0;
-    const sectionCompletionPercentage = totalSections > 0 ? Math.round((sectionsCompletedCount / totalSections) * 100) : 0;
-    
-    // Display modules completed with percentage
-    document.getElementById('progress-modules-completed').innerHTML = `
-        ${modulesCompleted}<span class="fs-6 text-muted">/${totalModules}</span>
-        <small class="d-block text-muted">${moduleCompletionPercentage}%</small>
-    `;
-    
-    // Display modules viewed with percentage
-    document.getElementById('progress-modules-viewed-count').innerHTML = `
-        ${modulesViewedCount}<span class="fs-6 text-muted">/${totalModules}</span>
-        <small class="d-block text-muted">${moduleViewedPercentage}%</small>
-    `;
-    
-    // Display sections completed with percentage
-    document.getElementById('progress-sections-completed-count').innerHTML = `
-        ${sectionsCompletedCount}<span class="fs-6 text-muted">/${totalSections}</span>
-        <small class="d-block text-muted">${sectionCompletionPercentage}%</small>
-    `;
-    
-    // Update notes
-    document.getElementById('progress-student-notes').value = student.notes || '';
-    
-    // Display modules viewed
-    const modulesViewedContainer = document.getElementById('progress-modules-viewed');
-    const modulesViewed = progress.modulesViewed || [];
-    if (modulesViewed.length === 0) {
-        modulesViewedContainer.innerHTML = '<p class="text-muted mb-0">No modules viewed yet</p>';
-    } else {
-        modulesViewedContainer.innerHTML = modulesViewed.map(moduleId => 
-            `<span class="badge bg-primary me-1 mb-1">${escapeHtml(moduleId)}</span>`
-        ).join('');
-    }
-    
-    // Display sections completed
-    const sectionsCompletedContainer = document.getElementById('progress-sections-completed');
-    const sectionsCompleted = progress.sectionsCompleted || [];
-    if (sectionsCompleted.length === 0) {
-        sectionsCompletedContainer.innerHTML = '<p class="text-muted mb-0">No sections completed yet</p>';
-    } else {
-        sectionsCompletedContainer.innerHTML = sectionsCompleted.map(sectionId => 
-            `<span class="badge bg-success me-1 mb-1">${escapeHtml(sectionId)}</span>`
-        ).join('');
-    }
-    
-    // Display last accessed if available
-    const lastAccessed = progress.lastAccessed;
-    const lastAccessedElement = document.getElementById('progress-last-accessed');
-    if (lastAccessed) {
-        const date = new Date(lastAccessed);
-        lastAccessedElement.textContent = date.toLocaleString();
-    } else {
-        lastAccessedElement.textContent = 'Never';
-    }
-
-    // Render project assignments
-    renderStudentProjects(student);
-}
-
-// Save student notes
-async function saveStudentNotes() {
-    if (!currentStudentForProgress) {
-        alert('No student selected');
-        return;
-    }
-    
-    try {
-        const token = localStorage.getItem('token');
-        const notes = document.getElementById('progress-student-notes').value;
-        
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}/notes`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ notes })
-        });
-        
-        if (response.ok) {
-            alert('Notes saved successfully!');
-            // Update the current student data
-            currentStudentForProgress.notes = notes;
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to save notes');
-        }
-        
-    } catch (error) {
-        console.error('Error saving notes:', error);
-        alert(`Error saving notes: ${error.message}`);
-    }
-}
-
-// Render student's project assignments with controls
-function renderStudentProjects(student) {
-    const container = document.getElementById('progress-student-projects');
-    const assignments = student.projectsAssignments || [];
-    if (!container) return;
-
-    if (assignments.length === 0) {
-        container.innerHTML = '<p class="text-muted mb-0">No project assignments yet</p>';
-        return;
-    }
-
-    const modulesById = {};
-    const promotion = window.currentPromotion || {};
-    (promotion.modules || []).forEach(m => { modulesById[m.id] = m; });
-
-    const rows = assignments.map(a => {
-        const moduleName = modulesById[a.moduleId]?.name || a.moduleId;
-        return `
-            <div class="row align-items-center py-2 border-bottom">
-                <div class="col-md-4">
-                    <strong>${escapeHtml(a.projectName)}</strong>
-                    <div class="text-muted small">Módulo: ${escapeHtml(moduleName)}</div>
-                </div>
-                <div class="col-md-4">
-                    <input type="text" class="form-control form-control-sm" 
-                           value="${escapeHtml(a.groupName || '')}" 
-                           data-assignment-id="${escapeHtml(a.id)}" 
-                           onblur="updateProjectGroup('${escapeHtml(student.id)}', '${escapeHtml(a.id)}', this.value)" 
-                           placeholder="Group name" />
-                </div>
-                <div class="col-md-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="chk-${escapeHtml(a.id)}" ${a.done ? 'checked' : ''} 
-                               onchange="updateProjectDone('${escapeHtml(student.id)}', '${escapeHtml(a.id)}', this.checked)" />
-                        <label class="form-check-label" for="chk-${escapeHtml(a.id)}">Done</label>
-                    </div>
-                </div>
-                <div class="col-md-2 text-end">
-                    <span class="badge bg-secondary mb-1">Teammates: ${(a.teammates || []).length}</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-block mt-1" onclick="openProjectAssignmentDetail('${escapeHtml(a.id)}')">
-                        View
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
-    container.innerHTML = rows;
-}
-
-let currentProjectAssignmentDetail = null;
-
-function openProjectAssignmentDetail(assignmentId) {
-    if (!currentStudentForProgress) return;
-    const assignments = currentStudentForProgress.projectsAssignments || [];
-    const assignment = assignments.find(a => a.id === assignmentId);
-    if (!assignment) return;
-
-    currentProjectAssignmentDetail = assignment;
-
-    const promotion = window.currentPromotion || {};
-    const modules = promotion.modules || [];
-    const moduleObj = modules.find(m => m.id === assignment.moduleId);
-
-    const nameEl = document.getElementById('projectAssignment-detail-name');
-    const moduleEl = document.getElementById('projectAssignment-detail-module');
-    const groupInput = document.getElementById('projectAssignment-detail-group');
-    const doneCheckbox = document.getElementById('projectAssignment-detail-done');
-    const teammatesList = document.getElementById('projectAssignment-detail-teammates');
-
-    if (nameEl) nameEl.textContent = assignment.projectName || '';
-    if (moduleEl) moduleEl.textContent = moduleObj ? moduleObj.name : assignment.moduleId;
-    if (groupInput) groupInput.value = assignment.groupName || '';
-    if (doneCheckbox) doneCheckbox.checked = !!assignment.done;
-
-    if (teammatesList) {
-        teammatesList.innerHTML = '';
-        const students = window.currentStudents || [];
-        const teammates = assignment.teammates || [];
-        teammates.forEach(id => {
-            const li = document.createElement('li');
-            const student = students.find(s => s.id === id);
-            const label = student ? `${student.name || ''} ${student.lastname || ''}`.trim() || id : id;
-            li.textContent = label;
-            teammatesList.appendChild(li);
-        });
-        if (teammates.length === 0) {
-            const li = document.createElement('li');
-            li.textContent = 'No teammates';
-            teammatesList.appendChild(li);
-        }
-    }
-
-    if (projectAssignmentDetailModal) {
-        projectAssignmentDetailModal.show();
-    }
-}
-
-async function saveProjectAssignmentDetail() {
-    if (!currentStudentForProgress || !currentProjectAssignmentDetail) return;
-
-    const groupInput = document.getElementById('projectAssignment-detail-group');
-    const doneCheckbox = document.getElementById('projectAssignment-detail-done');
-
-    const groupName = groupInput ? groupInput.value : '';
-    const done = doneCheckbox ? doneCheckbox.checked : false;
-
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}/projects/${currentProjectAssignmentDetail.id}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ groupName, done })
-        });
-
-        if (!response.ok) {
-            let errorMessage = `Failed to update assignment (HTTP ${response.status})`;
-            try {
-                const text = await response.text();
-                try {
-                    const errJson = JSON.parse(text);
-                    errorMessage = errJson.error || errorMessage;
-                } catch {
-                    if (text) errorMessage = text;
-                }
-            } catch {
+            const data = await response.json();
+            const passwordInput = document.getElementById('access-password-input');
+            const accessLinkInput = document.getElementById('student-access-link');
+            
+            if (passwordInput) {
+                passwordInput.value = data.accessPassword || '';
             }
-            throw new Error(errorMessage);
+            
+            // Update the access link
+            if (accessLinkInput) {
+                const baseUrl = window.location.origin;
+                // Detect if we're on Live Server (port 5500) and adjust path accordingly
+                const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
+                const path = isLiveServer ? '/public/public-promotion.html' : '/public-promotion.html';
+                accessLinkInput.value = `${baseUrl}${path}?id=${promotionId}`;
+            }
         }
-
-        const updated = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (updated.ok) {
-            currentStudentForProgress = await updated.json();
-            renderStudentProjects(currentStudentForProgress);
-        }
-
-        if (projectAssignmentDetailModal) {
-            projectAssignmentDetailModal.hide();
-        }
-    } catch (e) {
-        alert(`Error updating assignment: ${e.message}`);
+    } catch (error) {
+        console.error('Error loading access password:', error);
     }
 }
-// Update assignment: done toggle
-async function updateProjectDone(studentId, assignmentId, done) {
+
+async function updateAccessPassword() {
+    if (userRole !== 'teacher') return;
+    
+    const token = localStorage.getItem('token');
+    const passwordInput = document.getElementById('access-password-input');
+    const alertEl = document.getElementById('password-alert');
+    const password = passwordInput ? passwordInput.value.trim() : '';
+
     try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}/projects/${assignmentId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ done })
-        });
-        if (!response.ok) throw new Error('Failed to update assignment');
-    } catch (e) {
-        alert(`Error updating assignment: ${e.message}`);
+        let response;
+        if (password) {
+            // Set new password
+            response = await fetch(`${API_URL}/api/promotions/${promotionId}/access-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ password })
+            });
+        } else {
+            // Remove password protection (if endpoint exists)
+            response = await fetch(`${API_URL}/api/promotions/${promotionId}/access-password`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        }
+
+        if (response.ok) {
+            if (alertEl) {
+                alertEl.className = 'alert alert-success';
+                alertEl.textContent = password 
+                    ? 'Access password updated successfully! Students can now use the link below to access this promotion.' 
+                    : 'Password protection removed successfully!';
+                alertEl.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    alertEl.classList.add('hidden');
+                }, 5000);
+            }
+            
+            // Update the access link
+            const accessLinkInput = document.getElementById('student-access-link');
+            if (accessLinkInput) {
+                const baseUrl = window.location.origin;
+                // Detect if we're on Live Server (port 5500) and adjust path accordingly
+                const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
+                const path = isLiveServer ? '/public/public-promotion.html' : '/public-promotion.html';
+                accessLinkInput.value = `${baseUrl}${path}?id=${promotionId}`;
+            }
+        } else {
+            const data = await response.json();
+            if (alertEl) {
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = data.error || 'Error updating password';
+                alertEl.classList.remove('hidden');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating access password:', error);
+        if (alertEl) {
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = 'Connection error. Please try again.';
+            alertEl.classList.remove('hidden');
+        }
     }
 }
 
-// Update assignment: group name edit
-async function updateProjectGroup(studentId, assignmentId, groupName) {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}/projects/${assignmentId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ groupName })
-        });
-        if (!response.ok) throw new Error('Failed to update assignment');
-    } catch (e) {
-        alert(`Error updating assignment: ${e.message}`);
-    }
-}
-
-// Assign project modal handling
-let assignProjectModal;
-function openAssignProjectModal() {
-    const el = document.getElementById('assignProjectModal');
-    assignProjectModal = assignProjectModal || (el ? new bootstrap.Modal(el) : null);
-    if (!assignProjectModal) return;
-
-    // Populate module select
-    const moduleSelect = document.getElementById('assign-module-select');
-    const projectSelect = document.getElementById('assign-project-select');
-    moduleSelect.innerHTML = '';
-    projectSelect.innerHTML = '';
-    const promotion = window.currentPromotion || {};
-    (promotion.modules || []).forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.id;
-        opt.textContent = m.name;
-        moduleSelect.appendChild(opt);
-    });
-    // Populate projects for first module by default
-    populateProjectSelect(moduleSelect.value);
-
-    // Change handler
-    moduleSelect.onchange = () => populateProjectSelect(moduleSelect.value);
-
-    // Populate teammates (checkbox list, scrollable)
-    const teammatesList = document.getElementById('assign-teammates-list');
-    teammatesList.innerHTML = '';
-    const currentId = currentStudentForProgress?.id;
-    (window.currentStudents || []).forEach(s => {
-        if (s.id === currentId) return;
-        const div = document.createElement('div');
-        div.className = 'form-check';
-        div.innerHTML = `
-            <input class="form-check-input" type="checkbox" value="${escapeHtml(s.id)}" id="tm-${escapeHtml(s.id)}">
-            <label class="form-check-label" for="tm-${escapeHtml(s.id)}">${escapeHtml((s.name || '') + ' ' + (s.lastname || ''))}</label>
-        `;
-        teammatesList.appendChild(div);
-    });
-
-    // Reset fields
-    document.getElementById('assign-group-name').value = '';
-    document.getElementById('assign-mark-done').checked = false;
-
-    assignProjectModal.show();
-}
-
-function populateProjectSelect(moduleId) {
-    const projectSelect = document.getElementById('assign-project-select');
-    projectSelect.innerHTML = '';
-    const promotion = window.currentPromotion || {};
-    const mod = (promotion.modules || []).find(m => m.id === moduleId);
-    (mod?.projects || []).forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.name || '';
-        opt.textContent = p.name || '';
-        projectSelect.appendChild(opt);
-    });
-}
-
-// Assign project form submit
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('assign-project-form');
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+function copyAccessLink() {
+    const accessLinkInput = document.getElementById('student-access-link');
+    if (accessLinkInput && accessLinkInput.value) {
+        navigator.clipboard.writeText(accessLinkInput.value).then(() => {
+            // Show success feedback
+            const copyBtn = document.querySelector('[onclick="copyAccessLink()"]');
+            if (copyBtn) {
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="bi bi-check me-2"></i>Copied!';
+                copyBtn.classList.add('btn-success');
+                copyBtn.classList.remove('btn-outline-secondary');
+                
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                    copyBtn.classList.remove('btn-success');
+                    copyBtn.classList.add('btn-outline-secondary');
+                }, 2000);
+            }
+        }).catch(err => {
+            console.error('Failed to copy link:', err);
+            // Fallback selection method
+            accessLinkInput.select();
+            accessLinkInput.setSelectionRange(0, 99999);
             try {
-                const moduleId = document.getElementById('assign-module-select').value;
-                const projectName = document.getElementById('assign-project-select').value;
-                const groupName = document.getElementById('assign-group-name').value;
-                const done = document.getElementById('assign-mark-done').checked;
-                const teammateIds = Array.from(document.querySelectorAll('#assign-teammates-list .form-check-input:checked')).map(el => el.value);
-                const studentIds = [currentStudentForProgress.id, ...teammateIds];
-
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_URL}/api/promotions/${promotionId}/projects/assign`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ moduleId, projectName, groupName, studentIds, done })
-                });
-                if (!response.ok) {
-                    let errorMessage = `Failed to assign project (HTTP ${response.status})`;
-                    try {
-                        const text = await response.text();
-                        try {
-                            const errJson = JSON.parse(text);
-                            errorMessage = errJson.error || errorMessage;
-                        } catch {
-                            if (text && text.trim().startsWith('<!DOCTYPE')) {
-                                errorMessage = 'Backend returned HTML (likely 404). Please ensure the server is restarted with the latest code.';
-                            } else if (text) {
-                                errorMessage = text;
-                            }
-                        }
-                    } catch {
-                        // ignore parse errors
-                    }
-                    throw new Error(errorMessage);
-                }
-                // Refresh student data
-                const updated = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (updated.ok) {
-                    currentStudentForProgress = await updated.json();
-                    renderStudentProjects(currentStudentForProgress);
-                }
-                assignProjectModal.hide();
-                alert('Project assigned successfully');
-            } catch (err) {
-                alert(`Error assigning project: ${err.message}`);
+                document.execCommand('copy');
+                alert('Link copied to clipboard!');
+            } catch (fallbackErr) {
+                alert('Could not copy link. Please copy manually.');
             }
         });
     }
-});
-// Update student progress (modules completed, etc.)
-async function updateStudentProgress() {
-    if (!currentStudentForProgress) {
-        alert('No student selected');
-        return;
-    }
-    
-    try {
-        const token = localStorage.getItem('token');
-        const modulesCompleted = parseInt(document.getElementById('update-modules-completed').value) || 0;
-        
-        console.log('=== FRONTEND UPDATE PROGRESS ===');
-        console.log('Student ID:', currentStudentForProgress.id);
-        console.log('Modules completed from input:', document.getElementById('update-modules-completed').value);
-        console.log('Parsed modules completed:', modulesCompleted);
-        console.log('Request URL:', `${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}/progress`);
-        
-        const requestBody = { 
-            modulesCompleted,
-            lastAccessed: new Date().toISOString()
-        };
-        
-        console.log('Request body:', requestBody);
-        
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}/progress`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(requestBody)
-        });
-        
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-        
-        if (response.ok) {
-            const updatedStudent = await response.json();
-            
-            console.log('Updated student response:', updatedStudent);
-            
-            // Update the current student data with the response
-            currentStudentForProgress = updatedStudent;
-            
-            alert('Progress updated successfully!');
-            
-            // Reload the progress data to show updated metrics
-            await displayStudentProgress(updatedStudent, `${updatedStudent.name} ${updatedStudent.lastname || ''}`);
-        } else {
-            const errorData = await response.json();
-            console.error('Error response:', errorData);
-            throw new Error(errorData.error || 'Failed to update progress');
-        }
-        
-    } catch (error) {
-        console.error('Error updating progress:', error);
-        alert(`Error updating progress: ${error.message}`);
-    }
 }
 
-// ==================== STUDENT MULTI-SELECT FUNCTIONALITY ====================
+// ==================== STUDENT SELECTION FUNCTIONS ====================
 
-// Toggle all students selection
-window.toggleAllStudents = function() {
+function updateSelectionState() {
+    const checkboxes = document.querySelectorAll('.student-checkbox');
     const selectAllCheckbox = document.getElementById('select-all-students');
-    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
-    
-    studentCheckboxes.forEach(checkbox => {
-        checkbox.checked = selectAllCheckbox.checked;
-    });
-    
-    updateSelectionState();
-};
-
-// Update selection state and show/hide bulk action buttons
-window.updateSelectionState = function() {
-    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
-    const selectAllCheckbox = document.getElementById('select-all-students');
-    const selectedCount = document.querySelectorAll('.student-checkbox:checked').length;
-    const totalCount = studentCheckboxes.length;
-    
-    // Update select all checkbox state
-    if (selectedCount === 0) {
-        if (selectAllCheckbox) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
-    } else if (selectedCount === totalCount) {
-        if (selectAllCheckbox) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        }
-    } else {
-        if (selectAllCheckbox) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = true;
-        }
-    }
-    
-    // Update selected count display
-    const selectedCountElement = document.getElementById('selected-count');
-    if (selectedCountElement) {
-        selectedCountElement.textContent = `${selectedCount} selected`;
-    }
-    
-    // Show/hide bulk action buttons
+    const selectedCountEl = document.getElementById('selected-count');
+    const selectionControls = document.getElementById('selection-controls');
     const exportSelectedBtn = document.getElementById('export-selected-btn');
     const deleteSelectedBtn = document.getElementById('delete-selected-btn');
     
-    if (selectedCount > 0) {
-        if (exportSelectedBtn) exportSelectedBtn.style.display = 'inline-block';
-        if (deleteSelectedBtn) deleteSelectedBtn.style.display = 'inline-block';
-    } else {
-        if (exportSelectedBtn) exportSelectedBtn.style.display = 'none';
-        if (deleteSelectedBtn) deleteSelectedBtn.style.display = 'none';
-    }
-};
-
-// Get selected students data
-function getSelectedStudents() {
     const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
-    const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
+    const selectedCount = selectedCheckboxes.length;
+    const totalCount = checkboxes.length;
     
-    // Get current students data
-    const currentStudents = window.currentStudents || [];
-    return currentStudents.filter(student => selectedIds.includes(student.id));
+    // Update selected count display
+    if (selectedCountEl) {
+        selectedCountEl.textContent = `${selectedCount} selected`;
+    }
+    
+    // Update select all checkbox state
+    if (selectAllCheckbox && totalCount > 0) {
+        if (selectedCount === 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        } else if (selectedCount === totalCount) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.indeterminate = true;
+            selectAllCheckbox.checked = false;
+        }
+    }
+    
+    // Show/hide selection controls and buttons
+    if (selectionControls) {
+        selectionControls.style.display = totalCount > 0 ? 'block' : 'none';
+    }
+    
+    if (exportSelectedBtn) {
+        exportSelectedBtn.style.display = selectedCount > 0 ? 'inline-block' : 'none';
+    }
+    
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.style.display = selectedCount > 0 ? 'inline-block' : 'none';
+    }
 }
 
-// Export selected students as CSV
-window.exportSelectedStudentsCsv = function() {
-    const selectedStudents = getSelectedStudents();
+function toggleAllStudents() {
+    const selectAllCheckbox = document.getElementById('select-all-students');
+    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+    
+    if (selectAllCheckbox && studentCheckboxes.length > 0) {
+        const shouldCheck = selectAllCheckbox.checked;
+        
+        studentCheckboxes.forEach(checkbox => {
+            checkbox.checked = shouldCheck;
+        });
+        
+        updateSelectionState();
+    }
+}
+
+// Export selected students to CSV
+function exportSelectedStudentsCsv() {
+    const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+    const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
+    
+    if (selectedStudentIds.length === 0) {
+        alert('No students selected for export.');
+        return;
+    }
+    
+    const selectedStudents = window.currentStudents?.filter(student => 
+        selectedStudentIds.includes(student.id)
+    ) || [];
     
     if (selectedStudents.length === 0) {
-        alert('No students selected.');
+        alert('Selected students not found.');
         return;
     }
     
     exportStudentsToCSV(selectedStudents, `selected-students-promotion-${promotionId}.csv`);
-};
+}
 
 // Delete selected students
-window.deleteSelectedStudents = async function() {
-    const selectedStudents = getSelectedStudents();
+async function deleteSelectedStudents() {
+    const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+    const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
     
-    if (selectedStudents.length === 0) {
-        alert('No students selected.');
+    if (selectedStudentIds.length === 0) {
+        alert('No students selected for deletion.');
         return;
     }
     
-    const confirmMessage = `Are you sure you want to delete ${selectedStudents.length} selected student(s)? This action cannot be undone.`;
-    if (!confirm(confirmMessage)) return;
+    const confirmMessage = `Are you sure you want to delete ${selectedStudentIds.length} selected student(s)? This action cannot be undone.`;
+    if (!confirm(confirmMessage)) {
+        return;
+    }
     
-    const token = localStorage.getItem('token');
-    let successCount = 0;
-    let errorCount = 0;
-    
-    // Delete students one by one
-    for (const student of selectedStudents) {
-        try {
-            const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${student.id}`, {
+    try {
+        const token = localStorage.getItem('token');
+        const deletePromises = selectedStudentIds.map(studentId =>
+            fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (response.ok) {
-                successCount++;
-            } else {
-                errorCount++;
-            }
-        } catch (error) {
-            errorCount++;
-        }
+            })
+        );
+        
+        await Promise.all(deletePromises);
+        
+        alert(`Successfully deleted ${selectedStudentIds.length} student(s).`);
+        loadStudents(); // Reload the students list
+    } catch (error) {
+        console.error('Error deleting selected students:', error);
+        alert('Error deleting students. Please try again.');
     }
-    
-    // Show results
-    if (errorCount === 0) {
-        alert(`Successfully deleted ${successCount} student(s).`);
-    } else {
-        alert(`Deleted ${successCount} student(s). Failed to delete ${errorCount} student(s).`);
-    }
-    
-    // Reload students list
-    loadStudents();
-};
+}

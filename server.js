@@ -94,6 +94,39 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 // Serve static files from public directory
 app.use(express.static(join(__dirname, 'public')));
 
+// Explicit routes for main pages to ensure they're properly served
+app.get('/', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/public-promotion.html', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'public-promotion.html'));
+});
+
+app.get('/login.html', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/dashboard.html', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/promotion-detail.html', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'promotion-detail.html'));
+});
+
+app.get('/admin.html', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/student-dashboard.html', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'student-dashboard.html'));
+});
+
+app.get('/auth.html', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'auth.html'));
+});
+
 // --- Initialization ---
 
 async function initializeTestAccounts() {
@@ -147,6 +180,45 @@ const canEditPromotion = (promotion, userId) => {
 
 // ==================== PROMOTION PASSWORD ACCESS ====================
 
+// Get promotion access password (teacher only)
+app.get('/api/promotions/:promotionId/access-password', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    res.json({ accessPassword: promotion.accessPassword || null });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify promotion access password (public, no authentication required)
+app.post('/api/promotions/:promotionId/verify-password', async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+
+    if (promotion.accessPassword !== password) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    // Create a session token (valid only for this promotion access)
+    const accessToken = jwt.sign(
+      { promotionId: req.params.promotionId, accessType: 'promotion-guest' },
+      JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    res.json({ message: 'Password verified', accessToken, promotion: { id: promotion.id, name: promotion.name } });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Set or change promotion access password (teacher only)
 app.post('/api/promotions/:promotionId/access-password', verifyToken, async (req, res) => {
   try {
@@ -176,40 +248,27 @@ app.post('/api/promotions/:promotionId/access-password', verifyToken, async (req
   }
 });
 
-// Access promotion with password (session-based, no authentication required)
-app.post('/api/promotions/:promotionId/verify-password', async (req, res) => {
-  try {
-    const { password } = req.body;
-    if (!password) return res.status(400).json({ error: 'Password is required' });
-
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
-    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
-
-    if (promotion.accessPassword !== password) {
-      return res.status(401).json({ error: 'Invalid password' });
-    }
-
-    // Create a session token (valid only for this promotion access)
-    const accessToken = jwt.sign(
-      { promotionId: req.params.promotionId, accessType: 'promotion-guest' },
-      JWT_SECRET,
-      { expiresIn: '8h' }
-    );
-
-    res.json({ message: 'Password verified', accessToken, promotion: { id: promotion.id, name: promotion.name } });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get promotion access password (teacher only)
-app.get('/api/promotions/:promotionId/access-password', verifyToken, async (req, res) => {
+// Remove promotion access password (teacher only)
+app.delete('/api/promotions/:promotionId/access-password', verifyToken, async (req, res) => {
   try {
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    res.json({ accessPassword: promotion.accessPassword || null });
+    // Store in history before removing
+    if (promotion.accessPassword) {
+      if (!promotion.passwordChangeHistory) promotion.passwordChangeHistory = [];
+      promotion.passwordChangeHistory.push({
+        oldPassword: promotion.accessPassword,
+        newPassword: null,
+        changedAt: new Date()
+      });
+    }
+
+    promotion.accessPassword = undefined;
+    await promotion.save();
+
+    res.json({ message: 'Access password removed' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
