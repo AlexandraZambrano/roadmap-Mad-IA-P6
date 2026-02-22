@@ -39,22 +39,59 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             color: #ff4700;
         }
-        .server-info {
+        .github-info {
             background: rgba(255, 255, 255, 0.1);
             padding: 1rem;
             border-radius: 8px;
             margin-top: 2rem;
             font-size: 0.9rem;
         }
+        .btn-disabled {
+            background: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
 <body>
+    <div class="welcome-container">
+        <h1 class="mb-4">🎓 Bootcamp Manager</h1>
+        <p class="mb-4">Welcome to the Bootcamp Management System</p>
+        
+        <div id="github-pages-mode">
+            <div class="github-info">
+                <p class="mb-1"><strong>📱 GitHub Pages Mode:</strong></p>
+                <p class="mb-1">You're viewing this on GitHub Pages. For full functionality:</p>
+                <ol class="text-start">
+                    <li>Clone the repository locally</li>
+                    <li>Run <code>npm install</code></li>
+                    <li>Run <code>npm start</code></li>
+                    <li>Access <strong>http://localhost:3001</strong></li>
+                </ol>
+            </div>
+            
+            <div class="mt-4">
+                <a href="#" class="btn-custom btn-disabled" title="Requires local server">
+                    <i class="bi bi-person-circle"></i> Teacher/Admin Login (Local Only)
+                </a>
+                <a href="public-promotion.html?demo=true" class="btn-custom">
+                    <i class="bi bi-eye"></i> View Demo Promotion
+                </a>
+            </div>
+        </div>
+
         <script>
-            // Auto-redirect to login page
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 1500); // 1.5 second delay to show welcome message briefly
+            // Check if we're on GitHub Pages
+            const isGitHubPages = window.location.hostname.includes('github.io') || 
+                                 window.location.hostname.includes('github.com');
+            
+            if (!isGitHubPages) {
+                // Local/server mode - redirect to login
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1500);
+            }
         </script>
     </div>
 </body>

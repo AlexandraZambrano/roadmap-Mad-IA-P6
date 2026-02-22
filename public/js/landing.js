@@ -43,7 +43,19 @@ function displayPromotions(promotions) {
     promotions.forEach(promotion => {
         const card = document.createElement('div');
         card.className = 'promotion-card';
-        card.onclick = () => window.location.href = `public-promotion.html?id=${promotion.id}`;
+        
+        // Generate correct path for different environments
+        const isGitHubPages = window.location.hostname.includes('github.io');
+        let promotionPath;
+        if (isGitHubPages) {
+            const pathParts = window.location.pathname.split('/');
+            const repoName = pathParts[1];
+            promotionPath = `/${repoName}/public-promotion.html`;
+        } else {
+            promotionPath = 'public-promotion.html';
+        }
+        
+        card.onclick = () => window.location.href = `${promotionPath}?id=${promotion.id}`;
         card.innerHTML = `
             <div class="promotion-card-body">
                 <h3>${escapeHtml(promotion.name)}</h3>

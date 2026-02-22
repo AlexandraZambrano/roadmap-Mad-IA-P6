@@ -64,10 +64,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up student dashboard preview iframe in Overview
     const previewIframe = document.getElementById('student-preview-iframe');
     if (previewIframe) {
-        const path = window.location.pathname;
-        const directory = path.substring(0, path.lastIndexOf('/'));
-        const baseUrl = window.location.origin + (directory === '/' ? '' : directory);
-        previewIframe.src = `${baseUrl}/public-promotion.html?id=${promotionId}&preview=1`;
+        const baseUrl = window.location.origin;
+        const isGitHubPages = window.location.hostname.includes('github.io');
+        
+        let previewPath;
+        if (isGitHubPages) {
+            // GitHub Pages needs the repository name in the path
+            const pathParts = window.location.pathname.split('/');
+            const repoName = pathParts[1];
+            previewPath = `/${repoName}/public-promotion.html`;
+        } else {
+            const path = window.location.pathname;
+            const directory = path.substring(0, path.lastIndexOf('/'));
+            previewPath = (directory === '/' ? '' : directory) + '/public-promotion.html';
+        }
+        
+        previewIframe.src = `${baseUrl}${previewPath}?id=${promotionId}&preview=1`;
     }
 
     // Initialize modals only if elements exist (teacher view)
@@ -2905,9 +2917,22 @@ async function loadAccessPassword() {
             // Update the access link
             if (accessLinkInput) {
                 const baseUrl = window.location.origin;
-                // Detect if we're on Live Server (port 5500) and adjust path accordingly
+                // Detect different environments and adjust path accordingly
                 const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
-                const path = isLiveServer ? '/public/public-promotion.html' : '/public-promotion.html';
+                const isGitHubPages = window.location.hostname.includes('github.io');
+                
+                let path;
+                if (isLiveServer) {
+                    path = '/public/public-promotion.html';
+                } else if (isGitHubPages) {
+                    // GitHub Pages needs the repository name in the path
+                    const pathParts = window.location.pathname.split('/');
+                    const repoName = pathParts[1]; // Extract repo name from current path
+                    path = `/${repoName}/public-promotion.html`;
+                } else {
+                    path = '/public-promotion.html';
+                }
+                
                 accessLinkInput.value = `${baseUrl}${path}?id=${promotionId}`;
             }
         }
@@ -2961,9 +2986,22 @@ async function updateAccessPassword() {
             const accessLinkInput = document.getElementById('student-access-link');
             if (accessLinkInput) {
                 const baseUrl = window.location.origin;
-                // Detect if we're on Live Server (port 5500) and adjust path accordingly
+                // Detect different environments and adjust path accordingly
                 const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
-                const path = isLiveServer ? '/public/public-promotion.html' : '/public-promotion.html';
+                const isGitHubPages = window.location.hostname.includes('github.io');
+                
+                let path;
+                if (isLiveServer) {
+                    path = '/public/public-promotion.html';
+                } else if (isGitHubPages) {
+                    // GitHub Pages needs the repository name in the path
+                    const pathParts = window.location.pathname.split('/');
+                    const repoName = pathParts[1]; // Extract repo name from current path
+                    path = `/${repoName}/public-promotion.html`;
+                } else {
+                    path = '/public-promotion.html';
+                }
+                
                 accessLinkInput.value = `${baseUrl}${path}?id=${promotionId}`;
             }
         } else {
