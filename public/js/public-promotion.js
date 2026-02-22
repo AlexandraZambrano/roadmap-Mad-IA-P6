@@ -587,6 +587,18 @@ function updateSidebarWithExtendedInfo(info) {
             nav.appendChild(li);
         }
     }
+
+    if (Array.isArray(info.pildoras) && info.pildoras.length > 0) {
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        li.innerHTML = '<a class="nav-link" href="#pildoras"><i class="bi bi-lightbulb me-2"></i>Píldoras</a>';
+        
+        if (quickLinksItem) {
+            nav.insertBefore(li, quickLinksItem);
+        } else {
+            nav.appendChild(li);
+        }
+    }
 }
 
 async function loadCalendar() {
@@ -718,6 +730,61 @@ function createProgramInfoSections(info) {
             </div>
         `;
         sections.push(resourcesSection);
+    }
+
+    // Píldoras Section
+    if (Array.isArray(info.pildoras) && info.pildoras.length > 0) {
+        const pildorasSection = document.createElement('div');
+        pildorasSection.className = 'col-md-12';
+        pildorasSection.id = 'pildoras';
+
+        const rows = info.pildoras.map(p => {
+            const mode = p.mode || '';
+            const date = p.date || '';
+            const title = p.title || '';
+            const students = Array.isArray(p.students) ? p.students : [];
+            const studentsText = students.length
+                ? students.map(s => `${(s.name || '').trim()} ${(s.lastname || '').trim()}`.trim()).join(', ')
+                : 'Desierta';
+            const status = p.status || '';
+
+            return `
+                <tr>
+                    <td>${escapeHtml(mode)}</td>
+                    <td>${escapeHtml(date)}</td>
+                    <td>${escapeHtml(title)}</td>
+                    <td>${escapeHtml(studentsText)}</td>
+                    <td>${escapeHtml(status)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        pildorasSection.innerHTML = `
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title section-title">
+                        <i class="bi bi-lightbulb me-2"></i>Píldoras
+                    </h5>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Presentación</th>
+                                    <th>Fecha</th>
+                                    <th>Píldora</th>
+                                    <th>Student</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        sections.push(pildorasSection);
     }
     
     return sections;

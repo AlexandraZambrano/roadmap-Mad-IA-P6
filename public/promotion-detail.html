@@ -464,6 +464,37 @@
                             </div>
                         </div>
 
+                        <!-- Píldoras -->
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h5>
+                                    <button class="btn btn-sm btn-outline-primary" type="button" onclick="addPildoraRow()">
+                                        <i class="bi bi-plus"></i> Add Píldora
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th>Presentación</th>
+                                                    <th>Fecha</th>
+                                                    <th>Píldora</th>
+                                                    <th>Student</th>
+                                                    <th>Estado</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="pildoras-list-body">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <small class="text-muted">Use el desplegable de Student para asignar uno o varios estudiantes a cada píldora.</small>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Evaluation -->
                         <div class="col-12 mb-4">
                             <div class="card">
@@ -561,6 +592,20 @@
                             </div>
                             <div id="projects-container" class="border rounded p-3 bg-light">
                                 <!-- Projects will be added dynamically here -->
+                            </div>
+                        </div>
+
+                        <!-- Píldoras Section -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h6>
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                    onclick="addPildoraField()">
+                                    <i class="bi bi-plus"></i> Añadir Píldora
+                                </button>
+                            </div>
+                            <div id="pildoras-container" class="border rounded p-3 bg-light">
+                                <!-- Píldoras will be added dynamically here -->
                             </div>
                         </div>
                     </div>
@@ -694,7 +739,231 @@
         </div>
     </div>
 
-    <!-- Student Success Modal -->
+    <!-- Student Progress Tracking Modal -->
+    <div class="modal fade" id="studentProgressModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="progressModalTitle">Student Progress Tracking</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Student Basic Info -->
+                        <div class="col-md-4">
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0">Student Information</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Name:</strong> <span id="progress-student-name">-</span></p>
+                                    <p><strong>Last Name:</strong> <span id="progress-student-lastname">-</span></p>
+                                    <p><strong>Email:</strong> <span id="progress-student-email">-</span></p>
+                                    <p><strong>Last Accessed:</strong> <span id="progress-last-accessed">-</span></p>
+                                </div>
+                            </div>
+                            
+                            <!-- Quick Progress Update -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0">Update Progress</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="update-modules-completed" class="form-label">Modules Completed</label>
+                                        <input type="number" class="form-control" id="update-modules-completed" min="0" max="20" />
+                                    </div>
+                                    <button type="button" class="btn btn-success btn-sm" onclick="updateStudentProgress()">
+                                        <i class="bi bi-check-circle"></i> Update Progress
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Details -->
+                        <div class="col-md-8">
+                            <div class="row">
+                                <!-- Progress Summary -->
+                                <div class="col-md-12 mb-3">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">Progress Summary</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row text-center">
+                                                <div class="col-md-4">
+                                                    <h3 class="text-primary" id="progress-modules-completed">0</h3>
+                                                    <p class="mb-0">Modules Completed</p>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <h3 class="text-info" id="progress-modules-viewed-count">0</h3>
+                                                    <p class="mb-0">Modules Viewed</p>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <h3 class="text-success" id="progress-sections-completed-count">0</h3>
+                                                    <p class="mb-0">Sections Completed</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Modules Viewed -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">Modules Viewed</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="progress-modules-viewed">
+                                                <p class="text-muted mb-0">Loading...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Sections Completed -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">Sections Completed</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="progress-sections-completed">
+                                                <p class="text-muted mb-0">Loading...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Student Notes -->
+                                <div class="col-md-12">
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h6 class="card-title mb-0">Teacher Notes</h6>
+                                            <button type="button" class="btn btn-primary btn-sm" onclick="saveStudentNotes()">
+                                                <i class="bi bi-save"></i> Save Notes
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <textarea class="form-control" id="progress-student-notes" rows="4" 
+                                                      placeholder="Add notes about student progress, behavior, or any important observations..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Student Projects -->
+                                <div class="col-md-12 mt-3">
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h6 class="card-title mb-0">Projects</h6>
+                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openAssignProjectModal()">
+                                                <i class="bi bi-plus"></i> Assign Project
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="progress-student-projects">
+                                                <p class="text-muted mb-0">No project assignments yet</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Project Modal -->
+    <div class="modal fade" id="assignProjectModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign Project</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="assign-project-form">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Module</label>
+                            <select class="form-select" id="assign-module-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Project</label>
+                            <select class="form-select" id="assign-project-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Group Name (optional)</label>
+                            <input type="text" class="form-control" id="assign-group-name" placeholder="e.g., Team Alpha" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Teammates (optional)</label>
+                            <div id="assign-teammates-list" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                <!-- Populated dynamically with checkboxes -->
+                            </div>
+                            <small class="text-muted d-block">Current student is included automatically</small>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="assign-mark-done">
+                            <label class="form-check-label" for="assign-mark-done">
+                                Mark as done
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Assign</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Assignment Detail Modal -->
+    <div class="modal fade" id="projectAssignmentDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Project Assignment Detail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <strong>Project:</strong>
+                        <div id="projectAssignment-detail-name"></div>
+                    </div>
+                    <div class="mb-2">
+                        <strong>Module:</strong>
+                        <div id="projectAssignment-detail-module"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="projectAssignment-detail-group" class="form-label">Group name</label>
+                        <input type="text" class="form-control" id="projectAssignment-detail-group" />
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="projectAssignment-detail-done">
+                        <label class="form-check-label" for="projectAssignment-detail-done">
+                            Mark as done
+                        </label>
+                    </div>
+                    <div class="mb-2">
+                        <strong>Teammates:</strong>
+                        <ul id="projectAssignment-detail-teammates" class="mb-0"></ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="saveProjectAssignmentDetail()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Add Collaborator Modal (by Email) -->
     <div class="modal fade" id="addCollaboratorModal" tabindex="-1">
         <div class="modal-dialog">

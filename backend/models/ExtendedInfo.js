@@ -30,7 +30,18 @@ const ExtendedInfoSchema = new mongoose.Schema({
         category: String,
         url: String
     }],
-    evaluation: { type: String, default: '' }
+    evaluation: { type: String, default: '' },
+    pildoras: [{
+        mode: String,
+        date: String,
+        title: String,
+        students: [{
+            id: String,
+            name: String,
+            lastname: String
+        }],
+        status: String
+    }]
 }, { timestamps: true });
 
 export default mongoose.model('ExtendedInfo', ExtendedInfoSchema);

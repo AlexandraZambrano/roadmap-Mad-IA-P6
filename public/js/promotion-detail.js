@@ -1,6 +1,6 @@
 const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
 let promotionId = null;
-let moduleModal, quickLinkModal, sectionModal, studentModal, teamModal, resourceModal, collaboratorModal;
+let moduleModal, quickLinkModal, sectionModal, studentModal, studentProgressModal, teamModal, resourceModal, collaboratorModal, projectAssignmentDetailModal;
 const userRole = localStorage.getItem('role') || 'student';
 let currentUser = {};
 try {
@@ -13,7 +13,8 @@ let extendedInfoData = {
     schedule: {},
     team: [],
     resources: [],
-    evaluation: ''
+    evaluation: '',
+    pildoras: []
 };
 
 // Utility function to escape HTML to prevent XSS
@@ -80,6 +81,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const studentModalEl = document.getElementById('studentModal');
     if (studentModalEl) studentModal = new bootstrap.Modal(studentModalEl);
 
+    const studentProgressModalEl = document.getElementById('studentProgressModal');
+    if (studentProgressModalEl) studentProgressModal = new bootstrap.Modal(studentProgressModalEl);
+
+    const projectAssignmentDetailModalEl = document.getElementById('projectAssignmentDetailModal');
+    if (projectAssignmentDetailModalEl) projectAssignmentDetailModal = new bootstrap.Modal(projectAssignmentDetailModalEl);
+
     // New Modals (Teacher)
     const teamModalEl = document.getElementById('teamModal');
     if (teamModalEl) teamModal = new bootstrap.Modal(teamModalEl);
@@ -141,6 +148,7 @@ async function loadExtendedInfo() {
             // Populate Additional Lists
             displayTeam();
             displayResources();
+            displayPildoras();
 
             // Populate Evaluation
             const defaultEvaluation = `Evaluación del Proyecto
@@ -209,6 +217,92 @@ function displayResources() {
         `;
         tbody.appendChild(tr);
     });
+}
+
+function displayPildoras() {
+    const tbody = document.getElementById('pildoras-list-body');
+    if (!tbody) return;
+
+    const pildoras = Array.isArray(extendedInfoData.pildoras) ? extendedInfoData.pildoras : [];
+    extendedInfoData.pildoras = pildoras;
+
+    const students = window.currentStudents || [];
+
+    if (pildoras.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No píldoras configuradas todavía.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+
+    pildoras.forEach((p, index) => {
+        const selectedIds = (p.students || []).map(s => s.id);
+        const options = students.map(s => {
+            const value = s.id || '';
+            const label = `${s.name || ''} ${s.lastname || ''}`.trim() || value;
+            const selected = selectedIds.includes(value) ? 'selected' : '';
+            return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)}</option>`;
+        }).join('');
+
+        const modeValue = p.mode || 'Virtual';
+        const statusValue = p.status || '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <select class="form-select form-select-sm pildora-mode">
+                    <option value="Virtual" ${modeValue === 'Virtual' ? 'selected' : ''}>Virtual</option>
+                    <option value="Presencial" ${modeValue === 'Presencial' ? 'selected' : ''}>Presencial</option>
+                    <option value="Otro" ${modeValue === 'Otro' ? 'selected' : ''}>Otro</option>
+                </select>
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm pildora-date" value="${escapeHtml(p.date || '')}" placeholder="e.g., 02 dic de 2025">
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm pildora-title" value="${escapeHtml(p.title || '')}" placeholder="Título de la píldora">
+            </td>
+            <td>
+                <select class="form-select form-select-sm pildora-students" multiple size="3">
+                    ${options}
+                </select>
+            </td>
+            <td>
+                <select class="form-select form-select-sm pildora-status">
+                    <option value=""></option>
+                    <option value="Presentada" ${statusValue === 'Presentada' ? 'selected' : ''}>Presentada</option>
+                    <option value="No presentada" ${statusValue === 'No presentada' ? 'selected' : ''}>No presentada</option>
+                </select>
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deletePildoraRow(${index})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function addPildoraRow() {
+    if (!Array.isArray(extendedInfoData.pildoras)) {
+        extendedInfoData.pildoras = [];
+    }
+    extendedInfoData.pildoras.push({
+        mode: 'Virtual',
+        date: '',
+        title: '',
+        students: [],
+        status: ''
+    });
+    displayPildoras();
+}
+
+function deletePildoraRow(index) {
+    if (!Array.isArray(extendedInfoData.pildoras)) return;
+    if (index < 0 || index >= extendedInfoData.pildoras.length) return;
+    extendedInfoData.pildoras.splice(index, 1);
+    displayPildoras();
 }
 
 function openTeamModal() {
@@ -423,12 +517,55 @@ async function saveExtendedInfo() {
         notes: document.getElementById('sched-notes').value
     };
 
+    const pildorasRows = document.querySelectorAll('#pildoras-list-body tr');
+    const pildoras = [];
+
+    const students = window.currentStudents || [];
+
+    pildorasRows.forEach(row => {
+        const modeEl = row.querySelector('.pildora-mode');
+        const dateEl = row.querySelector('.pildora-date');
+        const titleEl = row.querySelector('.pildora-title');
+        const statusEl = row.querySelector('.pildora-status');
+        const studentsSelect = row.querySelector('.pildora-students');
+
+        if (!modeEl || !dateEl || !titleEl || !statusEl || !studentsSelect) return;
+
+        const mode = modeEl.value || '';
+        const date = dateEl.value || '';
+        const title = titleEl.value || '';
+        const status = statusEl.value || '';
+
+        const selectedIds = Array.from(studentsSelect.selectedOptions).map(opt => opt.value).filter(Boolean);
+        const studentsForPildora = selectedIds.map(id => {
+            const s = students.find(st => st.id === id);
+            return {
+                id,
+                name: s ? (s.name || '') : '',
+                lastname: s ? (s.lastname || '') : ''
+            };
+        });
+
+        if (!mode && !date && !title && !status && studentsForPildora.length === 0) {
+            return;
+        }
+
+        pildoras.push({
+            mode,
+            date,
+            title,
+            students: studentsForPildora,
+            status
+        });
+    });
+
     // Gather Evaluation
     const evaluation = document.getElementById('evaluation-text').value;
 
     // Update global object
     extendedInfoData.schedule = schedule;
     extendedInfoData.evaluation = evaluation;
+    extendedInfoData.pildoras = pildoras;
 
     console.log('Saving extended info for promotion:', promotionId);
     console.log('Data to save:', extendedInfoData);
@@ -557,6 +694,11 @@ function displayModules(modules) {
         card.className = 'col-md-6 mb-3';
         const coursesText = (module.courses || []).map(c => typeof c === 'string' ? c : (c.name || 'Unnamed Course')).join(', ');
         const projectsText = (module.projects || []).map(p => typeof p === 'string' ? p : (p.name || 'Unnamed Project')).join(', ');
+        const pildorasText = (module.pildoras || []).map(p => {
+            const title = typeof p === 'string' ? p : (p.title || 'Píldora');
+            const type = typeof p === 'object' && p.type === 'couple' ? 'pareja' : 'individual';
+            return `${title} (${type})`;
+        }).join(', ');
 
         card.innerHTML = `
             <div class="card">
@@ -565,6 +707,7 @@ function displayModules(modules) {
                     <p><strong>Duration:</strong> ${module.duration} weeks</p>
                     ${coursesText ? `<p><strong>Courses:</strong> ${escapeHtml(coursesText)}</p>` : ''}
                     ${projectsText ? `<p><strong>Projects:</strong> ${escapeHtml(projectsText)}</p>` : ''}
+                    ${pildorasText ? `<p><strong>Píldoras:</strong> ${escapeHtml(pildorasText)}</p>` : ''}
                 </div>
             </div>
         `;
@@ -915,6 +1058,8 @@ async function editModule(moduleId) {
             // Clear containers
             document.getElementById('courses-container').innerHTML = '';
             document.getElementById('projects-container').innerHTML = '';
+            const pildorasContainer = document.getElementById('pildoras-container');
+            if (pildorasContainer) pildorasContainer.innerHTML = '';
 
             // Populate courses
             if (module.courses && module.courses.length > 0) {
@@ -937,6 +1082,13 @@ async function editModule(moduleId) {
                     const projectDur = isObj ? (Number(project.duration) || 1) : 1;
                     const projectOff = isObj ? (Number(project.startOffset) || 0) : 0;
                     addProjectField(projectName, projectUrl, projectDur, projectOff);
+                });
+            }
+
+            // Populate pildoras
+            if (module.pildoras && module.pildoras.length > 0) {
+                module.pildoras.forEach(p => {
+                    addPildoraField(p.title || '', p.type || 'individual');
                 });
             }
 
@@ -1291,6 +1443,38 @@ function removeProjectField(button) {
     button.closest('.project-item').remove();
 }
 
+// Píldoras UI
+function addPildoraField(title = '', type = 'individual') {
+    const container = document.getElementById('pildoras-container');
+    const item = document.createElement('div');
+    item.className = 'pildora-item mb-3 p-2 border rounded bg-white';
+    item.innerHTML = `
+        <div class="row align-items-end g-2">
+            <div class="col-md-6">
+                <label class="form-label form-label-sm">Título de la Píldora</label>
+                <input type="text" class="form-control form-control-sm pildora-title" placeholder="e.g., Intro a Node.js" value="${escapeHtml(title)}" required />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label form-label-sm">Tipo</label>
+                <select class="form-select form-select-sm pildora-type">
+                    <option value="individual" ${type === 'individual' ? 'selected' : ''}>Individual</option>
+                    <option value="couple" ${type === 'couple' ? 'selected' : ''}>Pareja</option>
+                </select>
+            </div>
+            <div class="col-md-2 text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePildoraField(this)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(item);
+}
+
+function removePildoraField(button) {
+    button.closest('.pildora-item').remove();
+}
+
 function setupForms() {
     // Module form
     document.getElementById('module-form').addEventListener('submit', async (e) => {
@@ -1337,6 +1521,16 @@ function setupForms() {
             }
         });
 
+        // Collect pildoras
+        const pildoras = [];
+        document.querySelectorAll('#pildoras-container .pildora-item').forEach(item => {
+            const title = item.querySelector('.pildora-title')?.value || '';
+            const type = item.querySelector('.pildora-type')?.value || 'individual';
+            if (title) {
+                pildoras.push({ title, type, assignedStudentIds: [] });
+            }
+        });
+
         const token = localStorage.getItem('token');
 
         try {
@@ -1366,7 +1560,8 @@ function setupForms() {
                     name,
                     duration,
                     courses,
-                    projects
+                    projects,
+                    pildoras: pildoras.length > 0 ? pildoras : (promotion.modules[moduleIndex].pildoras || [])
                 };
 
                 const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -1397,7 +1592,7 @@ function setupForms() {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ name, duration, courses, projects })
+                    body: JSON.stringify({ name, duration, courses, projects, pildoras })
                 });
 
                 if (response.ok) {
@@ -1742,6 +1937,9 @@ function displayStudents(students) {
                 <div class="mt-2">
                     <button class="btn btn-sm btn-primary me-2" onclick="editStudent('${student.id}')">
                         <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <button class="btn btn-sm btn-info me-2" onclick="trackStudentProgress('${student.id}', '${student.name} ${student.lastname || ''}')">
+                        <i class="bi bi-graph-up"></i> Track Progress
                     </button>
                     <button class="btn btn-sm btn-danger" onclick="deleteStudent('${student.id}', '${student.email}')">
                         <i class="bi bi-trash"></i> Delete
@@ -2203,6 +2401,534 @@ async function removeCollaborator(teacherId) {
     }
 }
 
+// ==================== STUDENT PROGRESS TRACKING ====================
+
+let currentStudentForProgress = null;
+
+// Track student progress - show modal with student progress data
+async function trackStudentProgress(studentId, studentName) {
+    try {
+        const token = localStorage.getItem('token');
+        
+        // Get student details including progress
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const student = await response.json();
+        console.log('Student progress data:', student);
+        
+        currentStudentForProgress = student;
+        
+        // Populate the progress modal
+        await displayStudentProgress(student, studentName);
+        
+        // Show the modal
+        studentProgressModal.show();
+        
+    } catch (error) {
+        console.error('Error loading student progress:', error);
+        alert(`Error loading student progress: ${error.message}`);
+    }
+}
+
+// Display student progress in the modal
+async function displayStudentProgress(student, studentName) {
+    // Update modal title
+    document.getElementById('progressModalTitle').textContent = `Progress Tracking - ${studentName}`;
+    
+    // Update basic info
+    document.getElementById('progress-student-name').textContent = student.name || 'N/A';
+    document.getElementById('progress-student-lastname').textContent = student.lastname || 'N/A';
+    document.getElementById('progress-student-email').textContent = student.email || 'N/A';
+    
+    // Get promotion data to calculate total modules and sections
+    let totalModules = 0;
+    let totalSections = 0;
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const promotion = await response.json();
+            totalModules = promotion.modules ? promotion.modules.length : 0;
+            totalSections = promotion.sections ? promotion.sections.length : 0;
+        }
+    } catch (error) {
+        console.error('Error loading promotion data:', error);
+    }
+    
+    // Update progress info with calculations
+    const progress = student.progress || {};
+    const modulesCompleted = progress.modulesCompleted || 0;
+    const modulesViewedCount = (progress.modulesViewed || []).length;
+    const sectionsCompletedCount = (progress.sectionsCompleted || []).length;
+    
+    // Calculate percentages
+    const moduleCompletionPercentage = totalModules > 0 ? Math.round((modulesCompleted / totalModules) * 100) : 0;
+    const moduleViewedPercentage = totalModules > 0 ? Math.round((modulesViewedCount / totalModules) * 100) : 0;
+    const sectionCompletionPercentage = totalSections > 0 ? Math.round((sectionsCompletedCount / totalSections) * 100) : 0;
+    
+    // Display modules completed with percentage
+    document.getElementById('progress-modules-completed').innerHTML = `
+        ${modulesCompleted}<span class="fs-6 text-muted">/${totalModules}</span>
+        <small class="d-block text-muted">${moduleCompletionPercentage}%</small>
+    `;
+    
+    // Display modules viewed with percentage
+    document.getElementById('progress-modules-viewed-count').innerHTML = `
+        ${modulesViewedCount}<span class="fs-6 text-muted">/${totalModules}</span>
+        <small class="d-block text-muted">${moduleViewedPercentage}%</small>
+    `;
+    
+    // Display sections completed with percentage
+    document.getElementById('progress-sections-completed-count').innerHTML = `
+        ${sectionsCompletedCount}<span class="fs-6 text-muted">/${totalSections}</span>
+        <small class="d-block text-muted">${sectionCompletionPercentage}%</small>
+    `;
+    
+    // Update notes
+    document.getElementById('progress-student-notes').value = student.notes || '';
+    
+    // Display modules viewed
+    const modulesViewedContainer = document.getElementById('progress-modules-viewed');
+    const modulesViewed = progress.modulesViewed || [];
+    if (modulesViewed.length === 0) {
+        modulesViewedContainer.innerHTML = '<p class="text-muted mb-0">No modules viewed yet</p>';
+    } else {
+        modulesViewedContainer.innerHTML = modulesViewed.map(moduleId => 
+            `<span class="badge bg-primary me-1 mb-1">${escapeHtml(moduleId)}</span>`
+        ).join('');
+    }
+    
+    // Display sections completed
+    const sectionsCompletedContainer = document.getElementById('progress-sections-completed');
+    const sectionsCompleted = progress.sectionsCompleted || [];
+    if (sectionsCompleted.length === 0) {
+        sectionsCompletedContainer.innerHTML = '<p class="text-muted mb-0">No sections completed yet</p>';
+    } else {
+        sectionsCompletedContainer.innerHTML = sectionsCompleted.map(sectionId => 
+            `<span class="badge bg-success me-1 mb-1">${escapeHtml(sectionId)}</span>`
+        ).join('');
+    }
+    
+    // Display last accessed if available
+    const lastAccessed = progress.lastAccessed;
+    const lastAccessedElement = document.getElementById('progress-last-accessed');
+    if (lastAccessed) {
+        const date = new Date(lastAccessed);
+        lastAccessedElement.textContent = date.toLocaleString();
+    } else {
+        lastAccessedElement.textContent = 'Never';
+    }
+
+    // Render project assignments
+    renderStudentProjects(student);
+}
+
+// Save student notes
+async function saveStudentNotes() {
+    if (!currentStudentForProgress) {
+        alert('No student selected');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const notes = document.getElementById('progress-student-notes').value;
+        
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}/notes`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ notes })
+        });
+        
+        if (response.ok) {
+            alert('Notes saved successfully!');
+            // Update the current student data
+            currentStudentForProgress.notes = notes;
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to save notes');
+        }
+        
+    } catch (error) {
+        console.error('Error saving notes:', error);
+        alert(`Error saving notes: ${error.message}`);
+    }
+}
+
+// Render student's project assignments with controls
+function renderStudentProjects(student) {
+    const container = document.getElementById('progress-student-projects');
+    const assignments = student.projectsAssignments || [];
+    if (!container) return;
+
+    if (assignments.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">No project assignments yet</p>';
+        return;
+    }
+
+    const modulesById = {};
+    const promotion = window.currentPromotion || {};
+    (promotion.modules || []).forEach(m => { modulesById[m.id] = m; });
+
+    const rows = assignments.map(a => {
+        const moduleName = modulesById[a.moduleId]?.name || a.moduleId;
+        return `
+            <div class="row align-items-center py-2 border-bottom">
+                <div class="col-md-4">
+                    <strong>${escapeHtml(a.projectName)}</strong>
+                    <div class="text-muted small">Módulo: ${escapeHtml(moduleName)}</div>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm" 
+                           value="${escapeHtml(a.groupName || '')}" 
+                           data-assignment-id="${escapeHtml(a.id)}" 
+                           onblur="updateProjectGroup('${escapeHtml(student.id)}', '${escapeHtml(a.id)}', this.value)" 
+                           placeholder="Group name" />
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="chk-${escapeHtml(a.id)}" ${a.done ? 'checked' : ''} 
+                               onchange="updateProjectDone('${escapeHtml(student.id)}', '${escapeHtml(a.id)}', this.checked)" />
+                        <label class="form-check-label" for="chk-${escapeHtml(a.id)}">Done</label>
+                    </div>
+                </div>
+                <div class="col-md-2 text-end">
+                    <span class="badge bg-secondary mb-1">Teammates: ${(a.teammates || []).length}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-block mt-1" onclick="openProjectAssignmentDetail('${escapeHtml(a.id)}')">
+                        View
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    container.innerHTML = rows;
+}
+
+let currentProjectAssignmentDetail = null;
+
+function openProjectAssignmentDetail(assignmentId) {
+    if (!currentStudentForProgress) return;
+    const assignments = currentStudentForProgress.projectsAssignments || [];
+    const assignment = assignments.find(a => a.id === assignmentId);
+    if (!assignment) return;
+
+    currentProjectAssignmentDetail = assignment;
+
+    const promotion = window.currentPromotion || {};
+    const modules = promotion.modules || [];
+    const moduleObj = modules.find(m => m.id === assignment.moduleId);
+
+    const nameEl = document.getElementById('projectAssignment-detail-name');
+    const moduleEl = document.getElementById('projectAssignment-detail-module');
+    const groupInput = document.getElementById('projectAssignment-detail-group');
+    const doneCheckbox = document.getElementById('projectAssignment-detail-done');
+    const teammatesList = document.getElementById('projectAssignment-detail-teammates');
+
+    if (nameEl) nameEl.textContent = assignment.projectName || '';
+    if (moduleEl) moduleEl.textContent = moduleObj ? moduleObj.name : assignment.moduleId;
+    if (groupInput) groupInput.value = assignment.groupName || '';
+    if (doneCheckbox) doneCheckbox.checked = !!assignment.done;
+
+    if (teammatesList) {
+        teammatesList.innerHTML = '';
+        const students = window.currentStudents || [];
+        const teammates = assignment.teammates || [];
+        teammates.forEach(id => {
+            const li = document.createElement('li');
+            const student = students.find(s => s.id === id);
+            const label = student ? `${student.name || ''} ${student.lastname || ''}`.trim() || id : id;
+            li.textContent = label;
+            teammatesList.appendChild(li);
+        });
+        if (teammates.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = 'No teammates';
+            teammatesList.appendChild(li);
+        }
+    }
+
+    if (projectAssignmentDetailModal) {
+        projectAssignmentDetailModal.show();
+    }
+}
+
+async function saveProjectAssignmentDetail() {
+    if (!currentStudentForProgress || !currentProjectAssignmentDetail) return;
+
+    const groupInput = document.getElementById('projectAssignment-detail-group');
+    const doneCheckbox = document.getElementById('projectAssignment-detail-done');
+
+    const groupName = groupInput ? groupInput.value : '';
+    const done = doneCheckbox ? doneCheckbox.checked : false;
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}/projects/${currentProjectAssignmentDetail.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ groupName, done })
+        });
+
+        if (!response.ok) {
+            let errorMessage = `Failed to update assignment (HTTP ${response.status})`;
+            try {
+                const text = await response.text();
+                try {
+                    const errJson = JSON.parse(text);
+                    errorMessage = errJson.error || errorMessage;
+                } catch {
+                    if (text) errorMessage = text;
+                }
+            } catch {
+            }
+            throw new Error(errorMessage);
+        }
+
+        const updated = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (updated.ok) {
+            currentStudentForProgress = await updated.json();
+            renderStudentProjects(currentStudentForProgress);
+        }
+
+        if (projectAssignmentDetailModal) {
+            projectAssignmentDetailModal.hide();
+        }
+    } catch (e) {
+        alert(`Error updating assignment: ${e.message}`);
+    }
+}
+// Update assignment: done toggle
+async function updateProjectDone(studentId, assignmentId, done) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}/projects/${assignmentId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ done })
+        });
+        if (!response.ok) throw new Error('Failed to update assignment');
+    } catch (e) {
+        alert(`Error updating assignment: ${e.message}`);
+    }
+}
+
+// Update assignment: group name edit
+async function updateProjectGroup(studentId, assignmentId, groupName) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}/projects/${assignmentId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ groupName })
+        });
+        if (!response.ok) throw new Error('Failed to update assignment');
+    } catch (e) {
+        alert(`Error updating assignment: ${e.message}`);
+    }
+}
+
+// Assign project modal handling
+let assignProjectModal;
+function openAssignProjectModal() {
+    const el = document.getElementById('assignProjectModal');
+    assignProjectModal = assignProjectModal || (el ? new bootstrap.Modal(el) : null);
+    if (!assignProjectModal) return;
+
+    // Populate module select
+    const moduleSelect = document.getElementById('assign-module-select');
+    const projectSelect = document.getElementById('assign-project-select');
+    moduleSelect.innerHTML = '';
+    projectSelect.innerHTML = '';
+    const promotion = window.currentPromotion || {};
+    (promotion.modules || []).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name;
+        moduleSelect.appendChild(opt);
+    });
+    // Populate projects for first module by default
+    populateProjectSelect(moduleSelect.value);
+
+    // Change handler
+    moduleSelect.onchange = () => populateProjectSelect(moduleSelect.value);
+
+    // Populate teammates (checkbox list, scrollable)
+    const teammatesList = document.getElementById('assign-teammates-list');
+    teammatesList.innerHTML = '';
+    const currentId = currentStudentForProgress?.id;
+    (window.currentStudents || []).forEach(s => {
+        if (s.id === currentId) return;
+        const div = document.createElement('div');
+        div.className = 'form-check';
+        div.innerHTML = `
+            <input class="form-check-input" type="checkbox" value="${escapeHtml(s.id)}" id="tm-${escapeHtml(s.id)}">
+            <label class="form-check-label" for="tm-${escapeHtml(s.id)}">${escapeHtml((s.name || '') + ' ' + (s.lastname || ''))}</label>
+        `;
+        teammatesList.appendChild(div);
+    });
+
+    // Reset fields
+    document.getElementById('assign-group-name').value = '';
+    document.getElementById('assign-mark-done').checked = false;
+
+    assignProjectModal.show();
+}
+
+function populateProjectSelect(moduleId) {
+    const projectSelect = document.getElementById('assign-project-select');
+    projectSelect.innerHTML = '';
+    const promotion = window.currentPromotion || {};
+    const mod = (promotion.modules || []).find(m => m.id === moduleId);
+    (mod?.projects || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name || '';
+        opt.textContent = p.name || '';
+        projectSelect.appendChild(opt);
+    });
+}
+
+// Assign project form submit
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('assign-project-form');
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const moduleId = document.getElementById('assign-module-select').value;
+                const projectName = document.getElementById('assign-project-select').value;
+                const groupName = document.getElementById('assign-group-name').value;
+                const done = document.getElementById('assign-mark-done').checked;
+                const teammateIds = Array.from(document.querySelectorAll('#assign-teammates-list .form-check-input:checked')).map(el => el.value);
+                const studentIds = [currentStudentForProgress.id, ...teammateIds];
+
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/api/promotions/${promotionId}/projects/assign`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ moduleId, projectName, groupName, studentIds, done })
+                });
+                if (!response.ok) {
+                    let errorMessage = `Failed to assign project (HTTP ${response.status})`;
+                    try {
+                        const text = await response.text();
+                        try {
+                            const errJson = JSON.parse(text);
+                            errorMessage = errJson.error || errorMessage;
+                        } catch {
+                            if (text && text.trim().startsWith('<!DOCTYPE')) {
+                                errorMessage = 'Backend returned HTML (likely 404). Please ensure the server is restarted with the latest code.';
+                            } else if (text) {
+                                errorMessage = text;
+                            }
+                        }
+                    } catch {
+                        // ignore parse errors
+                    }
+                    throw new Error(errorMessage);
+                }
+                // Refresh student data
+                const updated = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (updated.ok) {
+                    currentStudentForProgress = await updated.json();
+                    renderStudentProjects(currentStudentForProgress);
+                }
+                assignProjectModal.hide();
+                alert('Project assigned successfully');
+            } catch (err) {
+                alert(`Error assigning project: ${err.message}`);
+            }
+        });
+    }
+});
+// Update student progress (modules completed, etc.)
+async function updateStudentProgress() {
+    if (!currentStudentForProgress) {
+        alert('No student selected');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const modulesCompleted = parseInt(document.getElementById('update-modules-completed').value) || 0;
+        
+        console.log('=== FRONTEND UPDATE PROGRESS ===');
+        console.log('Student ID:', currentStudentForProgress.id);
+        console.log('Modules completed from input:', document.getElementById('update-modules-completed').value);
+        console.log('Parsed modules completed:', modulesCompleted);
+        console.log('Request URL:', `${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}/progress`);
+        
+        const requestBody = { 
+            modulesCompleted,
+            lastAccessed: new Date().toISOString()
+        };
+        
+        console.log('Request body:', requestBody);
+        
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${currentStudentForProgress.id}/progress`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        if (response.ok) {
+            const updatedStudent = await response.json();
+            
+            console.log('Updated student response:', updatedStudent);
+            
+            // Update the current student data with the response
+            currentStudentForProgress = updatedStudent;
+            
+            alert('Progress updated successfully!');
+            
+            // Reload the progress data to show updated metrics
+            await displayStudentProgress(updatedStudent, `${updatedStudent.name} ${updatedStudent.lastname || ''}`);
+        } else {
+            const errorData = await response.json();
+            console.error('Error response:', errorData);
+            throw new Error(errorData.error || 'Failed to update progress');
+        }
+        
+    } catch (error) {
+        console.error('Error updating progress:', error);
+        alert(`Error updating progress: ${error.message}`);
+    }
+}
+
 // ==================== STUDENT MULTI-SELECT FUNCTIONALITY ====================
 
 // Toggle all students selection
@@ -2226,29 +2952,38 @@ window.updateSelectionState = function() {
     
     // Update select all checkbox state
     if (selectedCount === 0) {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = false;
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
     } else if (selectedCount === totalCount) {
-        selectAllCheckbox.checked = true;
-        selectAllCheckbox.indeterminate = false;
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        }
     } else {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = true;
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
     }
     
     // Update selected count display
-    document.getElementById('selected-count').textContent = `${selectedCount} selected`;
+    const selectedCountElement = document.getElementById('selected-count');
+    if (selectedCountElement) {
+        selectedCountElement.textContent = `${selectedCount} selected`;
+    }
     
     // Show/hide bulk action buttons
     const exportSelectedBtn = document.getElementById('export-selected-btn');
     const deleteSelectedBtn = document.getElementById('delete-selected-btn');
     
     if (selectedCount > 0) {
-        exportSelectedBtn.style.display = 'inline-block';
-        deleteSelectedBtn.style.display = 'inline-block';
+        if (exportSelectedBtn) exportSelectedBtn.style.display = 'inline-block';
+        if (deleteSelectedBtn) deleteSelectedBtn.style.display = 'inline-block';
     } else {
-        exportSelectedBtn.style.display = 'none';
-        deleteSelectedBtn.style.display = 'none';
+        if (exportSelectedBtn) exportSelectedBtn.style.display = 'none';
+        if (deleteSelectedBtn) deleteSelectedBtn.style.display = 'none';
     }
 };
 
@@ -2275,7 +3010,6 @@ window.exportSelectedStudentsCsv = function() {
 };
 
 // Delete selected students
-
 window.deleteSelectedStudents = async function() {
     const selectedStudents = getSelectedStudents();
     
@@ -2303,11 +3037,9 @@ window.deleteSelectedStudents = async function() {
                 successCount++;
             } else {
                 errorCount++;
-                console.error(`Failed to delete student ${student.email}`);
             }
         } catch (error) {
             errorCount++;
-            console.error(`Error deleting student ${student.email}:`, error);
         }
     }
     
@@ -2321,42 +3053,3 @@ window.deleteSelectedStudents = async function() {
     // Reload students list
     loadStudents();
 };
-
-// Helper function to export students to CSV
-function exportStudentsToCSV(students, filename) {
-    const rows = [];
-    // Header - removed Entry Type and Last Accessed
-    rows.push(['Name', 'Last Name', 'Email', 'Age', 'Nationality', 'Profession', 'Address'].join(','));
-
-    students.forEach(student => {
-        const name = (student.name || '').replace(/"/g, '""');
-        const lastname = (student.lastname || '').replace(/"/g, '""');
-        const email = (student.email || '').replace(/"/g, '""');
-        const age = student.age || '';
-        const nationality = (student.nationality || '').replace(/"/g, '""');
-        const profession = (student.profession || '').replace(/"/g, '""');
-        const address = (student.address || '').replace(/"/g, '""');
-
-        rows.push([
-            `"${name}"`,
-            `"${lastname}"`,
-            `"${email}"`,
-            `"${age}"`,
-            `"${nationality}"`,
-            `"${profession}"`,
-            `"${address}"`
-        ].join(','));
-    });
-
-    const csvContent = rows.join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-}

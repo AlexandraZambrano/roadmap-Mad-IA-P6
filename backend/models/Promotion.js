@@ -16,6 +16,12 @@ const ModuleSchema = new mongoose.Schema({
         duration: { type: Number, default: 1 },
         startOffset: { type: Number, default: 0 }
     }],
+    pildoras: [{
+        id: { type: String, required: true },
+        title: { type: String, required: true },
+        type: { type: String, enum: ['individual', 'couple'], default: 'individual' },
+        assignedStudentIds: [{ type: String }]
+    }],
     createdAt: { type: Date, default: Date.now }
 });
 

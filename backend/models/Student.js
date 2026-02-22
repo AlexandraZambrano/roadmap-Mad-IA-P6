@@ -17,6 +17,15 @@ const StudentSchema = new mongoose.Schema({
         sectionsCompleted: [{ type: String }], // IDs of sections completed
         lastAccessed: { type: Date }
     },
+    projectsAssignments: [{
+        id: { type: String, required: true },
+        moduleId: { type: String, required: true },
+        projectName: { type: String, required: true },
+        groupName: { type: String, default: '' },
+        teammates: [{ type: String }], // other student ids in the group
+        done: { type: Boolean, default: false },
+        assignedAt: { type: Date, default: Date.now }
+    }],
     isManuallyAdded: { type: Boolean, default: true }, // Changed default to true since we removed auto-tracking
     accessLog: [{
         accessedAt: { type: Date, default: Date.now },
