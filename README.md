@@ -1,4 +1,4 @@
-# 🚀 Roadmap Manager App
+# 👋 Roadmap Manager App
 
 Este repositorio contiene una **aplicación web diseñada para generar y gestionar de forma automatizada roadmaps formativos**, optimizando los procesos académicos y de coordinación.
 
@@ -12,18 +12,18 @@ La aplicación es:
 
 ## 💡 Origen de la iniciativa
 
-Este proyecto surge como una **idea impulsada por Alexandra Zambrano**, con el objetivo de mejorar la organización, planificación y seguimiento de la experiencia formativa.
+Este proyecto surge como una **idea impulsada por [Alexandra Zambrano](https://github.com/AlexandraZambrano)**, con el objetivo de mejorar la organización, planificación y seguimiento de la experiencia formativa.
 
 ---
 
-## 🎯 Propósito de la aplicación
+## 🧡Propósito de la aplicación
 
 La app permite:
 
-- 🗺️ **Creación automatizada de roadmaps**
-- 📚 **Gestión de píldoras formativas**
-- ✅ **Control de asistencias**
-- 🧩 **Centralización de información académica**
+-  **Creación automatizada de roadmaps**
+-  **Gestión de píldoras formativas**
+-  **Control de asistencias**
+-  **Centralización de información académica**
 
 Facilitando el trabajo de:
 
@@ -33,7 +33,7 @@ Facilitando el trabajo de:
 
 ---
 
-## 🧩 Reto del proyecto
+##  Reto del proyecto
 
 El principal desafío de esta iniciativa es:
 
@@ -48,7 +48,7 @@ Este enfoque busca:
 
 ---
 
-## 🛠️ Stack tecnológico
+##  Stack tecnológico
 
 La aplicación está construida con:
 
@@ -58,17 +58,8 @@ La aplicación está construida con:
 
 ---
 
-## ☁️ Producción
 
-Preparada para:
-
-- 🚀 Subida a producción  
-- 🌐 Despliegue en servidor  
-- 🔄 Evolución continua  
-
----
-
-## 🔧 Funcionalidades principales
+## Funcionalidades principales
 
 - Generación dinámica de roadmaps  
 - Gestión de contenidos formativos  
@@ -78,7 +69,7 @@ Preparada para:
 
 ---
 
-## 📌 Estado del proyecto
+##  Estado del proyecto
 
 Aplicación en desarrollo y mejora continua.
 
@@ -92,4 +83,4 @@ Como miembro del equipo puedes:
 ---
 
 ✨ Desarrollado para optimizar la gestión formativa  
-💡 Idea original impulsada por Alexandra Zambrano  
+🧡 Idea impulsada por Alexandra Zambrano 🧡 
