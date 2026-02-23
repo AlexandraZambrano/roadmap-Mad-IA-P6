@@ -20,6 +20,7 @@ import QuickLink from './backend/models/QuickLink.js';
 import Section from './backend/models/Section.js';
 import ExtendedInfo from './backend/models/ExtendedInfo.js';
 import Calendar from './backend/models/Calendar.js';
+import Attendance from './backend/models/Attendance.js';
 import BootcampTemplate from './backend/models/BootcampTemplate.js';
 import { sendPasswordEmail } from './backend/utils/email.js';
 
@@ -45,16 +46,16 @@ app.use(bodyParser.json());
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: (req, file, cb) => {
     // Accept only Excel files
-    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-        file.mimetype === 'application/vnd.ms-excel' ||
-        file.originalname.match(/\.(xlsx|xls)$/)) {
+    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.ms-excel' ||
+      file.originalname.match(/\.(xlsx|xls)$/)) {
       cb(null, true);
     } else {
       cb(new Error('Only Excel files are allowed!'), false);
@@ -659,10 +660,10 @@ app.get('/api/promotions/:promotionId/students', verifyToken, async (req, res) =
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
-    
+
     const students = await Student.find({ promotionId: req.params.promotionId });
     console.log('Found students:', students.map(s => ({ customId: s.id, mongoId: s._id, name: s.name, lastname: s.lastname, email: s.email })));
-    
+
     // Normalize the response to ensure consistent ID field
     const normalizedStudents = students.map(student => ({
       id: student.id || student._id.toString(), // Prefer custom id, fallback to string version of _id
@@ -676,13 +677,60 @@ app.get('/api/promotions/:promotionId/students', verifyToken, async (req, res) =
       address: student.address,
       promotionId: student.promotionId
     }));
-    
+
     res.json(normalizedStudents);
   } catch (error) {
     console.error('Error fetching students:', error);
     res.status(500).json({ error: error.message });
   }
-});// Add student manually (teacher adds student for tracking)
+});
+
+// Get attendance for a specific month
+app.get('/api/promotions/:promotionId/attendance', verifyToken, async (req, res) => {
+  try {
+    const { month } = req.query; // Format: YYYY-MM
+    console.log('Attendance request - promotionId:', req.params.promotionId, 'month:', month);
+    if (!month) return res.status(400).json({ error: 'Month is required (YYYY-MM)' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    console.log('Promotion found:', promotion ? promotion.id : 'NOT FOUND');
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    // Fetch all attendance for this promotion in the given month using regex
+    const attendance = await Attendance.find({
+      promotionId: req.params.promotionId,
+      date: { $regex: new RegExp(`^${month}-`) }
+    });
+
+    res.json(attendance);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update or create attendance record
+app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res) => {
+  try {
+    const { studentId, date, status } = req.body;
+    if (!studentId || !date) return res.status(400).json({ error: 'studentId and date are required' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const attendance = await Attendance.findOneAndUpdate(
+      { promotionId: req.params.promotionId, studentId, date },
+      { status },
+      { upsert: true, new: true }
+    );
+
+    res.json(attendance);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// Add student manually (teacher adds student for tracking)
 app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) => {
   try {
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
@@ -690,7 +738,7 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     const { name, lastname, email, age, nationality, profession, address } = req.body;
-    
+
     if (!email || !name || !lastname) return res.status(400).json({ error: 'Email, name, and lastname are required' });
 
     // Check if student already exists
@@ -700,7 +748,7 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
     const student = await Student.create({
       id: uuidv4(),
       name,
-      lastname, 
+      lastname,
       email,
       age: age || null,
       nationality: nationality || '',
@@ -711,23 +759,24 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
       notes: ''
     });
 
-    res.status(201).json({ 
-      message: 'Student added successfully', 
-      student: { 
-        id: student.id, 
-        name: student.name, 
+    res.status(201).json({
+      message: 'Student added successfully',
+      student: {
+        id: student.id,
+        name: student.name,
         lastname: student.lastname,
         email: student.email,
         age: student.age,
         nationality: student.nationality,
         profession: student.profession,
         address: student.address
-      } 
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Update student information
 app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (req, res) => {
@@ -738,7 +787,7 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
     console.log('Update student request - studentId:', req.params.studentId);
     console.log('Update student request - promotionId:', req.params.promotionId);
     console.log('Request body:', req.body);
-    
+
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
     if (!promotion) {
       console.log('Promotion not found with ID:', req.params.promotionId);
@@ -751,12 +800,12 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
 
     const { name, lastname, email, age, nationality, profession, address } = req.body;
     console.log('Updating student with data:', { name, lastname, email, age, nationality, profession, address });
-    
+
     if (!email || !name || !lastname) return res.status(400).json({ error: 'Email, name, and lastname are required' });
 
     // First, let's find the student to see what we're working with
     let existingStudent = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
-    
+
     if (!existingStudent) {
       // Try by MongoDB _id
       try {
@@ -765,28 +814,28 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
         console.log('Invalid MongoDB ObjectId format:', req.params.studentId);
       }
     }
-    
+
     if (!existingStudent) {
       console.log('Student not found with ID:', req.params.studentId);
       console.log('Available students in promotion:', await Student.find({ promotionId: req.params.promotionId }, 'id _id email name lastname'));
       return res.status(404).json({ error: 'Student not found' });
     }
-    
-    console.log('Found existing student:', { 
-      customId: existingStudent.id, 
-      mongoId: existingStudent._id, 
-      email: existingStudent.email 
+
+    console.log('Found existing student:', {
+      customId: existingStudent.id,
+      mongoId: existingStudent._id,
+      email: existingStudent.email
     });
 
     // Check if email is being changed and if it conflicts with another student
-    const emailConflict = await Student.findOne({ 
-      email, 
-      promotionId: req.params.promotionId, 
+    const emailConflict = await Student.findOne({
+      email,
+      promotionId: req.params.promotionId,
       $and: [
         { _id: { $ne: existingStudent._id } }
       ]
     });
-    
+
     if (emailConflict) {
       return res.status(400).json({ error: 'Email already exists for another student in this promotion' });
     }
@@ -808,8 +857,8 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
 
     if (!student) return res.status(404).json({ error: 'Failed to update student' });
 
-    res.json({ 
-      message: 'Student updated successfully', 
+    res.json({
+      message: 'Student updated successfully',
       student: {
         id: student.id || student._id,
         name: student.name,
@@ -898,7 +947,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/progress', verifyToken
     console.log('Student ID:', req.params.studentId);
     console.log('Promotion ID:', req.params.promotionId);
     console.log('Request body:', req.body);
-    
+
     const { modulesViewed, sectionsCompleted, modulesCompleted, lastAccessed } = req.body;
 
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
@@ -931,12 +980,12 @@ app.put('/api/promotions/:promotionId/students/:studentId/progress', verifyToken
 
     // Update last accessed time
     student.progress.lastAccessed = lastAccessed ? new Date(lastAccessed) : new Date();
-    
+
     console.log('Student after update before save:', {
       id: student.id,
       progress: student.progress
     });
-    
+
     await student.save();
 
     console.log('Student after save:', {
@@ -944,7 +993,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/progress', verifyToken
       progress: student.progress
     });
 
-    res.json({ 
+    res.json({
       id: student.id,
       name: student.name,
       lastname: student.lastname,
@@ -1057,6 +1106,26 @@ app.put('/api/promotions/:promotionId/students/:studentId/projects/:assignmentId
 });
 
 // ==================== PÍLDORAS MANAGEMENT ====================
+// Helper to convert Excel date to JS Date
+function excelDateToJSDate(serial) {
+  if (typeof serial === 'string') return serial; // Already a string format
+  if (!serial || serial <= 0) return null; // Handle 0 or invalid serials
+  const utc_days = Math.floor(serial - 25569);
+  const utc_value = utc_days * 86400;
+  const date_info = new Date(utc_value * 1000);
+
+  const fractional_day = serial - Math.floor(serial) + 0.0000001;
+  let total_seconds = Math.floor(86400 * fractional_day);
+
+  const seconds = total_seconds % 60;
+  total_seconds -= seconds;
+  const minutes = Math.floor(total_seconds / 60) % 60;
+  total_seconds -= minutes * 60;
+  const hours = Math.floor(total_seconds / (60 * 60));
+
+  return new Date(date_info.getFullYear(), date_info.getMonth(), date_info.getDate(), hours, minutes, seconds);
+}
+
 // Upload Excel file for píldoras to a specific module
 app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel', verifyToken, upload.single('excelFile'), async (req, res) => {
   try {
@@ -1075,7 +1144,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(worksheet);
+    const data = xlsx.utils.sheet_to_json(worksheet, { cellDates: true });
 
     if (data.length === 0) {
       return res.status(400).json({ error: 'Excel file is empty' });
@@ -1090,7 +1159,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
     });
 
     const pildoras = [];
-    
+
     for (const row of data) {
       // Handle different column name variations
       const mode = row['Presentación'] || row['Presentacion'] || row['presentación'] || row['presentacion'] || 'Virtual';
@@ -1103,7 +1172,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
       const assignedStudents = [];
       if (studentText && studentText.toLowerCase() !== 'desierta') {
         const studentNames = studentText.split(',').map(name => name.trim().toLowerCase());
-        
+
         for (const name of studentNames) {
           const student = studentMap.get(name);
           if (student) {
@@ -1120,13 +1189,25 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
       let isoDate = '';
       if (dateText) {
         try {
-          const date = new Date(dateText);
-          if (!isNaN(date.getTime())) {
+          // Check if it's a number (Excel serial date)
+          let date;
+          if (typeof dateText === 'number' && dateText < 100000) { // Likely Excel serial date
+            date = excelDateToJSDate(dateText);
+          } else {
+            date = new Date(dateText);
+          }
+
+          if (date && !isNaN(date.getTime())) {
             isoDate = date.toISOString().split('T')[0];
+          } else {
+            isoDate = new Date().toISOString().split('T')[0];
           }
         } catch (e) {
           console.warn('Invalid date format:', dateText);
+          isoDate = new Date().toISOString().split('T')[0];
         }
+      } else {
+        isoDate = new Date().toISOString().split('T')[0];
       }
 
       if (title) { // Only add if title is provided
@@ -1209,7 +1290,7 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(worksheet);
+    const data = xlsx.utils.sheet_to_json(worksheet, { cellDates: true });
 
     if (data.length === 0) {
       return res.status(400).json({ error: 'Excel file is empty' });
@@ -1224,7 +1305,7 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
     });
 
     const pildoras = [];
-    
+
     for (const row of data) {
       // Handle different column name variations
       const mode = row['Presentación'] || row['Presentacion'] || row['presentación'] || row['presentacion'] || 'Virtual';
@@ -1237,7 +1318,7 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
       const assignedStudents = [];
       if (studentText && studentText.toLowerCase() !== 'desierta') {
         const studentNames = studentText.split(',').map(name => name.trim().toLowerCase());
-        
+
         for (const name of studentNames) {
           const student = studentMap.get(name);
           if (student) {
@@ -1254,13 +1335,24 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
       let isoDate = '';
       if (dateText) {
         try {
-          const date = new Date(dateText);
-          if (!isNaN(date.getTime())) {
+          let date;
+          if (typeof dateText === 'number' && dateText < 100000) {
+            date = excelDateToJSDate(dateText);
+          } else {
+            date = new Date(dateText);
+          }
+
+          if (date && !isNaN(date.getTime())) {
             isoDate = date.toISOString().split('T')[0];
+          } else {
+            isoDate = new Date().toISOString().split('T')[0];
           }
         } catch (e) {
           console.warn('Invalid date format:', dateText);
+          isoDate = new Date().toISOString().split('T')[0];
         }
+      } else {
+        isoDate = new Date().toISOString().split('T')[0];
       }
 
       if (title) { // Only add if title is provided
@@ -1325,19 +1417,40 @@ app.get('/api/promotions/:promotionId/modules-pildoras', verifyToken, async (req
       });
     }
 
-    // If modulesPildoras is empty but pildoras exists, migrate data
-    if (!extendedInfo.modulesPildoras || extendedInfo.modulesPildoras.length === 0) {
-      if (extendedInfo.pildoras && extendedInfo.pildoras.length > 0) {
-        // Migrate existing píldoras to first module
-        const firstModule = promotion.modules && promotion.modules.length > 0 ? promotion.modules[0] : null;
-        if (firstModule) {
-          extendedInfo.modulesPildoras = [{
-            moduleId: firstModule.id,
-            moduleName: firstModule.name,
-            pildoras: extendedInfo.pildoras
-          }];
-          await extendedInfo.save();
-        }
+    // Improved Migration: If modulesPildoras is effectively empty but legacy pildoras exists, migrate data
+    const hasAnyModulePildoras = extendedInfo.modulesPildoras &&
+      extendedInfo.modulesPildoras.some(mp => mp.pildoras && mp.pildoras.length > 0);
+
+    if (!hasAnyModulePildoras && extendedInfo.pildoras && extendedInfo.pildoras.length > 0) {
+      console.log('Migrating legacy píldoras to modules for promotion:', req.params.promotionId);
+
+      // Group legacy pildoras by moduleId if present, otherwise put in first module
+      const firstModule = promotion.modules && promotion.modules.length > 0 ? promotion.modules[0] : null;
+
+      if (firstModule) {
+        const modulesMap = new Map();
+        // Initialize map with all current modules
+        promotion.modules.forEach(m => modulesMap.set(m.id, []));
+
+        extendedInfo.pildoras.forEach(p => {
+          const targetModuleId = p.moduleId || firstModule.id;
+          if (modulesMap.has(targetModuleId)) {
+            modulesMap.get(targetModuleId).push(p);
+          } else {
+            modulesMap.get(firstModule.id).push(p);
+          }
+        });
+
+        extendedInfo.modulesPildoras = Array.from(modulesMap.entries()).map(([mId, pList]) => {
+          const m = promotion.modules.find(pm => pm.id === mId);
+          return {
+            moduleId: mId,
+            moduleName: m ? m.name : 'Unknown Module',
+            pildoras: pList
+          };
+        });
+
+        await extendedInfo.save();
       }
     }
 
@@ -1417,9 +1530,18 @@ app.put('/api/promotions/:promotionId/modules/:moduleId/pildoras', verifyToken, 
       status: p.status || ''
     }));
 
+    // Sync flattened píldoras array for backward compatibility
+    const allPildoras = [];
+    extendedInfo.modulesPildoras.forEach(mp => {
+      if (mp.pildoras) {
+        allPildoras.push(...mp.pildoras);
+      }
+    });
+    extendedInfo.pildoras = allPildoras;
+
     await extendedInfo.save();
 
-    res.json({ 
+    res.json({
       message: 'Module píldoras updated successfully',
       modulePildoras: modulePildoras
     });
@@ -1500,17 +1622,17 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
     }
 
     // Support both old and new field names for compatibility
-    const { 
-      name, 
+    const {
+      name,
       lastName, lastname,  // Support both lastName and lastname
-      age, 
-      nationality, 
+      age,
+      nationality,
       profession,          // New field
       address,            // New field
-      paperStatus, 
-      description, 
-      workBackground, 
-      email 
+      paperStatus,
+      description,
+      workBackground,
+      email
     } = req.body;
 
     // Use lastname if provided, otherwise use lastName for backward compatibility
@@ -1518,7 +1640,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
 
     // First try to find by custom id
     let student = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
-    
+
     if (!student) {
       // Try by MongoDB _id
       try {
@@ -1527,7 +1649,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
         // Invalid ObjectId format
       }
     }
-    
+
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
@@ -1550,8 +1672,8 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
       { returnDocument: 'after' }
     );
 
-    res.json({ 
-      message: 'Student profile updated', 
+    res.json({
+      message: 'Student profile updated',
       student: {
         id: updatedStudent.id || updatedStudent._id,
         name: updatedStudent.name,
@@ -1573,14 +1695,14 @@ app.delete('/api/promotions/:promotionId/students/:studentId', verifyToken, asyn
   try {
     console.log('Delete student request - studentId:', req.params.studentId);
     console.log('Delete student request - promotionId:', req.params.promotionId);
-    
+
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     // First, let's find the student to see what we're working with
     let existingStudent = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
-    
+
     if (!existingStudent) {
       // Try by MongoDB _id
       try {
@@ -1589,22 +1711,22 @@ app.delete('/api/promotions/:promotionId/students/:studentId', verifyToken, asyn
         console.log('Invalid MongoDB ObjectId format:', req.params.studentId);
       }
     }
-    
+
     if (!existingStudent) {
       console.log('Student not found for deletion with ID:', req.params.studentId);
       console.log('Available students in promotion:', await Student.find({ promotionId: req.params.promotionId }, 'id _id email name lastname'));
       return res.status(404).json({ error: 'Student not found' });
     }
-    
-    console.log('Found student to delete:', { 
-      customId: existingStudent.id, 
-      mongoId: existingStudent._id, 
-      email: existingStudent.email 
+
+    console.log('Found student to delete:', {
+      customId: existingStudent.id,
+      mongoId: existingStudent._id,
+      email: existingStudent.email
     });
 
     // Delete the student using the _id (which is always available)
     const student = await Student.findByIdAndDelete(existingStudent._id);
-    
+
     if (!student) return res.status(404).json({ error: 'Failed to delete student' });
 
     res.json({ message: 'Student deleted successfully' });
@@ -1882,7 +2004,7 @@ app.get('/api/promotions/:promotionId/extended-info', async (req, res) => {
   try {
     const extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
     if (!extendedInfo) {
-      return res.json({ schedule: {}, team: [], resources: [], evaluation: '', pildoras: [] });
+      return res.json({ schedule: {}, team: [], resources: [], evaluation: '', pildoras: [], pildorasAssignmentOpen: false });
     }
     res.json(extendedInfo);
   } catch (error) {
@@ -1896,8 +2018,15 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const { schedule, team, resources, evaluation, pildoras } = req.body;
+    console.log('UPDATING EXTENDED INFO for promotion:', req.params.promotionId);
+    console.log('ModulesPildoras present in request:', !!req.body.modulesPildoras);
+    if (req.body.modulesPildoras) {
+      console.log('ModulesPildoras count:', req.body.modulesPildoras.length);
+    }
+
+    const { schedule, team, resources, evaluation, pildoras, modulesPildoras, pildorasAssignmentOpen } = req.body;
     const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
+    const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
     const newInfo = await ExtendedInfo.findOneAndUpdate(
       { promotionId: req.params.promotionId },
       {
@@ -1905,11 +2034,76 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
         team: team || [],
         resources: resources || [],
         evaluation: evaluation || '',
-        pildoras: normalizedPildoras
+        pildoras: normalizedPildoras,
+        modulesPildoras: normalizedModulesPildoras,
+        pildorasAssignmentOpen: !!pildorasAssignmentOpen
       },
       { upsert: true, returnDocument: 'after' }
     );
     res.json(newInfo);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== PUBLIC STUDENT ASSIGNMENT ====================
+
+// Public students list (minimal info for dropdowns)
+app.get('/api/promotions/:promotionId/public-students', async (req, res) => {
+  try {
+    const students = await Student.find({ promotionId: req.params.promotionId }, 'id name lastname');
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Public píldora self-assignment
+app.put('/api/promotions/:promotionId/pildoras-self-assign', async (req, res) => {
+  try {
+    const { moduleId, pildoraIndex, studentId, action, isLegacy } = req.body; // action: 'add' or 'remove'
+    if (pildoraIndex === undefined || !studentId) {
+      return res.status(400).json({ error: 'pildoraIndex and studentId are required' });
+    }
+
+    const extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    if (!extendedInfo || !extendedInfo.pildorasAssignmentOpen) {
+      return res.status(403).json({ error: 'Self-assignment is currently closed by the teacher' });
+    }
+
+    const student = await Student.findOne({ id: studentId, promotionId: req.params.promotionId });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    let pildora;
+    if (isLegacy) {
+      if (!extendedInfo.pildoras || !extendedInfo.pildoras[pildoraIndex]) {
+        return res.status(404).json({ error: 'Legacy píldora not found' });
+      }
+      pildora = extendedInfo.pildoras[pildoraIndex];
+    } else {
+      if (!moduleId) return res.status(400).json({ error: 'moduleId is required for module-based píldoras' });
+      const modulePildoras = extendedInfo.modulesPildoras.find(m => m.moduleId === moduleId);
+      if (!modulePildoras || !modulePildoras.pildoras[pildoraIndex]) {
+        return res.status(404).json({ error: 'Píldora not found' });
+      }
+      pildora = modulePildoras.pildoras[pildoraIndex];
+    }
+
+    if (action === 'add') {
+      // Avoid duplicates
+      if (!pildora.students.some(s => s.id === studentId)) {
+        pildora.students.push({
+          id: student.id,
+          name: student.name,
+          lastname: student.lastname
+        });
+      }
+    } else if (action === 'remove') {
+      pildora.students = pildora.students.filter(s => s.id !== studentId);
+    }
+
+    await extendedInfo.save();
+    res.json({ message: 'Assignment updated successfully', pildora });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

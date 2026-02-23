@@ -58,7 +58,8 @@ const ExtendedInfoSchema = new mongoose.Schema({
             }],
             status: String
         }]
-    }]
+    }],
+    pildorasAssignmentOpen: { type: Boolean, default: false }
 }, { timestamps: true });
 
 export default mongoose.model('ExtendedInfo', ExtendedInfoSchema);

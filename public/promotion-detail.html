@@ -12,18 +12,22 @@
         .dropdown-item-custom {
             padding: 0;
         }
+
         .dropdown-item-custom .form-check {
             padding: 0.5rem 1rem;
             margin: 0;
             border-radius: 0;
         }
+
         .dropdown-item-custom .form-check:hover {
             background-color: var(--bs-gray-100);
         }
+
         .dropdown-item-custom .form-check-label {
             width: 100%;
             cursor: pointer;
         }
+
         .pildora-students-dropdown .dropdown-menu {
             width: 100% !important;
         }
@@ -70,6 +74,11 @@
                         <li class="nav-item">
                             <a class="nav-link" href="#students" onclick="switchTab('students')">
                                 <i class="bi bi-people me-2"></i>Students
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#attendance" onclick="switchTab('attendance')">
+                                <i class="bi bi-calendar-check me-2"></i>Attendance
                             </a>
                         </li>
                         <li class="nav-item teacher-only">
@@ -203,11 +212,19 @@
                             <button class="btn btn-outline-secondary" onclick="exportStudentsCsv()">
                                 <i class="bi bi-download me-2"></i>Download All CSV
                             </button>
-                            <button class="btn btn-outline-success" onclick="exportSelectedStudentsCsv()" id="export-selected-btn" style="display:none;">
+                            <button class="btn btn-outline-success" onclick="exportSelectedStudentsCsv()"
+                                id="export-selected-btn" style="display:none;">
                                 <i class="bi bi-download me-2"></i>Download Selected CSV
                             </button>
-                            <button class="btn btn-outline-danger" onclick="deleteSelectedStudents()" id="delete-selected-btn" style="display:none;">
+                            <button class="btn btn-outline-danger" onclick="deleteSelectedStudents()"
+                                id="delete-selected-btn" style="display:none;">
                                 <i class="bi bi-trash me-2"></i>Delete Selected
+                            </button>
+                            <input type="file" id="students-excel-input" accept=".xlsx,.xls" class="d-none"
+                                onchange="importStudentsFromExcel(this)">
+                            <button class="btn btn-outline-success"
+                                onclick="document.getElementById('students-excel-input').click()">
+                                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Import Excel
                             </button>
                             <button class="btn btn-primary" onclick="openStudentModal()">
                                 <i class="bi bi-person-plus me-2"></i>Add Student
@@ -219,17 +236,84 @@
                     <div class="mb-3" id="selection-controls" style="display:none;">
                         <div class="d-flex align-items-center gap-3">
                             <label class="form-check">
-                                <input type="checkbox" class="form-check-input" id="select-all-students" onchange="toggleAllStudents()">
+                                <input type="checkbox" class="form-check-input" id="select-all-students"
+                                    onchange="toggleAllStudents()">
                                 <span class="form-check-label">Select All</span>
                             </label>
                             <span class="text-muted" id="selected-count">0 selected</span>
                         </div>
                     </div>
 
-                    <div id="students-list" class="row">
-                        <!-- Students will be loaded here -->
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="students-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" class="form-check-input" id="select-all-students-header"
+                                            onchange="toggleAllStudents(this)">
+                                    </th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Nationality</th>
+                                    <th>Profession</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="students-list">
+                                <!-- Students will be loaded here -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+
+                <!-- Attendance Tab -->
+                <div id="attendance-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2>Attendance Control</h2>
+                        <div class="d-flex align-items-center gap-3">
+                            <button class="btn btn-outline-primary" onclick="prevAttendanceMonth()">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <h4 class="mb-0 mx-2" id="current-attendance-month-display">February 2026</h4>
+                            <button class="btn btn-outline-primary" onclick="nextAttendanceMonth()">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card mb-4">
+                        <div class="card-body p-0">
+                            <div class="table-responsive attendance-table-wrapper">
+                                <table class="table table-bordered mb-0" id="attendance-table">
+                                    <thead class="table-light">
+                                        <tr id="attendance-header-row">
+                                            <th class="sticky-column bg-light" style="min-width: 250px; z-index: 10;">
+                                                Student</th>
+                                            <!-- Dates will be loaded here -->
+                                        </tr>
+                                    </thead>
+                                    <tbody id="attendance-body">
+                                        <!-- Attendance data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <div class="d-flex flex-wrap gap-4 small text-muted">
+                                <div class="d-flex align-items-center"><span
+                                        class="attendance-dot bg-success me-2"></span> Presente</div>
+                                <div class="d-flex align-items-center"><span
+                                        class="attendance-dot bg-danger me-2"></span> Ausente</div>
+                                <div class="d-flex align-items-center"><span
+                                        class="attendance-dot bg-warning me-2"></span> Con retraso</div>
+                                <div class="d-flex align-items-center"><span
+                                        class="attendance-dot border bg-white me-2"></span> No marcado</div>
+                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i> Click on a cell to change
+                                    status</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
 
                 <!-- Access Settings Tab -->
                 <div id="access-settings-tab" class="section-content hidden">
@@ -454,28 +538,46 @@
                                         <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h5>
                                         <!-- Module Navigation -->
                                         <div class="d-flex align-items-center gap-2" id="pildoras-module-nav">
-                                            <button class="btn btn-sm btn-outline-secondary" id="prev-module-btn" onclick="navigateToPreviousModule()" disabled>
+                                            <button class="btn btn-sm btn-outline-secondary" id="prev-module-btn"
+                                                onclick="navigateToPreviousModule()" disabled>
                                                 <i class="bi bi-chevron-left"></i>
                                             </button>
-                                            <span class="fw-semibold text-primary" id="current-module-name">Módulo I</span>
-                                            <button class="btn btn-sm btn-outline-secondary" id="next-module-btn" onclick="navigateToNextModule()">
+                                            <span class="fw-semibold text-primary" id="current-module-name">Módulo
+                                                I</span>
+                                            <button class="btn btn-sm btn-outline-secondary" id="next-module-btn"
+                                                onclick="navigateToNextModule()">
                                                 <i class="bi bi-chevron-right"></i>
                                             </button>
                                         </div>
                                         <div class="badge bg-info text-dark" id="current-module-stats">
                                             <span id="module-pildoras-count">0</span> píldoras
                                         </div>
+                                        <div class="form-check form-switch ms-3 border-start ps-4"
+                                            style="padding-left: 3.5rem !important;">
+                                            <input class="form-check-input" type="checkbox"
+                                                id="pildoras-assignment-toggle"
+                                                onchange="togglePildorasAssignment(this.checked)">
+                                            <label class="form-check-label fw-semibold"
+                                                for="pildoras-assignment-toggle">
+                                                Self-Assignment Open
+                                            </label>
+                                        </div>
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
-                                        <button class="btn btn-sm btn-outline-primary" type="button" onclick="addPildoraRow()">
+                                        <button class="btn btn-sm btn-outline-primary" type="button"
+                                            onclick="addPildoraRow()">
                                             <i class="bi bi-plus"></i> Add Píldora
                                         </button>
-                                        <input type="file" id="pildoras-csv-input" accept=".csv" class="d-none" onchange="importPildorasFromCsv(this)">
-                                        <button class="btn btn-sm btn-outline-secondary" type="button" onclick="document.getElementById('pildoras-csv-input').click()">
+                                        <input type="file" id="pildoras-csv-input" accept=".csv" class="d-none"
+                                            onchange="importPildorasFromCsv(this)">
+                                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                                            onclick="document.getElementById('pildoras-csv-input').click()">
                                             <i class="bi bi-filetype-csv"></i> Import CSV
                                         </button>
-                                        <input type="file" id="pildoras-excel-input" accept=".xlsx,.xls" class="d-none" onchange="importPildorasFromExcel(this)">
-                                        <button class="btn btn-sm btn-outline-success" type="button" onclick="document.getElementById('pildoras-excel-input').click()">
+                                        <input type="file" id="pildoras-excel-input" accept=".xlsx,.xls" class="d-none"
+                                            onchange="importPildorasFromExcel(this)">
+                                        <button class="btn btn-sm btn-outline-success" type="button"
+                                            onclick="document.getElementById('pildoras-excel-input').click()">
                                             <i class="bi bi-file-earmark-spreadsheet"></i> Import Excel
                                         </button>
                                     </div>
@@ -497,7 +599,8 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                    <small class="text-muted">Use las casillas de Student para asignar uno o varios estudiantes a cada píldora.</small>
+                                    <small class="text-muted">Use las casillas de Student para asignar uno o varios
+                                        estudiantes a cada píldora.</small>
                                 </div>
                             </div>
                         </div>
@@ -759,16 +862,19 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="student-nationality" class="form-label">Nationality</label>
-                                <input type="text" class="form-control" id="student-nationality" placeholder="e.g., Spanish, French, etc." />
+                                <input type="text" class="form-control" id="student-nationality"
+                                    placeholder="e.g., Spanish, French, etc." />
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="student-profession" class="form-label">Current Profession</label>
-                                <input type="text" class="form-control" id="student-profession" placeholder="e.g., Engineer, Designer, etc." />
+                                <input type="text" class="form-control" id="student-profession"
+                                    placeholder="e.g., Engineer, Designer, etc." />
                             </div>
                         </div>
                         <div class="mb-3">
                             <label for="student-address" class="form-label">Address</label>
-                            <textarea class="form-control" id="student-address" rows="2" placeholder="Street, City, Country"></textarea>
+                            <textarea class="form-control" id="student-address" rows="2"
+                                placeholder="Street, City, Country"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -803,7 +909,7 @@
                                     <p><strong>Last Accessed:</strong> <span id="progress-last-accessed">-</span></p>
                                 </div>
                             </div>
-                            
+
                             <!-- Quick Progress Update -->
                             <div class="card">
                                 <div class="card-header">
@@ -811,16 +917,19 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label for="update-modules-completed" class="form-label">Modules Completed</label>
-                                        <input type="number" class="form-control" id="update-modules-completed" min="0" max="20" />
+                                        <label for="update-modules-completed" class="form-label">Modules
+                                            Completed</label>
+                                        <input type="number" class="form-control" id="update-modules-completed" min="0"
+                                            max="20" />
                                     </div>
-                                    <button type="button" class="btn btn-success btn-sm" onclick="updateStudentProgress()">
+                                    <button type="button" class="btn btn-success btn-sm"
+                                        onclick="updateStudentProgress()">
                                         <i class="bi bi-check-circle"></i> Update Progress
                                     </button>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Progress Details -->
                         <div class="col-md-8">
                             <div class="row">
@@ -841,14 +950,15 @@
                                                     <p class="mb-0">Modules Viewed</p>
                                                 </div>
                                                 <div class="col-md-4">
-                                                    <h3 class="text-success" id="progress-sections-completed-count">0</h3>
+                                                    <h3 class="text-success" id="progress-sections-completed-count">0
+                                                    </h3>
                                                     <p class="mb-0">Sections Completed</p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Modules Viewed -->
                                 <div class="col-md-6 mb-3">
                                     <div class="card h-100">
@@ -862,7 +972,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Sections Completed -->
                                 <div class="col-md-6 mb-3">
                                     <div class="card h-100">
@@ -876,19 +986,20 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Student Notes -->
                                 <div class="col-md-12">
                                     <div class="card">
                                         <div class="card-header d-flex justify-content-between align-items-center">
                                             <h6 class="card-title mb-0">Teacher Notes</h6>
-                                            <button type="button" class="btn btn-primary btn-sm" onclick="saveStudentNotes()">
+                                            <button type="button" class="btn btn-primary btn-sm"
+                                                onclick="saveStudentNotes()">
                                                 <i class="bi bi-save"></i> Save Notes
                                             </button>
                                         </div>
                                         <div class="card-body">
-                                            <textarea class="form-control" id="progress-student-notes" rows="4" 
-                                                      placeholder="Add notes about student progress, behavior, or any important observations..."></textarea>
+                                            <textarea class="form-control" id="progress-student-notes" rows="4"
+                                                placeholder="Add notes about student progress, behavior, or any important observations..."></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -898,7 +1009,8 @@
                                     <div class="card">
                                         <div class="card-header d-flex justify-content-between align-items-center">
                                             <h6 class="card-title mb-0">Projects</h6>
-                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openAssignProjectModal()">
+                                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                                onclick="openAssignProjectModal()">
                                                 <i class="bi bi-plus"></i> Assign Project
                                             </button>
                                         </div>
@@ -940,11 +1052,13 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Group Name (optional)</label>
-                            <input type="text" class="form-control" id="assign-group-name" placeholder="e.g., Team Alpha" />
+                            <input type="text" class="form-control" id="assign-group-name"
+                                placeholder="e.g., Team Alpha" />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Teammates (optional)</label>
-                            <div id="assign-teammates-list" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                            <div id="assign-teammates-list" class="border rounded p-2"
+                                style="max-height: 200px; overflow-y: auto;">
                                 <!-- Populated dynamically with checkboxes -->
                             </div>
                             <small class="text-muted d-block">Current student is included automatically</small>
@@ -1146,7 +1260,8 @@
                     <form id="employability-form">
                         <div class="mb-3">
                             <label for="employability-name" class="form-label">Session Name</label>
-                            <input type="text" class="form-control" id="employability-name" placeholder="e.g., CV Preparation" required />
+                            <input type="text" class="form-control" id="employability-name"
+                                placeholder="e.g., CV Preparation" required />
                         </div>
                         <div class="mb-3">
                             <label for="employability-url" class="form-label">URL (Optional)</label>
@@ -1154,11 +1269,13 @@
                         </div>
                         <div class="mb-3">
                             <label for="employability-start-month" class="form-label">Start Month</label>
-                            <input type="number" class="form-control" id="employability-start-month" min="1" value="1" required />
+                            <input type="number" class="form-control" id="employability-start-month" min="1" value="1"
+                                required />
                         </div>
                         <div class="mb-3">
                             <label for="employability-duration" class="form-label">Duration (Months)</label>
-                            <input type="number" class="form-control" id="employability-duration" min="1" value="1" required />
+                            <input type="number" class="form-control" id="employability-duration" min="1" value="1"
+                                required />
                         </div>
                     </form>
                 </div>
