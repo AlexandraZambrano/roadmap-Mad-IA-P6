@@ -9,7 +9,7 @@ const AttendanceSchema = new mongoose.Schema({
         enum: ['Presente', 'Ausente', 'Con retraso', 'Justificado', ''],
         default: ''
     },
-    note: { type: String, default: '' }
+    comment: { type: String, default: '' }
 }, { timestamps: true });
 
 // Ensure unique attendance record per student per day
