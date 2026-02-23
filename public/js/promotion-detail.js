@@ -16,8 +16,14 @@ let extendedInfoData = {
     team: [],
     resources: [],
     evaluation: '',
-    pildoras: []
+    pildoras: [],
+    pildorasAssignmentOpen: false
 };
+
+// Attendance state
+let currentAttendanceMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+let attendanceData = []; // Store attendance records for the current month
+let studentsForAttendance = []; // Local copy of students for rendering current view
 
 // Utility function to escape HTML to prevent XSS
 function escapeHtml(text) {
@@ -29,7 +35,7 @@ function escapeHtml(text) {
         '"': '&quot;',
         "'": '&#039;'
     };
-    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+    return text.toString().replace(/[&<>"']/g, function (m) { return map[m]; });
 }
 
 // Immediate CSS injection for student view (to prevent flicker)
@@ -66,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (previewIframe) {
         const baseUrl = window.location.origin;
         const isGitHubPages = window.location.hostname.includes('github.io');
-        
+
         let previewPath;
         if (isGitHubPages) {
             // GitHub Pages needs the repository name in the path
@@ -78,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const directory = path.substring(0, path.lastIndexOf('/'));
             previewPath = (directory === '/' ? '' : directory) + '/public-promotion.html';
         }
-        
+
         previewIframe.src = `${baseUrl}${previewPath}?id=${promotionId}&preview=1`;
     }
 
@@ -162,7 +168,7 @@ async function loadExtendedInfo() {
             // Populate Additional Lists
             displayTeam();
             displayResources();
-            
+
             // Load modules and display píldoras
             loadModulesPildoras();
 
@@ -194,6 +200,12 @@ Evaluación Global al Final del Bootcamp
 • Valoración de competencias transversales`;
 
             document.getElementById('evaluation-text').value = extendedInfoData.evaluation || defaultEvaluation;
+
+            // Set Píldoras Assignment Toggle
+            const assignmentToggle = document.getElementById('pildoras-assignment-toggle');
+            if (assignmentToggle) {
+                assignmentToggle.checked = !!extendedInfoData.pildorasAssignmentOpen;
+            }
         }
     } catch (error) {
         console.error('Error loading extended info:', error);
@@ -246,10 +258,10 @@ async function loadModulesPildoras() {
         if (response.ok) {
             const data = await response.json();
             promotionModules = data.modules || [];
-            
-            // Initialize modulesPildoras in extendedInfoData if not present
-            if (!extendedInfoData.modulesPildoras) {
-                extendedInfoData.modulesPildoras = data.modulesPildoras || [];
+
+            // Always sync modulesPildoras from this specialized endpoint if it has data
+            if (data.modulesPildoras) {
+                extendedInfoData.modulesPildoras = data.modulesPildoras;
             }
 
             // Ensure all modules have entries
@@ -322,7 +334,15 @@ function displayPildoras() {
         const modeValue = p.mode || 'Virtual';
         const statusValue = p.status || '';
 
+        // Ensure date doesn't default to 1970 or empty if we prefer today
+        const todayStr = new Date().toISOString().split('T')[0];
+        let dateValue = p.date || '';
+        if (!dateValue || dateValue === '1970-01-01') {
+            dateValue = todayStr;
+        }
+
         const tr = document.createElement('tr');
+        tr.dataset.index = index;
         tr.innerHTML = `
             <td>
                 <select class="form-select form-select-sm pildora-mode pildora-mode-${modeValue.toLowerCase().replace(' ', '-')}">
@@ -332,7 +352,7 @@ function displayPildoras() {
                 </select>
             </td>
             <td>
-                <input type="date" class="form-control form-control-sm pildora-date" value="${escapeHtml(p.date || '')}">
+                <input type="date" class="form-control form-control-sm pildora-date" value="${escapeHtml(dateValue)}">
             </td>
             <td>
                 <input type="text" class="form-control form-control-sm pildora-title" value="${escapeHtml(p.title || '')}" placeholder="Título de la píldora">
@@ -340,21 +360,21 @@ function displayPildoras() {
             <td>
                 <div class="dropdown pildora-students-dropdown">
                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        ${selectedIds.length > 0 
-                            ? (selectedIds.length === 1 
-                                ? students.find(s => s.id === selectedIds[0])?.name + ' ' + (students.find(s => s.id === selectedIds[0])?.lastname || '')
-                                : `${selectedIds.length} estudiantes seleccionados`)
-                            : 'Seleccionar estudiantes'}
+                        ${selectedIds.length > 0
+                ? (selectedIds.length === 1
+                    ? students.find(s => s.id === selectedIds[0])?.name + ' ' + (students.find(s => s.id === selectedIds[0])?.lastname || '')
+                    : `${selectedIds.length} estudiantes seleccionados`)
+                : 'Seleccionar estudiantes'}
                     </button>
                     <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
                         ${students.length === 0
-                            ? '<li><span class="dropdown-item-text text-muted">No students available</span></li>'
-                            : students.map(s => {
-                                const value = s.id || '';
-                                const label = `${s.name || ''} ${s.lastname || ''}`.trim() || value;
-                                const checked = selectedIds.includes(value) ? 'checked' : '';
-                                const inputId = `pild-${index}-${escapeHtml(value)}`;
-                                return `
+                ? '<li><span class="dropdown-item-text text-muted">No students available</span></li>'
+                : students.map(s => {
+                    const value = s.id || '';
+                    const label = `${s.name || ''} ${s.lastname || ''}`.trim() || value;
+                    const checked = selectedIds.includes(value) ? 'checked' : '';
+                    const inputId = `pild-${index}-${escapeHtml(value)}`;
+                    return `
                                     <li class="dropdown-item-custom">
                                         <div class="form-check">
                                             <input class="form-check-input pildora-student-checkbox" 
@@ -367,8 +387,8 @@ function displayPildoras() {
                                         </div>
                                     </li>
                                 `;
-                            }).join('')
-                        }
+                }).join('')
+            }
                     </ul>
                 </div>
             </td>
@@ -393,19 +413,62 @@ function displayPildoras() {
 
     // Add event listeners for student checkboxes
     document.querySelectorAll('.pildora-student-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
+        checkbox.addEventListener('change', function () {
             updatePildoraStudentSelection(parseInt(this.dataset.pildoraIndex), this.value, this.checked);
         });
     });
-    
-    // Add event listeners for mode and status changes to update colors
+
+    // Add event listeners for other fields to sync data locally
     document.querySelectorAll('.pildora-mode').forEach(select => {
-        select.addEventListener('change', applyPildorasColorCoding);
+        select.addEventListener('change', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'mode', this.value);
+            applyPildorasColorCoding();
+        });
     });
-    
+
+    document.querySelectorAll('.pildora-date').forEach(input => {
+        input.addEventListener('change', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'date', this.value);
+        });
+        // Also sync on blur/input to be safe
+        input.addEventListener('blur', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'date', this.value);
+        });
+    });
+
+    document.querySelectorAll('.pildora-title').forEach(input => {
+        input.addEventListener('blur', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'title', this.value);
+        });
+        input.addEventListener('input', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'title', this.value);
+        });
+    });
+
     document.querySelectorAll('.pildora-status').forEach(select => {
-        select.addEventListener('change', applyPildorasColorCoding);
+        select.addEventListener('change', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'status', this.value);
+            applyPildorasColorCoding();
+        });
     });
+}
+
+// Helper function to update other fields for píldoras
+function updatePildoraField(pildoraIndex, field, value) {
+    const currentModule = promotionModules[currentModuleIndex];
+    if (!currentModule) return;
+
+    const modulePildoras = extendedInfoData.modulesPildoras?.find(mp => mp.moduleId === currentModule.id);
+    if (!modulePildoras || !modulePildoras.pildoras || !modulePildoras.pildoras[pildoraIndex]) return;
+
+    modulePildoras.pildoras[pildoraIndex][field] = value;
+    console.log(`Updated píldora ${pildoraIndex} field ${field} to:`, value);
 }
 
 function applyPildorasColorCoding() {
@@ -413,7 +476,7 @@ function applyPildorasColorCoding() {
     document.querySelectorAll('.pildora-mode').forEach(select => {
         const value = select.value.toLowerCase();
         select.style.fontWeight = '600';
-        
+
         if (value === 'presencial') {
             select.style.color = '#198754'; // Green
             select.style.backgroundColor = '#f8fff9';
@@ -425,12 +488,12 @@ function applyPildorasColorCoding() {
             select.style.backgroundColor = '#f8f9fa';
         }
     });
-    
+
     // Apply colors to status selects
     document.querySelectorAll('.pildora-status').forEach(select => {
         const value = select.value.toLowerCase();
         select.style.fontWeight = '600';
-        
+
         if (value === 'presentada') {
             select.style.color = '#198754'; // Green
             select.style.backgroundColor = '#f8fff9';
@@ -467,10 +530,11 @@ function addPildoraRow() {
         extendedInfoData.modulesPildoras.push(modulePildoras);
     }
 
-    // Add new píldora to current module
+    // Add new píldora to current module with today's date as default
+    const today = new Date().toISOString().split('T')[0];
     modulePildoras.pildoras.push({
         mode: 'Virtual',
-        date: '',
+        date: today,
         title: '',
         students: [],
         status: ''
@@ -487,15 +551,15 @@ function deletePildoraRow(index) {
     if (!modulePildoras || !modulePildoras.pildoras) return;
 
     if (index < 0 || index >= modulePildoras.pildoras.length) return;
-    
+
     if (!confirm('Are you sure you want to delete this píldora?')) return;
-    
+
     // Remove from local data
     modulePildoras.pildoras.splice(index, 1);
-    
+
     // Save changes to server
     savePildorasToServer(currentModule);
-    
+
     // Update display
     displayPildoras();
 }
@@ -757,7 +821,7 @@ function importPildorasFromExcel(input) {
 
     // Show loading indicator
     const originalText = document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML;
-    document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML = 
+    document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML =
         '<i class="bi bi-hourglass-split"></i> Importing...';
 
     // Use module-specific endpoint
@@ -768,45 +832,45 @@ function importPildorasFromExcel(input) {
         },
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            alert(`Error importing Excel file: ${data.error}`);
-        } else {
-            alert(`Successfully imported ${data.pildoras.length} píldoras to module "${data.module.name}"`);
-            
-            // Update the current module's píldoras in our local data structure
-            if (!extendedInfoData.modulesPildoras) {
-                extendedInfoData.modulesPildoras = [];
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(`Error importing Excel file: ${data.error}`);
+            } else {
+                alert(`Successfully imported ${data.pildoras.length} píldoras to module "${data.module.name}"`);
+
+                // Update the current module's píldoras in our local data structure
+                if (!extendedInfoData.modulesPildoras) {
+                    extendedInfoData.modulesPildoras = [];
+                }
+
+                let modulePildoras = extendedInfoData.modulesPildoras.find(mp => mp.moduleId === currentModule.id);
+                if (!modulePildoras) {
+                    modulePildoras = {
+                        moduleId: currentModule.id,
+                        moduleName: currentModule.name,
+                        pildoras: []
+                    };
+                    extendedInfoData.modulesPildoras.push(modulePildoras);
+                }
+
+                // Add imported píldoras to local data structure
+                modulePildoras.pildoras.push(...data.pildoras);
+
+                // Refresh the display
+                displayPildoras();
             }
-
-            let modulePildoras = extendedInfoData.modulesPildoras.find(mp => mp.moduleId === currentModule.id);
-            if (!modulePildoras) {
-                modulePildoras = {
-                    moduleId: currentModule.id,
-                    moduleName: currentModule.name,
-                    pildoras: []
-                };
-                extendedInfoData.modulesPildoras.push(modulePildoras);
-            }
-
-            // Add imported píldoras to local data structure
-            modulePildoras.pildoras.push(...data.pildoras);
-
-            // Refresh the display
-            displayPildoras();
-        }
-        input.value = ''; // Clear input
-    })
-    .catch(error => {
-        console.error('Error importing Excel:', error);
-        alert('Error importing Excel file');
-        input.value = ''; // Clear input
-    })
-    .finally(() => {
-        // Restore button text
-        document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML = originalText;
-    });
+            input.value = ''; // Clear input
+        })
+        .catch(error => {
+            console.error('Error importing Excel:', error);
+            alert('Error importing Excel file');
+            input.value = ''; // Clear input
+        })
+        .finally(() => {
+            // Restore button text
+            document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML = originalText;
+        });
 }
 
 function openTeamModal() {
@@ -1022,7 +1086,7 @@ async function saveExtendedInfo() {
     };
 
     const pildorasRows = document.querySelectorAll('#pildoras-list-body tr');
-    
+
     // Collect current module píldoras from the displayed rows
     const currentModule = promotionModules[currentModuleIndex];
     if (currentModule && pildorasRows.length > 0) {
@@ -1090,7 +1154,7 @@ async function saveExtendedInfo() {
     // Update global object
     extendedInfoData.schedule = schedule;
     extendedInfoData.evaluation = evaluation;
-    
+
     // Keep legacy pildoras for backward compatibility (flatten all module pildoras)
     const allPildoras = [];
     if (extendedInfoData.modulesPildoras) {
@@ -1136,6 +1200,36 @@ async function saveExtendedInfo() {
     }
 }
 
+async function togglePildorasAssignment(isOpen) {
+    extendedInfoData.pildorasAssignmentOpen = isOpen;
+    console.log('Toggling píldoras self-assignment:', isOpen);
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(extendedInfoData)
+        });
+
+        if (!response.ok) {
+            alert('Failed to update assignment status');
+            // Revert UI
+            document.getElementById('pildoras-assignment-toggle').checked = !isOpen;
+            extendedInfoData.pildorasAssignmentOpen = !isOpen;
+        }
+    } catch (error) {
+        console.error('Error updating assignment status:', error);
+        alert('Error updating assignment status');
+        // Revert UI
+        document.getElementById('pildoras-assignment-toggle').checked = !isOpen;
+        extendedInfoData.pildorasAssignmentOpen = !isOpen;
+    }
+}
+
 function checkAuth() {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -1143,34 +1237,40 @@ function checkAuth() {
     }
 }
 
-function switchTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.section-content').forEach(el => {
-        el.classList.add('hidden');
+function switchTab(tabId) {
+    document.querySelectorAll('.section-content').forEach(section => {
+        section.classList.add('hidden');
     });
 
-    // Show selected tab
-    const tabElement = document.getElementById(tabName + '-tab');
-    if (tabElement) {
-        tabElement.classList.remove('hidden');
+    const activeTab = document.getElementById(`${tabId}-tab`);
+    if (activeTab) {
+        activeTab.classList.remove('hidden');
     }
 
-    // Load specific tab data if needed
-    if (tabName === 'access-settings' && userRole === 'teacher') {
-        loadAccessPassword();
-    }
-    
-    // Load Quick Links and Sections when Program Info tab is accessed
-    if (tabName === 'info' && userRole === 'teacher') {
-        loadQuickLinks();
-        loadSections();
-    }
+    // Refresh data if needed
+    if (tabId === 'calendar') loadCalendar();
+    if (tabId === 'roadmap') loadModules();
+    if (tabId === 'students') loadStudents();
+    if (tabId === 'attendance') loadAttendance();
+    if (tabId === 'info') loadExtendedInfo();
+    if (tabId === 'collaborators') loadCollaborators();
+    if (tabId === 'access-settings') loadAccessSettings();
 
-    // Update active nav link
-    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+    // Update active state in sidebar
+    document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
+        if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(tabId)) {
+            link.classList.add('active');
+        }
     });
-    event.target.classList.add('active');
+
+    // Handle iframe height to fit content if possible
+    if (tabId === 'overview') {
+        const previewIframe = document.getElementById('student-preview-iframe');
+        if (previewIframe) {
+            previewIframe.style.height = '600px';
+        }
+    }
 }
 
 async function loadPromotion() {
@@ -2257,10 +2357,10 @@ function setupForms() {
         const nationality = document.getElementById('student-nationality').value;
         const profession = document.getElementById('student-profession').value;
         const address = document.getElementById('student-address').value;
-        
+
         // Check if we're editing an existing student
         const editingStudentId = document.getElementById('student-form').dataset.editingStudentId;
-        
+
         const token = localStorage.getItem('token');
 
         const studentData = {
@@ -2277,7 +2377,7 @@ function setupForms() {
 
         try {
             let response;
-            
+
             if (editingStudentId) {
                 // Update existing student using the /profile endpoint which works reliably
                 response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${editingStudentId}/profile`, {
@@ -2306,17 +2406,17 @@ function setupForms() {
                 document.getElementById('student-form').reset();
                 delete document.getElementById('student-form').dataset.editingStudentId;
                 loadStudents();
-                
+
                 const action = editingStudentId ? 'updated' : 'added';
                 alert(`Student ${action} successfully!`);
             } else {
                 console.error('Response status:', response.status);
                 console.error('Response headers:', response.headers);
                 let errorMessage = 'Unknown error';
-                
+
                 // Clone the response so we can read it multiple times if needed
                 const responseClone = response.clone();
-                
+
                 try {
                     const errorData = await response.json();
                     errorMessage = errorData.error || errorMessage;
@@ -2331,7 +2431,7 @@ function setupForms() {
                         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
                     }
                 }
-                
+
                 alert(`Error ${editingStudentId ? 'updating' : 'adding'} student: ${errorMessage}`);
             }
         } catch (error) {
@@ -2342,17 +2442,59 @@ function setupForms() {
 }
 
 // ==================== STUDENT MANAGEMENT FUNCTIONS ====================
+async function importStudentsFromExcel(input) {
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('excelFile', file);
+
+    const token = localStorage.getItem('token');
+
+    // Show loading state or disable button if possible, but let's keep it simple first
+    const originalBtnContent = document.querySelector('button[onclick*="students-excel-input"]').innerHTML;
+    const btn = document.querySelector('button[onclick*="students-excel-input"]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing...';
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/upload-excel`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            alert(result.message || 'Students imported successfully');
+            loadStudents(); // Reload the student list
+        } else {
+            const error = await response.json();
+            alert(`Error importing students: ${error.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error importing students:', error);
+        alert('Error importing students from Excel');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalBtnContent;
+        input.value = ''; // Reset input
+    }
+}
+
 
 // Debug function to test student endpoints
 async function debugStudentEndpoints() {
     console.log('=== TESTING STUDENT ENDPOINTS ===');
     const token = localStorage.getItem('token');
-    
+
     if (!window.currentStudents || window.currentStudents.length === 0) {
         console.log('No students available for testing');
         return;
     }
-    
+
     const student = window.currentStudents[0];
     console.log('Testing with student:', student);
     console.log('Student fields present:', {
@@ -2365,7 +2507,7 @@ async function debugStudentEndpoints() {
         profession: !!student.profession,
         address: !!student.address
     });
-    
+
     // Test GET endpoint
     try {
         const getResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${student.id}`, {
@@ -2379,7 +2521,7 @@ async function debugStudentEndpoints() {
     } catch (error) {
         console.log('GET /students/:id error:', error.message);
     }
-    
+
     // Test PUT /profile endpoint
     try {
         const testData = {
@@ -2391,9 +2533,9 @@ async function debugStudentEndpoints() {
             profession: student.profession || 'Test Profession',
             address: student.address || 'Test Address'
         };
-        
+
         console.log('Testing PUT with data:', testData);
-        
+
         const putResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${student.id}/profile`, {
             method: 'PUT',
             headers: {
@@ -2402,7 +2544,7 @@ async function debugStudentEndpoints() {
             },
             body: JSON.stringify(testData)
         });
-        
+
         console.log('PUT /students/:id/profile status:', putResponse.status);
         if (putResponse.ok) {
             const updatedData = await putResponse.json();
@@ -2424,14 +2566,14 @@ async function loadStudents() {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const students = await response.json();
         console.log('Loaded students:', students);
-        
+
         // Store students data globally for multi-select operations
         // Backend already normalizes the ID field, so we can use it directly
         window.currentStudents = students;
@@ -2442,68 +2584,62 @@ async function loadStudents() {
     }
 }
 
-// Display students with checkboxes for multi-select
+// Display students in a table format for better readability
 function displayStudents(students) {
     const studentsContainer = document.getElementById('students-list');
     if (!studentsContainer) {
         console.warn('Students container not found');
         return;
     }
-    
+
     if (!students || students.length === 0) {
-        studentsContainer.innerHTML = '<p class="text-muted">No students registered yet.</p>';
+        studentsContainer.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No students registered yet.</td></tr>';
         return;
     }
-    
+
     studentsContainer.innerHTML = students.map((student, index) => `
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-2">
-                    <input type="checkbox" class="form-check-input me-3 student-checkbox" 
-                           data-student-id="${student.id}" 
-                           onchange="updateSelectionState()">
-                    <h6 class="card-title mb-0">${student.name || 'N/A'} ${student.lastname || ''}</h6>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p class="card-text mb-1"><strong>Email:</strong> ${student.email || 'N/A'}</p>
-                        <p class="card-text mb-1"><strong>Age:</strong> ${student.age || 'N/A'}</p>
-                        <p class="card-text mb-1"><strong>Nationality:</strong> ${student.nationality || 'N/A'}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p class="card-text mb-1"><strong>Profession:</strong> ${student.profession || 'N/A'}</p>
-                        <p class="card-text mb-1"><strong>Address:</strong> ${student.address || 'N/A'}</p>
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <button class="btn btn-sm btn-primary me-2" onclick="editStudent('${student.id}')">
-                        <i class="bi bi-pencil"></i> Edit
+        <tr>
+            <td>
+                <input type="checkbox" class="form-check-input student-checkbox" 
+                       data-student-id="${student.id}" 
+                       onchange="updateSelectionState()">
+            </td>
+            <td>
+                <div class="fw-bold">${student.name || 'N/A'} ${student.lastname || ''}</div>
+            </td>
+            <td>${student.email || 'N/A'}</td>
+            <td>${student.nationality || 'N/A'}</td>
+            <td>${student.profession || 'N/A'}</td>
+            <td class="text-end">
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editStudent('${student.id}')" title="Edit">
+                        <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-info me-2" onclick="trackStudentProgress('${student.id}', '${student.name} ${student.lastname || ''}')">
-                        <i class="bi bi-graph-up"></i> Track Progress
+                    <button class="btn btn-sm btn-outline-info" onclick="trackStudentProgress('${student.id}', '${student.name} ${student.lastname || ''}')" title="Track Progress">
+                        <i class="bi bi-graph-up"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteStudent('${student.id}', '${student.email}')">
-                        <i class="bi bi-trash"></i> Delete
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}', '${student.email}')" title="Delete">
+                        <i class="bi bi-trash"></i>
                     </button>
                 </div>
-            </div>
-        </div>
+            </td>
+        </tr>
     `).join('');
-    
+
     updateSelectionState();
 }
 
 // Delete individual student
 async function deleteStudent(studentId, studentEmail) {
     if (!confirm(`Are you sure you want to delete student ${studentEmail}?`)) return;
-    
+
     try {
         const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
+
         if (response.ok) {
             alert('Student deleted successfully');
             loadStudents();
@@ -2523,7 +2659,7 @@ function editStudent(studentId) {
         alert('Student not found');
         return;
     }
-    
+
     // Populate the form with existing data
     document.getElementById('student-name').value = student.name || '';
     document.getElementById('student-lastname').value = student.lastname || '';
@@ -2532,14 +2668,14 @@ function editStudent(studentId) {
     document.getElementById('student-nationality').value = student.nationality || '';
     document.getElementById('student-profession').value = student.profession || '';
     document.getElementById('student-address').value = student.address || '';
-    
+
     // Store the student ID for updating
     document.getElementById('student-form').dataset.editingStudentId = studentId;
-    
+
     // Update modal title
     const modalTitle = document.querySelector('#studentModal .modal-title');
     if (modalTitle) modalTitle.textContent = 'Edit Student';
-    
+
     // Show the modal
     studentModal.show();
 }
@@ -2645,14 +2781,14 @@ function openSectionModal() {
 
 function openStudentModal() {
     document.getElementById('student-form').reset();
-    
+
     // Clear any editing state
     delete document.getElementById('student-form').dataset.editingStudentId;
-    
+
     // Update modal title
     const modalTitle = document.querySelector('#studentModal .modal-title');
     if (modalTitle) modalTitle.textContent = 'Add Student';
-    
+
     studentModal.show();
 }
 
@@ -2946,7 +3082,7 @@ async function removeCollaborator(teacherId) {
 
 async function loadAccessPassword() {
     if (userRole !== 'teacher') return;
-    
+
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/access-password`, {
@@ -2957,18 +3093,18 @@ async function loadAccessPassword() {
             const data = await response.json();
             const passwordInput = document.getElementById('access-password-input');
             const accessLinkInput = document.getElementById('student-access-link');
-            
+
             if (passwordInput) {
                 passwordInput.value = data.accessPassword || '';
             }
-            
+
             // Update the access link
             if (accessLinkInput) {
                 const baseUrl = window.location.origin;
                 // Detect different environments and adjust path accordingly
                 const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
                 const isGitHubPages = window.location.hostname.includes('github.io');
-                
+
                 let path;
                 if (isLiveServer) {
                     path = '/public/public-promotion.html';
@@ -2980,7 +3116,7 @@ async function loadAccessPassword() {
                 } else {
                     path = '/public-promotion.html';
                 }
-                
+
                 accessLinkInput.value = `${baseUrl}${path}?id=${promotionId}`;
             }
         }
@@ -2991,7 +3127,7 @@ async function loadAccessPassword() {
 
 async function updateAccessPassword() {
     if (userRole !== 'teacher') return;
-    
+
     const token = localStorage.getItem('token');
     const passwordInput = document.getElementById('access-password-input');
     const alertEl = document.getElementById('password-alert');
@@ -3020,16 +3156,16 @@ async function updateAccessPassword() {
         if (response.ok) {
             if (alertEl) {
                 alertEl.className = 'alert alert-success';
-                alertEl.textContent = password 
-                    ? 'Access password updated successfully! Students can now use the link below to access this promotion.' 
+                alertEl.textContent = password
+                    ? 'Access password updated successfully! Students can now use the link below to access this promotion.'
                     : 'Password protection removed successfully!';
                 alertEl.classList.remove('hidden');
-                
+
                 setTimeout(() => {
                     alertEl.classList.add('hidden');
                 }, 5000);
             }
-            
+
             // Update the access link
             const accessLinkInput = document.getElementById('student-access-link');
             if (accessLinkInput) {
@@ -3037,7 +3173,7 @@ async function updateAccessPassword() {
                 // Detect different environments and adjust path accordingly
                 const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
                 const isGitHubPages = window.location.hostname.includes('github.io');
-                
+
                 let path;
                 if (isLiveServer) {
                     path = '/public/public-promotion.html';
@@ -3049,7 +3185,7 @@ async function updateAccessPassword() {
                 } else {
                     path = '/public-promotion.html';
                 }
-                
+
                 accessLinkInput.value = `${baseUrl}${path}?id=${promotionId}`;
             }
         } else {
@@ -3081,7 +3217,7 @@ function copyAccessLink() {
                 copyBtn.innerHTML = '<i class="bi bi-check me-2"></i>Copied!';
                 copyBtn.classList.add('btn-success');
                 copyBtn.classList.remove('btn-outline-secondary');
-                
+
                 setTimeout(() => {
                     copyBtn.innerHTML = originalText;
                     copyBtn.classList.remove('btn-success');
@@ -3107,83 +3243,91 @@ function copyAccessLink() {
 
 function updateSelectionState() {
     const checkboxes = document.querySelectorAll('.student-checkbox');
-    const selectAllCheckbox = document.getElementById('select-all-students');
+    const selectAllCheckboxHeader = document.getElementById('select-all-students-header');
+    const selectAllCheckboxControls = document.getElementById('select-all-students');
     const selectedCountEl = document.getElementById('selected-count');
     const selectionControls = document.getElementById('selection-controls');
     const exportSelectedBtn = document.getElementById('export-selected-btn');
     const deleteSelectedBtn = document.getElementById('delete-selected-btn');
-    
+
     const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
     const selectedCount = selectedCheckboxes.length;
     const totalCount = checkboxes.length;
-    
+
     // Update selected count display
     if (selectedCountEl) {
         selectedCountEl.textContent = `${selectedCount} selected`;
     }
-    
-    // Update select all checkbox state
-    if (selectAllCheckbox && totalCount > 0) {
+
+    // Helper to update checkbox state (including indeterminate)
+    const updateCheckbox = (cb) => {
+        if (!cb || totalCount === 0) return;
         if (selectedCount === 0) {
-            selectAllCheckbox.indeterminate = false;
-            selectAllCheckbox.checked = false;
+            cb.indeterminate = false;
+            cb.checked = false;
         } else if (selectedCount === totalCount) {
-            selectAllCheckbox.indeterminate = false;
-            selectAllCheckbox.checked = true;
+            cb.indeterminate = false;
+            cb.checked = true;
         } else {
-            selectAllCheckbox.indeterminate = true;
-            selectAllCheckbox.checked = false;
+            cb.indeterminate = true;
+            cb.checked = false;
         }
-    }
-    
+    };
+
+    updateCheckbox(selectAllCheckboxHeader);
+    updateCheckbox(selectAllCheckboxControls);
+
     // Show/hide selection controls and buttons
     if (selectionControls) {
         selectionControls.style.display = totalCount > 0 ? 'block' : 'none';
     }
-    
+
     if (exportSelectedBtn) {
         exportSelectedBtn.style.display = selectedCount > 0 ? 'inline-block' : 'none';
     }
-    
+
     if (deleteSelectedBtn) {
         deleteSelectedBtn.style.display = selectedCount > 0 ? 'inline-block' : 'none';
     }
 }
 
-function toggleAllStudents() {
-    const selectAllCheckbox = document.getElementById('select-all-students');
+function toggleAllStudents(source) {
     const studentCheckboxes = document.querySelectorAll('.student-checkbox');
-    
-    if (selectAllCheckbox && studentCheckboxes.length > 0) {
-        const shouldCheck = selectAllCheckbox.checked;
-        
-        studentCheckboxes.forEach(checkbox => {
-            checkbox.checked = shouldCheck;
-        });
-        
-        updateSelectionState();
-    }
+    const isChecked = source.checked;
+
+    studentCheckboxes.forEach(checkbox => {
+        checkbox.checked = isChecked;
+    });
+
+    // Sync the other "Select All" checkbox
+    const selectAllHeader = document.getElementById('select-all-students-header');
+    const selectAllControls = document.getElementById('select-all-students');
+
+    if (source === selectAllHeader && selectAllControls) selectAllControls.checked = isChecked;
+    if (source === selectAllControls && selectAllHeader) selectAllHeader.checked = isChecked;
+
+    updateSelectionState();
 }
 
 // Export selected students to CSV
 function exportSelectedStudentsCsv() {
     const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
     const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
-    
+
     if (selectedStudentIds.length === 0) {
         alert('No students selected for export.');
         return;
     }
-    
-    const selectedStudents = window.currentStudents?.filter(student => 
+
+    const selectedStudents = window.currentStudents?.filter(student =>
         selectedStudentIds.includes(student.id)
     ) || [];
-    
+
     if (selectedStudents.length === 0) {
         alert('Selected students not found.');
         return;
     }
-    
+
     exportStudentsToCSV(selectedStudents, `selected-students-promotion-${promotionId}.csv`);
 }
 
@@ -3191,17 +3335,17 @@ function exportSelectedStudentsCsv() {
 async function deleteSelectedStudents() {
     const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
     const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
-    
+
     if (selectedStudentIds.length === 0) {
         alert('No students selected for deletion.');
         return;
     }
-    
+
     const confirmMessage = `Are you sure you want to delete ${selectedStudentIds.length} selected student(s)? This action cannot be undone.`;
     if (!confirm(confirmMessage)) {
         return;
     }
-    
+
     try {
         const token = localStorage.getItem('token');
         const deletePromises = selectedStudentIds.map(studentId =>
@@ -3210,9 +3354,9 @@ async function deleteSelectedStudents() {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
         );
-        
+
         await Promise.all(deletePromises);
-        
+
         alert(`Successfully deleted ${selectedStudentIds.length} student(s).`);
         loadStudents(); // Reload the students list
     } catch (error) {
@@ -3220,3 +3364,178 @@ async function deleteSelectedStudents() {
         alert('Error deleting students. Please try again.');
     }
 }
+
+// Attendance Control Functions
+async function loadAttendance() {
+    try {
+        const token = localStorage.getItem('token');
+        const [year, month] = currentAttendanceMonth.split('-');
+
+        // Update display
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        document.getElementById('current-attendance-month-display').textContent = `${monthNames[parseInt(month) - 1]} ${year}`;
+
+        // Get students first (if not already loaded)
+        const studentsRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        studentsForAttendance = await studentsRes.json();
+
+        // Get attendance data
+        const attendanceRes = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance?month=${currentAttendanceMonth}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        attendanceData = await attendanceRes.json();
+
+        renderAttendanceTable();
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+    }
+}
+
+function renderAttendanceTable() {
+    const headerRow = document.getElementById('attendance-header-row');
+    const body = document.getElementById('attendance-body');
+
+    // Clear previous
+    headerRow.innerHTML = '<th class="sticky-column bg-light" style="min-width: 250px; z-index: 10;">Student</th>';
+    body.innerHTML = '';
+
+    if (studentsForAttendance.length === 0) {
+        body.innerHTML = '<tr><td colspan="100" class="text-center py-4 text-muted">No students found in this promotion.</td></tr>';
+        return;
+    }
+
+    // Determine days in month
+    const [year, month] = currentAttendanceMonth.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // Generate headers
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${day < 10 ? '0' : ''}${day}`;
+        headerRow.innerHTML += `<th class="text-center">${dateStr}</th>`;
+    }
+
+    // Generate rows
+    studentsForAttendance.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(student => {
+        const tr = document.createElement('tr');
+
+        // Name column
+        tr.innerHTML = `<td class="sticky-column bg-white">${student.name || ''} ${student.lastname || ''}</td>`;
+
+        // Day columns
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateKey = `${currentAttendanceMonth}-${day < 10 ? '0' : ''}${day}`;
+            const record = attendanceData.find(a => a.studentId === student.id && a.date === dateKey);
+            const status = record ? record.status : '';
+
+            let statusClass = '';
+            if (status === 'Presente') statusClass = 'attendance-present';
+            else if (status === 'Ausente') statusClass = 'attendance-absent';
+            else if (status === 'Con retraso') statusClass = 'attendance-late';
+
+            const td = document.createElement('td');
+            td.className = `attendance-cell ${statusClass}`;
+            td.dataset.studentId = student.id;
+            td.dataset.date = dateKey;
+            td.dataset.status = status;
+
+            // Icon or text representation
+            if (status === 'Presente') td.innerHTML = '<i class="bi bi-check-lg"></i>';
+            else if (status === 'Ausente') td.innerHTML = '<i class="bi bi-x-lg"></i>';
+            else if (status === 'Con retraso') td.innerHTML = '<i class="bi bi-clock"></i>';
+            else td.innerHTML = '';
+
+            td.onclick = () => cycleAttendanceStatus(td);
+            tr.appendChild(td);
+        }
+
+        body.appendChild(tr);
+    });
+}
+
+function cycleAttendanceStatus(cell) {
+    const studentId = cell.dataset.studentId;
+    const date = cell.dataset.date;
+    const currentStatus = cell.dataset.status;
+
+    // Cycle: "" -> "Presente" -> "Ausente" -> "Con retraso" -> ""
+    let nextStatus = "";
+    if (currentStatus === "") nextStatus = "Presente";
+    else if (currentStatus === "Presente") nextStatus = "Ausente";
+    else if (currentStatus === "Ausente") nextStatus = "Con retraso";
+    else if (currentStatus === "Con retraso") nextStatus = "";
+
+    updateAttendance(studentId, date, nextStatus, cell);
+}
+
+async function updateAttendance(studentId, date, status, cell) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ studentId, date, status })
+        });
+
+        if (response.ok) {
+            // Update local state and UI
+            cell.dataset.status = status;
+            cell.className = 'attendance-cell';
+
+            if (status === 'Presente') {
+                cell.classList.add('attendance-present');
+                cell.innerHTML = '<i class="bi bi-check-lg"></i>';
+            } else if (status === 'Ausente') {
+                cell.classList.add('attendance-absent');
+                cell.innerHTML = '<i class="bi bi-x-lg"></i>';
+            } else if (status === 'Con retraso') {
+                cell.classList.add('attendance-late');
+                cell.innerHTML = '<i class="bi bi-clock"></i>';
+            } else {
+                cell.innerHTML = '';
+            }
+
+            // Update local attendanceData array to keep it in sync
+            const index = attendanceData.findIndex(a => a.studentId === studentId && a.date === date);
+            if (index > -1) {
+                if (status === "") attendanceData.splice(index, 1);
+                else attendanceData[index].status = status;
+            } else if (status !== "") {
+                attendanceData.push({ studentId, date, status });
+            }
+        }
+    } catch (error) {
+        console.error('Error updating attendance:', error);
+    }
+}
+
+function prevAttendanceMonth() {
+    const [year, month] = currentAttendanceMonth.split('-').map(Number);
+    let newYear = year;
+    let newMonth = month - 1;
+    if (newMonth === 0) {
+        newMonth = 12;
+        newYear--;
+    }
+    currentAttendanceMonth = `${newYear}-${newMonth < 10 ? '0' : ''}${newMonth}`;
+    loadAttendance();
+}
+
+function nextAttendanceMonth() {
+    const [year, month] = currentAttendanceMonth.split('-').map(Number);
+    let newYear = year;
+    let newMonth = month + 1;
+    if (newMonth === 13) {
+        newMonth = 1;
+        newYear++;
+    }
+    currentAttendanceMonth = `${newYear}-${newMonth < 10 ? '0' : ''}${newMonth}`;
+    loadAttendance();
+}
+
