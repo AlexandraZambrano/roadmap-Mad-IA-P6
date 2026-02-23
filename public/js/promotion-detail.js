@@ -1254,7 +1254,7 @@ function switchTab(tabId) {
     if (tabId === 'attendance') loadAttendance();
     if (tabId === 'info') loadExtendedInfo();
     if (tabId === 'collaborators') loadCollaborators();
-    if (tabId === 'access-settings') loadAccessSettings();
+    if (tabId === 'access-settings') loadAccessPassword();
 
     // Update active state in sidebar
     document.querySelectorAll('.nav-link').forEach(link => {
