@@ -651,6 +651,27 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Helper function to apply colors to cells based on content
+function applyCellColors(cellContent, cellType) {
+    let baseStyle = 'border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;';
+    
+    if (cellType === 'presentacion') {
+        if (cellContent.toLowerCase().includes('presencial')) {
+            baseStyle += ' background-color: #d4edda; color: #155724;';
+        } else if (cellContent.toLowerCase().includes('virtual')) {
+            baseStyle += ' background-color: #cce5ff; color: #004085;';
+        }
+    } else if (cellType === 'estado') {
+        if (cellContent.toLowerCase().includes('presentada') && !cellContent.toLowerCase().includes('no')) {
+            baseStyle += ' background-color: #d4edda; color: #155724;';
+        } else if (cellContent.toLowerCase().includes('no presentada')) {
+            baseStyle += ' background-color: #f8d7da; color: #721c24;';
+        }
+    }
+    
+    return baseStyle;
+}
+
 // Load Program Info (Extended Info) data
 async function loadExtendedInfo() {
     try {
@@ -728,11 +749,11 @@ function createProgramInfoSections(info) {
 
             return `
                 <tr>
-                    <td style="width: 20%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(mode)}</td>
+                    <td style="width: 20%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
                     <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
                     <td style="width: 30%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
                     <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
-                    <td style="width: 10%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(status)}</td>
+                    <td style="width: 10%; ${applyCellColors(status, 'estado')}">${escapeHtml(status)}</td>
                 </tr>
             `;
         }).join('');
@@ -767,11 +788,8 @@ function createProgramInfoSections(info) {
 
     // Píldoras Section (Module-based format) - MOVED TO FIRST POSITION
     if (Array.isArray(info.modulesPildoras) && info.modulesPildoras.length > 0) {
-        console.log('Processing modulesPildoras:', info.modulesPildoras);
-        
         // Get promotion modules to match with module names
         const promotionModules = window.publicPromotionData?.modules || [];
-        console.log('Promotion modules for matching:', promotionModules);
         
         // Filter modules that have píldoras and enrich with promotion module data
         const modulesWithPildoras = info.modulesPildoras
@@ -785,10 +803,7 @@ function createProgramInfoSections(info) {
                 };
             });
 
-        console.log('Modules with píldoras after filtering:', modulesWithPildoras);
-
         if (modulesWithPildoras.length > 0) {
-            console.log('Creating píldoras section with', modulesWithPildoras.length, 'modules');
             const pildorasSection = document.createElement('div');
             pildorasSection.className = 'col-md-12';
             pildorasSection.id = 'pildoras';
@@ -797,18 +812,9 @@ function createProgramInfoSections(info) {
             let currentModuleIndex = 0;
             
             function renderPildorasTable() {
-                console.log('=== EXECUTING renderPildorasTable() ===');
-                console.log('Current module index:', currentModuleIndex);
-                console.log('Total modules with píldoras:', modulesWithPildoras.length);
-                
                 const currentModule = modulesWithPildoras[currentModuleIndex];
-                console.log('Current module:', currentModule);
-                
-                const currentDate = new Date();
-                currentDate.setHours(0, 0, 0, 0); // Reset time to compare only dates
-                
-                console.log('Current date for comparison:', currentDate);
-                console.log('Pildoras in current module:', currentModule.pildoras);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
                 
                 // Find the next upcoming date
                 let nextDateIndex = -1;
@@ -816,22 +822,12 @@ function createProgramInfoSections(info) {
                 
                 for (let i = 0; i < currentModule.pildoras.length; i++) {
                     const pildora = currentModule.pildoras[i];
-                    if (pildora.date) {
-                        // Try different date parsing methods
-                        let pildoraDate;
-                        
-                        // If date is in YYYY-MM-DD format
-                        if (pildora.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                            pildoraDate = new Date(pildora.date + 'T00:00:00');
-                        } else {
-                            pildoraDate = new Date(pildora.date);
-                        }
-                        
+                    if (pildora.date && pildora.date.trim()) {
+                        const pildoraDate = new Date(pildora.date);
                         pildoraDate.setHours(0, 0, 0, 0);
                         
-                        console.log(`Pildora ${i}: date="${pildora.date}", parsed date:`, pildoraDate, 'comparison with current:', pildoraDate >= currentDate);
-                        
-                        if (pildoraDate >= currentDate) {
+                        // Check if this date is today or in the future
+                        if (pildoraDate >= today) {
                             if (!nextDate || pildoraDate < nextDate) {
                                 nextDate = pildoraDate;
                                 nextDateIndex = i;
@@ -839,8 +835,6 @@ function createProgramInfoSections(info) {
                         }
                     }
                 }
-                
-                console.log('Next date index:', nextDateIndex, 'Next date:', nextDate);
                 
                 const rows = currentModule.pildoras.map((p, index) => {
                     const mode = p.mode || '';
@@ -856,15 +850,17 @@ function createProgramInfoSections(info) {
                     const isNextDate = index === nextDateIndex;
                     const rowStyle = isNextDate ? 'background-color: #ff4700; color: white;' : '';
                     
-                    console.log(`Row ${index}: isNextDate=${isNextDate}, date="${date}"`);
-
+                    // Get cell styles with special handling for next date row
+                    const modeStyle = isNextDate ? 'width: 20%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px; background-color: #ff4700; color: white;' : `width: 20%; ${applyCellColors(mode, 'presentacion')}`;
+                    const statusStyle = isNextDate ? 'width: 10%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px; background-color: #ff4700; color: white;' : `width: 10%; ${applyCellColors(status, 'estado')}`;
+                    
                     return `
                         <tr style="${rowStyle}">
-                            <td style="width: 20%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(mode)}</td>
+                            <td style="${modeStyle}">${escapeHtml(mode)}</td>
                             <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
                             <td style="width: 30%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
                             <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
-                            <td style="width: 10%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(status)}</td>
+                            <td style="${statusStyle}">${escapeHtml(status)}</td>
                         </tr>
                     `;
                 }).join('');
@@ -899,8 +895,6 @@ function createProgramInfoSections(info) {
                 if (prevBtn) prevBtn.disabled = currentModuleIndex === 0;
                 if (nextBtn) nextBtn.disabled = currentModuleIndex === modulesWithPildoras.length - 1;
                 if (countBadge) countBadge.textContent = currentModule.pildoras.length;
-                
-                console.log('=== FINISHED renderPildorasTable() ===');
             }
 
             pildorasSection.innerHTML = `

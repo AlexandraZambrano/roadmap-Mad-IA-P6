@@ -325,7 +325,7 @@ function displayPildoras() {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>
-                <select class="form-select form-select-sm pildora-mode">
+                <select class="form-select form-select-sm pildora-mode pildora-mode-${modeValue.toLowerCase().replace(' ', '-')}">
                     <option value="Virtual" ${modeValue === 'Virtual' ? 'selected' : ''}>Virtual</option>
                     <option value="Presencial" ${modeValue === 'Presencial' ? 'selected' : ''}>Presencial</option>
                     <option value="Otro" ${modeValue === 'Otro' ? 'selected' : ''}>Otro</option>
@@ -373,7 +373,7 @@ function displayPildoras() {
                 </div>
             </td>
             <td>
-                <select class="form-select form-select-sm pildora-status">
+                <select class="form-select form-select-sm pildora-status pildora-status-${statusValue.toLowerCase().replace(' ', '-')}">
                     <option value=""></option>
                     <option value="Presentada" ${statusValue === 'Presentada' ? 'selected' : ''}>Presentada</option>
                     <option value="No presentada" ${statusValue === 'No presentada' ? 'selected' : ''}>No presentada</option>
@@ -388,11 +388,59 @@ function displayPildoras() {
         tbody.appendChild(tr);
     });
 
+    // Apply color coding to select elements
+    applyPildorasColorCoding();
+
     // Add event listeners for student checkboxes
     document.querySelectorAll('.pildora-student-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             updatePildoraStudentSelection(parseInt(this.dataset.pildoraIndex), this.value, this.checked);
         });
+    });
+    
+    // Add event listeners for mode and status changes to update colors
+    document.querySelectorAll('.pildora-mode').forEach(select => {
+        select.addEventListener('change', applyPildorasColorCoding);
+    });
+    
+    document.querySelectorAll('.pildora-status').forEach(select => {
+        select.addEventListener('change', applyPildorasColorCoding);
+    });
+}
+
+function applyPildorasColorCoding() {
+    // Apply colors to mode selects
+    document.querySelectorAll('.pildora-mode').forEach(select => {
+        const value = select.value.toLowerCase();
+        select.style.fontWeight = '600';
+        
+        if (value === 'presencial') {
+            select.style.color = '#198754'; // Green
+            select.style.backgroundColor = '#f8fff9';
+        } else if (value === 'virtual') {
+            select.style.color = '#0d6efd'; // Blue  
+            select.style.backgroundColor = '#f8fafe';
+        } else {
+            select.style.color = '#6c757d'; // Gray
+            select.style.backgroundColor = '#f8f9fa';
+        }
+    });
+    
+    // Apply colors to status selects
+    document.querySelectorAll('.pildora-status').forEach(select => {
+        const value = select.value.toLowerCase();
+        select.style.fontWeight = '600';
+        
+        if (value === 'presentada') {
+            select.style.color = '#198754'; // Green
+            select.style.backgroundColor = '#f8fff9';
+        } else if (value === 'no presentada') {
+            select.style.color = '#dc3545'; // Red
+            select.style.backgroundColor = '#fdf8f8';
+        } else {
+            select.style.color = '#6c757d'; // Gray
+            select.style.backgroundColor = '#f8f9fa';
+        }
     });
 }
 
