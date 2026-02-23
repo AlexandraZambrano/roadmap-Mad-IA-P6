@@ -1254,7 +1254,7 @@ function switchTab(tabId) {
     if (tabId === 'attendance') loadAttendance();
     if (tabId === 'info') loadExtendedInfo();
     if (tabId === 'collaborators') loadCollaborators();
-    if (tabId === 'access-settings') loadAccessSettings();
+    if (tabId === 'access-settings') loadAccessPassword();
 
     // Update active state in sidebar
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -3423,21 +3423,27 @@ function renderAttendanceTable() {
         const tr = document.createElement('tr');
 
         // Name column
-        tr.innerHTML = `<td class="sticky-column bg-white">${student.name || ''} ${student.lastname || ''}</td>`;
+        const nameTd = document.createElement('td');
+        nameTd.className = 'sticky-column bg-white student-name-cell';
+        nameTd.textContent = `${student.name || ''} ${student.lastname || ''}`;
+        nameTd.onclick = () => openAttendanceModal(student.id, null); // Open first day or just general stats
+        tr.appendChild(nameTd);
 
         // Day columns
         for (let day = 1; day <= daysInMonth; day++) {
             const dateKey = `${currentAttendanceMonth}-${day < 10 ? '0' : ''}${day}`;
             const record = attendanceData.find(a => a.studentId === student.id && a.date === dateKey);
             const status = record ? record.status : '';
+            const note = (record && record.note) ? record.note : '';
 
             let statusClass = '';
             if (status === 'Presente') statusClass = 'attendance-present';
             else if (status === 'Ausente') statusClass = 'attendance-absent';
             else if (status === 'Con retraso') statusClass = 'attendance-late';
+            else if (status === 'Justificado') statusClass = 'attendance-justified';
 
             const td = document.createElement('td');
-            td.className = `attendance-cell ${statusClass}`;
+            td.className = `attendance-cell ${statusClass} ${note ? 'attendance-has-note' : ''}`;
             td.dataset.studentId = student.id;
             td.dataset.date = dateKey;
             td.dataset.status = status;
@@ -3446,14 +3452,51 @@ function renderAttendanceTable() {
             if (status === 'Presente') td.innerHTML = '<i class="bi bi-check-lg"></i>';
             else if (status === 'Ausente') td.innerHTML = '<i class="bi bi-x-lg"></i>';
             else if (status === 'Con retraso') td.innerHTML = '<i class="bi bi-clock"></i>';
+            else if (status === 'Justificado') td.innerHTML = '<i class="bi bi-info-circle"></i>';
             else td.innerHTML = '';
 
-            td.onclick = () => cycleAttendanceStatus(td);
+            td.onclick = (e) => {
+                if (e.shiftKey) {
+                    openAttendanceModal(student.id, dateKey);
+                } else {
+                    cycleAttendanceStatus(td);
+                }
+            };
+            td.oncontextmenu = (e) => {
+                e.preventDefault();
+                openAttendanceModal(student.id, dateKey);
+            };
             tr.appendChild(td);
         }
 
         body.appendChild(tr);
     });
+
+    updateAttendanceStats();
+}
+
+function updateAttendanceStats() {
+    const totalDays = studentsForAttendance.length * new Date(
+        ...currentAttendanceMonth.split('-').map(Number), 0
+    ).getDate();
+
+    let present = 0, absent = 0, late = 0, justified = 0;
+
+    attendanceData.forEach(record => {
+        if (record.status === 'Presente') present++;
+        else if (record.status === 'Ausente') absent++;
+        else if (record.status === 'Con retraso') late++;
+        else if (record.status === 'Justificado') justified++;
+    });
+
+    document.getElementById('stat-present-total').textContent = present;
+    document.getElementById('stat-absent-total').textContent = absent;
+    document.getElementById('stat-late-total').textContent = late;
+    document.getElementById('stat-justified-total').textContent = justified;
+
+    const totalMarked = present + absent + late + justified;
+    const avg = totalMarked > 0 ? Math.round(((present + late + justified) / totalMarked) * 100) : 0;
+    document.getElementById('stat-attendance-avg').textContent = `${avg}%`;
 }
 
 function cycleAttendanceStatus(cell) {
@@ -3461,58 +3504,182 @@ function cycleAttendanceStatus(cell) {
     const date = cell.dataset.date;
     const currentStatus = cell.dataset.status;
 
-    // Cycle: "" -> "Presente" -> "Ausente" -> "Con retraso" -> ""
+    // Cycle: "" -> "Presente" -> "Ausente" -> "Con retraso" -> "Justificado" -> ""
     let nextStatus = "";
     if (currentStatus === "") nextStatus = "Presente";
     else if (currentStatus === "Presente") nextStatus = "Ausente";
     else if (currentStatus === "Ausente") nextStatus = "Con retraso";
-    else if (currentStatus === "Con retraso") nextStatus = "";
+    else if (currentStatus === "Con retraso") nextStatus = "Justificado";
+    else if (currentStatus === "Justificado") nextStatus = "";
 
-    updateAttendance(studentId, date, nextStatus, cell);
+    updateAttendance(studentId, date, nextStatus, null, cell);
 }
 
-async function updateAttendance(studentId, date, status, cell) {
+async function updateAttendance(studentId, date, status, note, cell) {
     try {
         const token = localStorage.getItem('token');
+        const body = { studentId, date, status };
+        if (note !== null && note !== undefined) body.note = note;
+
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ studentId, date, status })
+            body: JSON.stringify(body)
         });
 
         if (response.ok) {
-            // Update local state and UI
-            cell.dataset.status = status;
-            cell.className = 'attendance-cell';
+            const updatedRecord = await response.json();
 
-            if (status === 'Presente') {
-                cell.classList.add('attendance-present');
-                cell.innerHTML = '<i class="bi bi-check-lg"></i>';
-            } else if (status === 'Ausente') {
-                cell.classList.add('attendance-absent');
-                cell.innerHTML = '<i class="bi bi-x-lg"></i>';
-            } else if (status === 'Con retraso') {
-                cell.classList.add('attendance-late');
-                cell.innerHTML = '<i class="bi bi-clock"></i>';
-            } else {
-                cell.innerHTML = '';
-            }
-
-            // Update local attendanceData array to keep it in sync
+            // Update local attendanceData array
             const index = attendanceData.findIndex(a => a.studentId === studentId && a.date === date);
             if (index > -1) {
-                if (status === "") attendanceData.splice(index, 1);
-                else attendanceData[index].status = status;
-            } else if (status !== "") {
-                attendanceData.push({ studentId, date, status });
+                if (status === "" && (!updatedRecord.note)) {
+                    attendanceData.splice(index, 1);
+                } else {
+                    attendanceData[index] = updatedRecord;
+                }
+            } else if (status !== "" || updatedRecord.note) {
+                attendanceData.push(updatedRecord);
             }
+
+            // If we have the cell element, update it directly
+            if (cell) {
+                cell.dataset.status = status;
+                cell.className = 'attendance-cell';
+                if (updatedRecord.note) cell.classList.add('attendance-has-note');
+
+                if (status === 'Presente') {
+                    cell.classList.add('attendance-present');
+                    cell.innerHTML = '<i class="bi bi-check-lg"></i>';
+                } else if (status === 'Ausente') {
+                    cell.classList.add('attendance-absent');
+                    cell.innerHTML = '<i class="bi bi-x-lg"></i>';
+                } else if (status === 'Con retraso') {
+                    cell.classList.add('attendance-late');
+                    cell.innerHTML = '<i class="bi bi-clock"></i>';
+                } else if (status === 'Justificado') {
+                    cell.classList.add('attendance-justified');
+                    cell.innerHTML = '<i class="bi bi-info-circle"></i>';
+                } else {
+                    cell.innerHTML = '';
+                }
+            } else {
+                // If no cell provided, just re-render (e.g. from modal)
+                renderAttendanceTable();
+            }
+            updateAttendanceStats();
         }
     } catch (error) {
         console.error('Error updating attendance:', error);
     }
+}
+
+let currentModalAttendance = { studentId: null, date: null };
+
+function openAttendanceModal(studentId, date) {
+    const student = studentsForAttendance.find(s => s.id === studentId);
+    if (!student) return;
+
+    // If date is null, default to first day of currently viewed month
+    if (!date) {
+        date = `${currentAttendanceMonth}-01`;
+    }
+
+    currentModalAttendance = { studentId, date };
+    const record = attendanceData.find(a => a.studentId === studentId && a.date === date);
+
+    document.getElementById('attendance-modal-student-name').textContent = `${student.name} ${student.lastname}`;
+    document.getElementById('attendance-modal-date').textContent = date;
+    document.getElementById('attendance-modal-status').value = (record && record.status) ? record.status : '';
+    document.getElementById('attendance-modal-note').value = (record && record.note) ? record.note : '';
+
+    // Calculate student stats for this month
+    let sPres = 0, sAbs = 0, sLate = 0, sJust = 0;
+    attendanceData.filter(a => a.studentId === studentId).forEach(r => {
+        if (r.status === 'Presente') sPres++;
+        else if (r.status === 'Ausente') sAbs++;
+        else if (r.status === 'Con retraso') sLate++;
+        else if (r.status === 'Justificado') sJust++;
+    });
+
+    document.getElementById('student-stat-present').textContent = sPres;
+    document.getElementById('student-stat-absent').textContent = sAbs;
+    document.getElementById('student-stat-late').textContent = sLate;
+    document.getElementById('student-stat-justified').textContent = sJust;
+
+    const modalEl = document.getElementById('attendanceModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    // Focus note field when modal is shown
+    modalEl.addEventListener('shown.bs.modal', () => {
+        document.getElementById('attendance-modal-note').focus();
+    }, { once: true });
+
+    // Wire up summary button
+    const summaryBtn = document.getElementById('view-student-summary-btn');
+    summaryBtn.onclick = () => {
+        modal.hide();
+        openStudentSummary(studentId);
+    };
+
+    modal.show();
+}
+
+function openStudentSummary(studentId) {
+    const student = studentsForAttendance.find(s => s.id === studentId);
+    if (!student) return;
+
+    document.getElementById('summary-student-name').textContent = `${student.name} ${student.lastname}`;
+
+    const [year, month] = currentAttendanceMonth.split('-');
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    document.getElementById('summary-month-title').textContent = `${monthNames[parseInt(month) - 1]} ${year}`;
+
+    const tbody = document.getElementById('student-summary-body');
+    tbody.innerHTML = '';
+
+    // Get all records for this student in this month, sorted by date
+    const records = attendanceData
+        .filter(a => a.studentId === studentId && a.date.startsWith(currentAttendanceMonth))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3 text-muted">No attendance records found for this month.</td></tr>';
+    } else {
+        records.forEach(r => {
+            const tr = document.createElement('tr');
+
+            let statusBadge = '';
+            if (r.status === 'Presente') statusBadge = '<span class="badge bg-success">Presente</span>';
+            else if (r.status === 'Ausente') statusBadge = '<span class="badge bg-danger">Ausente</span>';
+            else if (r.status === 'Con retraso') statusBadge = '<span class="badge bg-warning text-dark">Con retraso</span>';
+            else if (r.status === 'Justificado') statusBadge = '<span class="badge bg-info text-dark">Justificado</span>';
+            else statusBadge = '<span class="badge bg-light text-dark">No marcado</span>';
+
+            tr.innerHTML = `
+                <td class="fw-bold">${r.date.split('-')[2]}</td>
+                <td>${statusBadge}</td>
+                <td class="small">${escapeHtml(r.note || '-')}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    const summaryModal = new bootstrap.Modal(document.getElementById('studentSummaryModal'));
+    summaryModal.show();
+}
+
+function saveAttendanceFromModal() {
+    const status = document.getElementById('attendance-modal-status').value;
+    const note = document.getElementById('attendance-modal-note').value;
+
+    updateAttendance(currentModalAttendance.studentId, currentModalAttendance.date, status, note, null);
+    bootstrap.Modal.getInstance(document.getElementById('attendanceModal')).hide();
 }
 
 function prevAttendanceMonth() {

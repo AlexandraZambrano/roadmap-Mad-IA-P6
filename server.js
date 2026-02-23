@@ -712,19 +712,25 @@ app.get('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
 // Update or create attendance record
 app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res) => {
   try {
-    const { studentId, date, status } = req.body;
+    const { studentId, date, status, note } = req.body;
     if (!studentId || !date) return res.status(400).json({ error: 'studentId and date are required' });
 
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
+    console.log('UPDATING ATTENDANCE - payload:', { studentId, date, status, note });
+
+    const updateData = { status };
+    if (note !== undefined && note !== null) updateData.note = note;
+
     const attendance = await Attendance.findOneAndUpdate(
       { promotionId: req.params.promotionId, studentId, date },
-      { status },
-      { upsert: true, new: true }
+      updateData,
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
+    console.log('UPDATED RECORD IN DB:', attendance);
     res.json(attendance);
   } catch (error) {
     res.status(500).json({ error: error.message });
