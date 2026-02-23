@@ -1956,7 +1956,7 @@ app.get('/api/promotions/:promotionId/extended-info', async (req, res) => {
   try {
     const extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
     if (!extendedInfo) {
-      return res.json({ schedule: {}, team: [], resources: [], evaluation: '', pildoras: [] });
+      return res.json({ schedule: {}, team: [], resources: [], evaluation: '', pildoras: [], pildorasAssignmentOpen: false });
     }
     res.json(extendedInfo);
   } catch (error) {
@@ -1976,7 +1976,7 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
       console.log('ModulesPildoras count:', req.body.modulesPildoras.length);
     }
 
-    const { schedule, team, resources, evaluation, pildoras, modulesPildoras } = req.body;
+    const { schedule, team, resources, evaluation, pildoras, modulesPildoras, pildorasAssignmentOpen } = req.body;
     const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
     const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
     const newInfo = await ExtendedInfo.findOneAndUpdate(
@@ -1987,11 +1987,75 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
         resources: resources || [],
         evaluation: evaluation || '',
         pildoras: normalizedPildoras,
-        modulesPildoras: normalizedModulesPildoras
+        modulesPildoras: normalizedModulesPildoras,
+        pildorasAssignmentOpen: !!pildorasAssignmentOpen
       },
       { upsert: true, returnDocument: 'after' }
     );
     res.json(newInfo);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== PUBLIC STUDENT ASSIGNMENT ====================
+
+// Public students list (minimal info for dropdowns)
+app.get('/api/promotions/:promotionId/public-students', async (req, res) => {
+  try {
+    const students = await Student.find({ promotionId: req.params.promotionId }, 'id name lastname');
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Public píldora self-assignment
+app.put('/api/promotions/:promotionId/pildoras-self-assign', async (req, res) => {
+  try {
+    const { moduleId, pildoraIndex, studentId, action, isLegacy } = req.body; // action: 'add' or 'remove'
+    if (pildoraIndex === undefined || !studentId) {
+      return res.status(400).json({ error: 'pildoraIndex and studentId are required' });
+    }
+
+    const extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    if (!extendedInfo || !extendedInfo.pildorasAssignmentOpen) {
+      return res.status(403).json({ error: 'Self-assignment is currently closed by the teacher' });
+    }
+
+    const student = await Student.findOne({ id: studentId, promotionId: req.params.promotionId });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    let pildora;
+    if (isLegacy) {
+      if (!extendedInfo.pildoras || !extendedInfo.pildoras[pildoraIndex]) {
+        return res.status(404).json({ error: 'Legacy píldora not found' });
+      }
+      pildora = extendedInfo.pildoras[pildoraIndex];
+    } else {
+      if (!moduleId) return res.status(400).json({ error: 'moduleId is required for module-based píldoras' });
+      const modulePildoras = extendedInfo.modulesPildoras.find(m => m.moduleId === moduleId);
+      if (!modulePildoras || !modulePildoras.pildoras[pildoraIndex]) {
+        return res.status(404).json({ error: 'Píldora not found' });
+      }
+      pildora = modulePildoras.pildoras[pildoraIndex];
+    }
+
+    if (action === 'add') {
+      // Avoid duplicates
+      if (!pildora.students.some(s => s.id === studentId)) {
+        pildora.students.push({
+          id: student.id,
+          name: student.name,
+          lastname: student.lastname
+        });
+      }
+    } else if (action === 'remove') {
+      pildora.students = pildora.students.filter(s => s.id !== studentId);
+    }
+
+    await extendedInfo.save();
+    res.json({ message: 'Assignment updated successfully', pildora });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

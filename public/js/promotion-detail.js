@@ -16,7 +16,8 @@ let extendedInfoData = {
     team: [],
     resources: [],
     evaluation: '',
-    pildoras: []
+    pildoras: [],
+    pildorasAssignmentOpen: false
 };
 
 // Utility function to escape HTML to prevent XSS
@@ -194,6 +195,12 @@ Evaluación Global al Final del Bootcamp
 • Valoración de competencias transversales`;
 
             document.getElementById('evaluation-text').value = extendedInfoData.evaluation || defaultEvaluation;
+
+            // Set Píldoras Assignment Toggle
+            const assignmentToggle = document.getElementById('pildoras-assignment-toggle');
+            if (assignmentToggle) {
+                assignmentToggle.checked = !!extendedInfoData.pildorasAssignmentOpen;
+            }
         }
     } catch (error) {
         console.error('Error loading extended info:', error);
@@ -1185,6 +1192,36 @@ async function saveExtendedInfo() {
     } catch (error) {
         console.error('Error saving info:', error);
         alert(`Error saving info: ${error.message}`);
+    }
+}
+
+async function togglePildorasAssignment(isOpen) {
+    extendedInfoData.pildorasAssignmentOpen = isOpen;
+    console.log('Toggling píldoras self-assignment:', isOpen);
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(extendedInfoData)
+        });
+
+        if (!response.ok) {
+            alert('Failed to update assignment status');
+            // Revert UI
+            document.getElementById('pildoras-assignment-toggle').checked = !isOpen;
+            extendedInfoData.pildorasAssignmentOpen = !isOpen;
+        }
+    } catch (error) {
+        console.error('Error updating assignment status:', error);
+        alert('Error updating assignment status');
+        // Revert UI
+        document.getElementById('pildoras-assignment-toggle').checked = !isOpen;
+        extendedInfoData.pildorasAssignmentOpen = !isOpen;
     }
 }
 

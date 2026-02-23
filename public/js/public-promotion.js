@@ -676,17 +676,37 @@ function applyCellColors(cellContent, cellType) {
 async function loadExtendedInfo() {
     try {
         console.log('Loading extended info for promotion:', promotionId);
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`);
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info?t=${Date.now()}`);
 
         if (response.ok) {
             const info = await response.json();
             console.log('Extended info loaded:', info);
+            console.log('Self-assignment status:', info.pildorasAssignmentOpen);
+
+            // If self-assignment is open, fetch students list
+            if (info.pildorasAssignmentOpen) {
+                console.log('Self-assignment is open, loading students...');
+                await loadPublicStudents();
+            }
+
             displayExtendedInfo(info);
         } else {
             console.log('No extended info found or error loading:', response.status);
         }
     } catch (error) {
         console.error('Error loading extended info:', error);
+    }
+}
+
+async function loadPublicStudents() {
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/public-students`);
+        if (response.ok) {
+            window.publicStudents = await response.json();
+            console.log('Public students loaded:', window.publicStudents.length);
+        }
+    } catch (error) {
+        console.error('Error loading public students:', error);
     }
 }
 
@@ -778,6 +798,28 @@ function createProgramInfoSections(info) {
                 : 'Desierta';
             const status = p.status || '';
 
+            // Assignment UI for Legacy
+            let assignmentCell = '';
+            if (info.pildorasAssignmentOpen) {
+                const studentOptions = (window.publicStudents || [])
+                    .map(s => `<option value="${s.id}">${s.name} ${s.lastname}</option>`)
+                    .join('');
+
+                assignmentCell = `
+                    <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">
+                        <div class="d-flex flex-column gap-1">
+                            <select class="form-select form-select-sm coder-select-legacy-${index}">
+                                <option value="">Selecciona Coder...</option>
+                                ${studentOptions}
+                            </select>
+                            <button class="btn btn-xs btn-primary py-0" style="font-size: 0.7rem;" onclick="window.selfAssignPildoraLegacy(${index})">
+                                <i class="bi bi-person-plus"></i> Apuntarse
+                            </button>
+                        </div>
+                    </td>
+                `;
+            }
+
             // Apply orange background for the next upcoming date
             const isNextDate = index === nextDateIndex;
 
@@ -787,21 +829,23 @@ function createProgramInfoSections(info) {
 
                 return `
                     <tr>
-                        <td style="width: 20%; ${orangeStyle}">${escapeHtml(mode)}</td>
+                        <td style="width: 15%; ${orangeStyle}">${escapeHtml(mode)}</td>
                         <td style="width: 15%; ${orangeStyle}">${escapeHtml(date)}</td>
-                        <td style="width: 30%; ${orangeStyleLeft}">${escapeHtml(title)}</td>
-                        <td style="width: 25%; ${orangeStyleLeft}">${escapeHtml(studentsText)}</td>
+                        <td style="width: 25%; ${orangeStyleLeft}">${escapeHtml(title)}</td>
+                        <td style="width: 20%; ${orangeStyleLeft}">${escapeHtml(studentsText)}</td>
                         <td style="width: 10%; ${orangeStyle}">${escapeHtml(status)}</td>
+                        ${assignmentCell}
                     </tr>
                 `;
             } else {
                 return `
                     <tr>
-                        <td style="width: 20%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
+                        <td style="width: 15%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
                         <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
-                        <td style="width: 30%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
-                        <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
+                        <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
+                        <td style="width: 20%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
                         <td style="width: 10%; ${applyCellColors(status, 'estado')}">${escapeHtml(status)}</td>
+                        ${assignmentCell}
                     </tr>
                 `;
             }
@@ -813,6 +857,7 @@ function createProgramInfoSections(info) {
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="card-title section-title mb-0">
                             <i class="bi bi-lightbulb me-2"></i>Píldoras (Formato Legacy)
+                            ${info.pildorasAssignmentOpen ? '<span class="badge bg-success ms-2" style="font-size: 0.7rem;">Auto-asignación Abierta</span>' : ''}
                         </h5>
                         <div class="alert alert-info mb-0 py-2 px-3">
                             <small><i class="bi bi-info-circle me-1"></i>Para ver navegación por módulos, configure píldoras por módulo en el dashboard del profesor</small>
@@ -822,11 +867,12 @@ function createProgramInfoSections(info) {
                         <table class="table table-sm table-bordered" style="border-color: #dee2e6;">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 20%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Presentación</th>
+                                    <th style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Presentación</th>
                                     <th style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Fecha</th>
-                                    <th style="width: 30%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Píldora</th>
-                                    <th style="width: 25%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Coder</th>
+                                    <th style="width: 25%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Píldora</th>
+                                    <th style="width: 20%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Coder</th>
                                     <th style="width: 10%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Estado</th>
+                                    ${info.pildorasAssignmentOpen ? '<th style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Acción</th>' : ''}
                                 </tr>
                             </thead>
                             <tbody>
@@ -871,7 +917,8 @@ function createProgramInfoSections(info) {
             let currentModuleIndex = 0;
 
             function renderPildorasTable() {
-                console.log('Rendering píldoras table for module index:', currentModuleIndex);
+                console.log('Rendering píldoras table. Assignment open:', info.pildorasAssignmentOpen);
+                console.log('Public students available:', window.publicStudents?.length);
                 const currentModule = modulesWithPildoras[currentModuleIndex];
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -906,6 +953,28 @@ function createProgramInfoSections(info) {
                         : 'Desierta';
                     const status = p.status || '';
 
+                    // Assignment UI
+                    let assignmentCell = '';
+                    if (info.pildorasAssignmentOpen) {
+                        const studentOptions = (window.publicStudents || [])
+                            .map(s => `<option value="${s.id}">${s.name} ${s.lastname}</option>`)
+                            .join('');
+
+                        assignmentCell = `
+                            <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">
+                                <div class="d-flex flex-column gap-1">
+                                    <select class="form-select form-select-sm coder-select-${index}">
+                                        <option value="">Selecciona Coder...</option>
+                                        ${studentOptions}
+                                    </select>
+                                    <button class="btn btn-xs btn-primary py-0" style="font-size: 0.7rem;" onclick="window.selfAssignPildora('${currentModule.moduleId}', ${index})">
+                                        <i class="bi bi-person-plus"></i> Apuntarse
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                    }
+
                     // Apply orange background for the next upcoming date
                     const isNextDate = index === nextDateIndex;
 
@@ -916,22 +985,24 @@ function createProgramInfoSections(info) {
 
                         return `
                             <tr>
-                                <td style="width: 20%; ${orangeStyle}">${escapeHtml(mode)}</td>
+                                <td style="width: 15%; ${orangeStyle}">${escapeHtml(mode)}</td>
                                 <td style="width: 15%; ${orangeStyle}">${escapeHtml(date)}</td>
                                 <td style="width: 30%; ${orangeStyleLeft}">${escapeHtml(title)}</td>
-                                <td style="width: 25%; ${orangeStyleLeft}">${escapeHtml(studentsText)}</td>
+                                <td style="width: 20%; ${orangeStyleLeft}">${escapeHtml(studentsText)}</td>
                                 <td style="width: 10%; ${orangeStyle}">${escapeHtml(status)}</td>
+                                ${assignmentCell}
                             </tr>
                         `;
                     } else {
                         // Normal row with color coding for specific cells
                         return `
                             <tr>
-                                <td style="width: 20%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
+                                <td style="width: 15%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
                                 <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
                                 <td style="width: 30%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
-                                <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
+                                <td style="width: 20%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
                                 <td style="width: 10%; ${applyCellColors(status, 'estado')}">${escapeHtml(status)}</td>
+                                ${assignmentCell}
                             </tr>
                         `;
                     }
@@ -939,15 +1010,17 @@ function createProgramInfoSections(info) {
 
                 const tableContainer = pildorasSection.querySelector('.pildoras-table-container');
                 if (tableContainer) {
+                    const actionHeader = info.pildorasAssignmentOpen ? '<th style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Acción</th>' : '';
                     tableContainer.innerHTML = `
                         <table class="table table-sm table-bordered" style="border-color: #dee2e6;">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 20%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Presentación</th>
+                                    <th style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Presentación</th>
                                     <th style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Fecha</th>
                                     <th style="width: 30%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Píldora</th>
-                                    <th style="width: 25%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Coder</th>
+                                    <th style="width: 20%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Coder</th>
                                     <th style="width: 10%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Estado</th>
+                                    ${actionHeader}
                                 </tr>
                             </thead>
                             <tbody>
@@ -990,6 +1063,7 @@ function createProgramInfoSections(info) {
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="card-title section-title mb-0">
                                 <i class="bi bi-lightbulb me-2"></i>Píldoras
+                                ${info.pildorasAssignmentOpen ? '<span class="badge bg-success ms-2" style="font-size: 0.7rem;">Auto-asignación Abierta</span>' : ''}
                             </h5>
                             <div class="d-flex align-items-center gap-3">
                                 <!-- Module Navigation - NOW WITH ORANGE ARROWS -->
@@ -1033,6 +1107,69 @@ function createProgramInfoSections(info) {
                     currentModuleIndex--;
                     console.log('Moving to module index:', currentModuleIndex);
                     renderPildorasTable();
+                }
+            };
+
+            window.selfAssignPildora = async function (mId, pIdx) {
+                const selectEl = document.querySelector(`.coder-select-${pIdx}`);
+                const sId = selectEl.value;
+                if (!sId) {
+                    alert('Por favor selecciona un Coder');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ moduleId: mId, pildoraIndex: pIdx, studentId: sId, action: 'add' })
+                    });
+
+                    if (response.ok) {
+                        // Refresh data
+                        const infoResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`);
+                        if (infoResponse.ok) {
+                            const newInfo = await infoResponse.json();
+                            window.publicPromotionExtendedInfo = newInfo;
+
+                            // Re-calculate modulesWithPildoras and update table
+                            // (Actually it's better to just call loadExtendedInfo again to keep everything in sync)
+                            loadExtendedInfo();
+                        }
+                    } else {
+                        const error = await response.json();
+                        alert(`Error: ${error.error}`);
+                    }
+                } catch (error) {
+                    console.error('Error assigning píldora:', error);
+                    alert('Error de conexión');
+                }
+            };
+
+            window.selfAssignPildoraLegacy = async function (pIdx) {
+                const selectEl = document.querySelector(`.coder-select-legacy-${pIdx}`);
+                const sId = selectEl.value;
+                if (!sId) {
+                    alert('Por favor selecciona un Coder');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ pildoraIndex: pIdx, studentId: sId, action: 'add', isLegacy: true })
+                    });
+
+                    if (response.ok) {
+                        loadExtendedInfo();
+                    } else {
+                        const error = await response.json();
+                        alert(`Error: ${error.error}`);
+                    }
+                } catch (error) {
+                    console.error('Error assigning píldora (legacy):', error);
+                    alert('Error de conexión');
                 }
             };
 
