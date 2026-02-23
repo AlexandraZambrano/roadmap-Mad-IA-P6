@@ -31,6 +31,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+//visibility password
+function togglePasswordVisibility() {
+    const input = document.getElementById('access-password');
+    const icon = document.getElementById('togglePasswordIcon');
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+}
+
 async function checkPasswordRequirement() {
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}`);
