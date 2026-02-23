@@ -12,18 +12,11 @@
 
 <body>
         <script>
-            // Check if we're on GitHub Pages
-            const isGitHubPages = window.location.hostname.includes('github.io') || 
-                                 window.location.hostname.includes('github.com');
-            
-            if (!isGitHubPages) {
                 // Local/server mode - redirect to login
                 setTimeout(() => {
                     window.location.href = 'login.html';
                 }, 1500);
-            }
         </script>
-    </div>
 </body>
 
 </html>
