@@ -29,7 +29,7 @@ function escapeHtml(text) {
         '"': '&quot;',
         "'": '&#039;'
     };
-    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+    return text.toString().replace(/[&<>"']/g, function (m) { return map[m]; });
 }
 
 // Immediate CSS injection for student view (to prevent flicker)
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (previewIframe) {
         const baseUrl = window.location.origin;
         const isGitHubPages = window.location.hostname.includes('github.io');
-        
+
         let previewPath;
         if (isGitHubPages) {
             // GitHub Pages needs the repository name in the path
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const directory = path.substring(0, path.lastIndexOf('/'));
             previewPath = (directory === '/' ? '' : directory) + '/public-promotion.html';
         }
-        
+
         previewIframe.src = `${baseUrl}${previewPath}?id=${promotionId}&preview=1`;
     }
 
@@ -162,7 +162,7 @@ async function loadExtendedInfo() {
             // Populate Additional Lists
             displayTeam();
             displayResources();
-            
+
             // Load modules and display píldoras
             loadModulesPildoras();
 
@@ -246,10 +246,10 @@ async function loadModulesPildoras() {
         if (response.ok) {
             const data = await response.json();
             promotionModules = data.modules || [];
-            
-            // Initialize modulesPildoras in extendedInfoData if not present
-            if (!extendedInfoData.modulesPildoras) {
-                extendedInfoData.modulesPildoras = data.modulesPildoras || [];
+
+            // Always sync modulesPildoras from this specialized endpoint if it has data
+            if (data.modulesPildoras) {
+                extendedInfoData.modulesPildoras = data.modulesPildoras;
             }
 
             // Ensure all modules have entries
@@ -323,6 +323,7 @@ function displayPildoras() {
         const statusValue = p.status || '';
 
         const tr = document.createElement('tr');
+        tr.dataset.index = index;
         tr.innerHTML = `
             <td>
                 <select class="form-select form-select-sm pildora-mode pildora-mode-${modeValue.toLowerCase().replace(' ', '-')}">
@@ -340,21 +341,21 @@ function displayPildoras() {
             <td>
                 <div class="dropdown pildora-students-dropdown">
                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        ${selectedIds.length > 0 
-                            ? (selectedIds.length === 1 
-                                ? students.find(s => s.id === selectedIds[0])?.name + ' ' + (students.find(s => s.id === selectedIds[0])?.lastname || '')
-                                : `${selectedIds.length} estudiantes seleccionados`)
-                            : 'Seleccionar estudiantes'}
+                        ${selectedIds.length > 0
+                ? (selectedIds.length === 1
+                    ? students.find(s => s.id === selectedIds[0])?.name + ' ' + (students.find(s => s.id === selectedIds[0])?.lastname || '')
+                    : `${selectedIds.length} estudiantes seleccionados`)
+                : 'Seleccionar estudiantes'}
                     </button>
                     <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
                         ${students.length === 0
-                            ? '<li><span class="dropdown-item-text text-muted">No students available</span></li>'
-                            : students.map(s => {
-                                const value = s.id || '';
-                                const label = `${s.name || ''} ${s.lastname || ''}`.trim() || value;
-                                const checked = selectedIds.includes(value) ? 'checked' : '';
-                                const inputId = `pild-${index}-${escapeHtml(value)}`;
-                                return `
+                ? '<li><span class="dropdown-item-text text-muted">No students available</span></li>'
+                : students.map(s => {
+                    const value = s.id || '';
+                    const label = `${s.name || ''} ${s.lastname || ''}`.trim() || value;
+                    const checked = selectedIds.includes(value) ? 'checked' : '';
+                    const inputId = `pild-${index}-${escapeHtml(value)}`;
+                    return `
                                     <li class="dropdown-item-custom">
                                         <div class="form-check">
                                             <input class="form-check-input pildora-student-checkbox" 
@@ -367,8 +368,8 @@ function displayPildoras() {
                                         </div>
                                     </li>
                                 `;
-                            }).join('')
-                        }
+                }).join('')
+            }
                     </ul>
                 </div>
             </td>
@@ -393,19 +394,62 @@ function displayPildoras() {
 
     // Add event listeners for student checkboxes
     document.querySelectorAll('.pildora-student-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
+        checkbox.addEventListener('change', function () {
             updatePildoraStudentSelection(parseInt(this.dataset.pildoraIndex), this.value, this.checked);
         });
     });
-    
-    // Add event listeners for mode and status changes to update colors
+
+    // Add event listeners for other fields to sync data locally
     document.querySelectorAll('.pildora-mode').forEach(select => {
-        select.addEventListener('change', applyPildorasColorCoding);
+        select.addEventListener('change', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'mode', this.value);
+            applyPildorasColorCoding();
+        });
     });
-    
+
+    document.querySelectorAll('.pildora-date').forEach(input => {
+        input.addEventListener('change', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'date', this.value);
+        });
+        // Also sync on blur/input to be safe
+        input.addEventListener('blur', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'date', this.value);
+        });
+    });
+
+    document.querySelectorAll('.pildora-title').forEach(input => {
+        input.addEventListener('blur', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'title', this.value);
+        });
+        input.addEventListener('input', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'title', this.value);
+        });
+    });
+
     document.querySelectorAll('.pildora-status').forEach(select => {
-        select.addEventListener('change', applyPildorasColorCoding);
+        select.addEventListener('change', function () {
+            const index = parseInt(this.closest('tr').dataset.index);
+            updatePildoraField(index, 'status', this.value);
+            applyPildorasColorCoding();
+        });
     });
+}
+
+// Helper function to update other fields for píldoras
+function updatePildoraField(pildoraIndex, field, value) {
+    const currentModule = promotionModules[currentModuleIndex];
+    if (!currentModule) return;
+
+    const modulePildoras = extendedInfoData.modulesPildoras?.find(mp => mp.moduleId === currentModule.id);
+    if (!modulePildoras || !modulePildoras.pildoras || !modulePildoras.pildoras[pildoraIndex]) return;
+
+    modulePildoras.pildoras[pildoraIndex][field] = value;
+    console.log(`Updated píldora ${pildoraIndex} field ${field} to:`, value);
 }
 
 function applyPildorasColorCoding() {
@@ -413,7 +457,7 @@ function applyPildorasColorCoding() {
     document.querySelectorAll('.pildora-mode').forEach(select => {
         const value = select.value.toLowerCase();
         select.style.fontWeight = '600';
-        
+
         if (value === 'presencial') {
             select.style.color = '#198754'; // Green
             select.style.backgroundColor = '#f8fff9';
@@ -425,12 +469,12 @@ function applyPildorasColorCoding() {
             select.style.backgroundColor = '#f8f9fa';
         }
     });
-    
+
     // Apply colors to status selects
     document.querySelectorAll('.pildora-status').forEach(select => {
         const value = select.value.toLowerCase();
         select.style.fontWeight = '600';
-        
+
         if (value === 'presentada') {
             select.style.color = '#198754'; // Green
             select.style.backgroundColor = '#f8fff9';
@@ -487,15 +531,15 @@ function deletePildoraRow(index) {
     if (!modulePildoras || !modulePildoras.pildoras) return;
 
     if (index < 0 || index >= modulePildoras.pildoras.length) return;
-    
+
     if (!confirm('Are you sure you want to delete this píldora?')) return;
-    
+
     // Remove from local data
     modulePildoras.pildoras.splice(index, 1);
-    
+
     // Save changes to server
     savePildorasToServer(currentModule);
-    
+
     // Update display
     displayPildoras();
 }
@@ -757,7 +801,7 @@ function importPildorasFromExcel(input) {
 
     // Show loading indicator
     const originalText = document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML;
-    document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML = 
+    document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML =
         '<i class="bi bi-hourglass-split"></i> Importing...';
 
     // Use module-specific endpoint
@@ -768,45 +812,45 @@ function importPildorasFromExcel(input) {
         },
         body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            alert(`Error importing Excel file: ${data.error}`);
-        } else {
-            alert(`Successfully imported ${data.pildoras.length} píldoras to module "${data.module.name}"`);
-            
-            // Update the current module's píldoras in our local data structure
-            if (!extendedInfoData.modulesPildoras) {
-                extendedInfoData.modulesPildoras = [];
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(`Error importing Excel file: ${data.error}`);
+            } else {
+                alert(`Successfully imported ${data.pildoras.length} píldoras to module "${data.module.name}"`);
+
+                // Update the current module's píldoras in our local data structure
+                if (!extendedInfoData.modulesPildoras) {
+                    extendedInfoData.modulesPildoras = [];
+                }
+
+                let modulePildoras = extendedInfoData.modulesPildoras.find(mp => mp.moduleId === currentModule.id);
+                if (!modulePildoras) {
+                    modulePildoras = {
+                        moduleId: currentModule.id,
+                        moduleName: currentModule.name,
+                        pildoras: []
+                    };
+                    extendedInfoData.modulesPildoras.push(modulePildoras);
+                }
+
+                // Add imported píldoras to local data structure
+                modulePildoras.pildoras.push(...data.pildoras);
+
+                // Refresh the display
+                displayPildoras();
             }
-
-            let modulePildoras = extendedInfoData.modulesPildoras.find(mp => mp.moduleId === currentModule.id);
-            if (!modulePildoras) {
-                modulePildoras = {
-                    moduleId: currentModule.id,
-                    moduleName: currentModule.name,
-                    pildoras: []
-                };
-                extendedInfoData.modulesPildoras.push(modulePildoras);
-            }
-
-            // Add imported píldoras to local data structure
-            modulePildoras.pildoras.push(...data.pildoras);
-
-            // Refresh the display
-            displayPildoras();
-        }
-        input.value = ''; // Clear input
-    })
-    .catch(error => {
-        console.error('Error importing Excel:', error);
-        alert('Error importing Excel file');
-        input.value = ''; // Clear input
-    })
-    .finally(() => {
-        // Restore button text
-        document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML = originalText;
-    });
+            input.value = ''; // Clear input
+        })
+        .catch(error => {
+            console.error('Error importing Excel:', error);
+            alert('Error importing Excel file');
+            input.value = ''; // Clear input
+        })
+        .finally(() => {
+            // Restore button text
+            document.querySelector('button[onclick="document.getElementById(\'pildoras-excel-input\').click()"]').innerHTML = originalText;
+        });
 }
 
 function openTeamModal() {
@@ -1022,7 +1066,7 @@ async function saveExtendedInfo() {
     };
 
     const pildorasRows = document.querySelectorAll('#pildoras-list-body tr');
-    
+
     // Collect current module píldoras from the displayed rows
     const currentModule = promotionModules[currentModuleIndex];
     if (currentModule && pildorasRows.length > 0) {
@@ -1090,7 +1134,7 @@ async function saveExtendedInfo() {
     // Update global object
     extendedInfoData.schedule = schedule;
     extendedInfoData.evaluation = evaluation;
-    
+
     // Keep legacy pildoras for backward compatibility (flatten all module pildoras)
     const allPildoras = [];
     if (extendedInfoData.modulesPildoras) {
@@ -1159,7 +1203,7 @@ function switchTab(tabName) {
     if (tabName === 'access-settings' && userRole === 'teacher') {
         loadAccessPassword();
     }
-    
+
     // Load Quick Links and Sections when Program Info tab is accessed
     if (tabName === 'info' && userRole === 'teacher') {
         loadQuickLinks();
@@ -2257,10 +2301,10 @@ function setupForms() {
         const nationality = document.getElementById('student-nationality').value;
         const profession = document.getElementById('student-profession').value;
         const address = document.getElementById('student-address').value;
-        
+
         // Check if we're editing an existing student
         const editingStudentId = document.getElementById('student-form').dataset.editingStudentId;
-        
+
         const token = localStorage.getItem('token');
 
         const studentData = {
@@ -2277,7 +2321,7 @@ function setupForms() {
 
         try {
             let response;
-            
+
             if (editingStudentId) {
                 // Update existing student using the /profile endpoint which works reliably
                 response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${editingStudentId}/profile`, {
@@ -2306,17 +2350,17 @@ function setupForms() {
                 document.getElementById('student-form').reset();
                 delete document.getElementById('student-form').dataset.editingStudentId;
                 loadStudents();
-                
+
                 const action = editingStudentId ? 'updated' : 'added';
                 alert(`Student ${action} successfully!`);
             } else {
                 console.error('Response status:', response.status);
                 console.error('Response headers:', response.headers);
                 let errorMessage = 'Unknown error';
-                
+
                 // Clone the response so we can read it multiple times if needed
                 const responseClone = response.clone();
-                
+
                 try {
                     const errorData = await response.json();
                     errorMessage = errorData.error || errorMessage;
@@ -2331,7 +2375,7 @@ function setupForms() {
                         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
                     }
                 }
-                
+
                 alert(`Error ${editingStudentId ? 'updating' : 'adding'} student: ${errorMessage}`);
             }
         } catch (error) {
@@ -2347,12 +2391,12 @@ function setupForms() {
 async function debugStudentEndpoints() {
     console.log('=== TESTING STUDENT ENDPOINTS ===');
     const token = localStorage.getItem('token');
-    
+
     if (!window.currentStudents || window.currentStudents.length === 0) {
         console.log('No students available for testing');
         return;
     }
-    
+
     const student = window.currentStudents[0];
     console.log('Testing with student:', student);
     console.log('Student fields present:', {
@@ -2365,7 +2409,7 @@ async function debugStudentEndpoints() {
         profession: !!student.profession,
         address: !!student.address
     });
-    
+
     // Test GET endpoint
     try {
         const getResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${student.id}`, {
@@ -2379,7 +2423,7 @@ async function debugStudentEndpoints() {
     } catch (error) {
         console.log('GET /students/:id error:', error.message);
     }
-    
+
     // Test PUT /profile endpoint
     try {
         const testData = {
@@ -2391,9 +2435,9 @@ async function debugStudentEndpoints() {
             profession: student.profession || 'Test Profession',
             address: student.address || 'Test Address'
         };
-        
+
         console.log('Testing PUT with data:', testData);
-        
+
         const putResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${student.id}/profile`, {
             method: 'PUT',
             headers: {
@@ -2402,7 +2446,7 @@ async function debugStudentEndpoints() {
             },
             body: JSON.stringify(testData)
         });
-        
+
         console.log('PUT /students/:id/profile status:', putResponse.status);
         if (putResponse.ok) {
             const updatedData = await putResponse.json();
@@ -2424,14 +2468,14 @@ async function loadStudents() {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const students = await response.json();
         console.log('Loaded students:', students);
-        
+
         // Store students data globally for multi-select operations
         // Backend already normalizes the ID field, so we can use it directly
         window.currentStudents = students;
@@ -2449,12 +2493,12 @@ function displayStudents(students) {
         console.warn('Students container not found');
         return;
     }
-    
+
     if (!students || students.length === 0) {
         studentsContainer.innerHTML = '<p class="text-muted">No students registered yet.</p>';
         return;
     }
-    
+
     studentsContainer.innerHTML = students.map((student, index) => `
         <div class="card mb-3">
             <div class="card-body">
@@ -2489,21 +2533,21 @@ function displayStudents(students) {
             </div>
         </div>
     `).join('');
-    
+
     updateSelectionState();
 }
 
 // Delete individual student
 async function deleteStudent(studentId, studentEmail) {
     if (!confirm(`Are you sure you want to delete student ${studentEmail}?`)) return;
-    
+
     try {
         const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
+
         if (response.ok) {
             alert('Student deleted successfully');
             loadStudents();
@@ -2523,7 +2567,7 @@ function editStudent(studentId) {
         alert('Student not found');
         return;
     }
-    
+
     // Populate the form with existing data
     document.getElementById('student-name').value = student.name || '';
     document.getElementById('student-lastname').value = student.lastname || '';
@@ -2532,14 +2576,14 @@ function editStudent(studentId) {
     document.getElementById('student-nationality').value = student.nationality || '';
     document.getElementById('student-profession').value = student.profession || '';
     document.getElementById('student-address').value = student.address || '';
-    
+
     // Store the student ID for updating
     document.getElementById('student-form').dataset.editingStudentId = studentId;
-    
+
     // Update modal title
     const modalTitle = document.querySelector('#studentModal .modal-title');
     if (modalTitle) modalTitle.textContent = 'Edit Student';
-    
+
     // Show the modal
     studentModal.show();
 }
@@ -2645,14 +2689,14 @@ function openSectionModal() {
 
 function openStudentModal() {
     document.getElementById('student-form').reset();
-    
+
     // Clear any editing state
     delete document.getElementById('student-form').dataset.editingStudentId;
-    
+
     // Update modal title
     const modalTitle = document.querySelector('#studentModal .modal-title');
     if (modalTitle) modalTitle.textContent = 'Add Student';
-    
+
     studentModal.show();
 }
 
@@ -2946,7 +2990,7 @@ async function removeCollaborator(teacherId) {
 
 async function loadAccessPassword() {
     if (userRole !== 'teacher') return;
-    
+
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/access-password`, {
@@ -2957,18 +3001,18 @@ async function loadAccessPassword() {
             const data = await response.json();
             const passwordInput = document.getElementById('access-password-input');
             const accessLinkInput = document.getElementById('student-access-link');
-            
+
             if (passwordInput) {
                 passwordInput.value = data.accessPassword || '';
             }
-            
+
             // Update the access link
             if (accessLinkInput) {
                 const baseUrl = window.location.origin;
                 // Detect different environments and adjust path accordingly
                 const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
                 const isGitHubPages = window.location.hostname.includes('github.io');
-                
+
                 let path;
                 if (isLiveServer) {
                     path = '/public/public-promotion.html';
@@ -2980,7 +3024,7 @@ async function loadAccessPassword() {
                 } else {
                     path = '/public-promotion.html';
                 }
-                
+
                 accessLinkInput.value = `${baseUrl}${path}?id=${promotionId}`;
             }
         }
@@ -2991,7 +3035,7 @@ async function loadAccessPassword() {
 
 async function updateAccessPassword() {
     if (userRole !== 'teacher') return;
-    
+
     const token = localStorage.getItem('token');
     const passwordInput = document.getElementById('access-password-input');
     const alertEl = document.getElementById('password-alert');
@@ -3020,16 +3064,16 @@ async function updateAccessPassword() {
         if (response.ok) {
             if (alertEl) {
                 alertEl.className = 'alert alert-success';
-                alertEl.textContent = password 
-                    ? 'Access password updated successfully! Students can now use the link below to access this promotion.' 
+                alertEl.textContent = password
+                    ? 'Access password updated successfully! Students can now use the link below to access this promotion.'
                     : 'Password protection removed successfully!';
                 alertEl.classList.remove('hidden');
-                
+
                 setTimeout(() => {
                     alertEl.classList.add('hidden');
                 }, 5000);
             }
-            
+
             // Update the access link
             const accessLinkInput = document.getElementById('student-access-link');
             if (accessLinkInput) {
@@ -3037,7 +3081,7 @@ async function updateAccessPassword() {
                 // Detect different environments and adjust path accordingly
                 const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
                 const isGitHubPages = window.location.hostname.includes('github.io');
-                
+
                 let path;
                 if (isLiveServer) {
                     path = '/public/public-promotion.html';
@@ -3049,7 +3093,7 @@ async function updateAccessPassword() {
                 } else {
                     path = '/public-promotion.html';
                 }
-                
+
                 accessLinkInput.value = `${baseUrl}${path}?id=${promotionId}`;
             }
         } else {
@@ -3081,7 +3125,7 @@ function copyAccessLink() {
                 copyBtn.innerHTML = '<i class="bi bi-check me-2"></i>Copied!';
                 copyBtn.classList.add('btn-success');
                 copyBtn.classList.remove('btn-outline-secondary');
-                
+
                 setTimeout(() => {
                     copyBtn.innerHTML = originalText;
                     copyBtn.classList.remove('btn-success');
@@ -3112,16 +3156,16 @@ function updateSelectionState() {
     const selectionControls = document.getElementById('selection-controls');
     const exportSelectedBtn = document.getElementById('export-selected-btn');
     const deleteSelectedBtn = document.getElementById('delete-selected-btn');
-    
+
     const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
     const selectedCount = selectedCheckboxes.length;
     const totalCount = checkboxes.length;
-    
+
     // Update selected count display
     if (selectedCountEl) {
         selectedCountEl.textContent = `${selectedCount} selected`;
     }
-    
+
     // Update select all checkbox state
     if (selectAllCheckbox && totalCount > 0) {
         if (selectedCount === 0) {
@@ -3135,16 +3179,16 @@ function updateSelectionState() {
             selectAllCheckbox.checked = false;
         }
     }
-    
+
     // Show/hide selection controls and buttons
     if (selectionControls) {
         selectionControls.style.display = totalCount > 0 ? 'block' : 'none';
     }
-    
+
     if (exportSelectedBtn) {
         exportSelectedBtn.style.display = selectedCount > 0 ? 'inline-block' : 'none';
     }
-    
+
     if (deleteSelectedBtn) {
         deleteSelectedBtn.style.display = selectedCount > 0 ? 'inline-block' : 'none';
     }
@@ -3153,14 +3197,14 @@ function updateSelectionState() {
 function toggleAllStudents() {
     const selectAllCheckbox = document.getElementById('select-all-students');
     const studentCheckboxes = document.querySelectorAll('.student-checkbox');
-    
+
     if (selectAllCheckbox && studentCheckboxes.length > 0) {
         const shouldCheck = selectAllCheckbox.checked;
-        
+
         studentCheckboxes.forEach(checkbox => {
             checkbox.checked = shouldCheck;
         });
-        
+
         updateSelectionState();
     }
 }
@@ -3169,21 +3213,21 @@ function toggleAllStudents() {
 function exportSelectedStudentsCsv() {
     const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
     const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
-    
+
     if (selectedStudentIds.length === 0) {
         alert('No students selected for export.');
         return;
     }
-    
-    const selectedStudents = window.currentStudents?.filter(student => 
+
+    const selectedStudents = window.currentStudents?.filter(student =>
         selectedStudentIds.includes(student.id)
     ) || [];
-    
+
     if (selectedStudents.length === 0) {
         alert('Selected students not found.');
         return;
     }
-    
+
     exportStudentsToCSV(selectedStudents, `selected-students-promotion-${promotionId}.csv`);
 }
 
@@ -3191,17 +3235,17 @@ function exportSelectedStudentsCsv() {
 async function deleteSelectedStudents() {
     const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
     const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
-    
+
     if (selectedStudentIds.length === 0) {
         alert('No students selected for deletion.');
         return;
     }
-    
+
     const confirmMessage = `Are you sure you want to delete ${selectedStudentIds.length} selected student(s)? This action cannot be undone.`;
     if (!confirm(confirmMessage)) {
         return;
     }
-    
+
     try {
         const token = localStorage.getItem('token');
         const deletePromises = selectedStudentIds.map(studentId =>
@@ -3210,9 +3254,9 @@ async function deleteSelectedStudents() {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
         );
-        
+
         await Promise.all(deletePromises);
-        
+
         alert(`Successfully deleted ${selectedStudentIds.length} student(s).`);
         loadStudents(); // Reload the students list
     } catch (error) {

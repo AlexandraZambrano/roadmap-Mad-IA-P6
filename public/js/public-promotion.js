@@ -120,12 +120,12 @@ window.verifyPromotionPassword = async function () {
 };
 
 async function loadPromotionContent() {
-    loadPromotion();
-    loadModules();
-    loadQuickLinks();
-    loadSections();
-    loadCalendar();
-    loadExtendedInfo(); // Add this line to load Program Info
+    await loadPromotion();
+    // await loadModules(); // loadPromotion already calls generateGanttChart
+    await loadQuickLinks();
+    await loadSections();
+    await loadCalendar();
+    await loadExtendedInfo(); // Load Program Info after main promotion data
 }
 
 async function loadPromotion() {
@@ -176,7 +176,7 @@ function generateGanttChart(promotion) {
     // Add responsive wrapper styling to the table
     table.style.fontSize = '0.75rem';
     table.className = 'table table-sm table-bordered';
-    
+
     // Ensure parent container has proper overflow handling
     const tableContainer = table.closest('.table-responsive') || table.parentElement;
     if (tableContainer) {
@@ -293,7 +293,7 @@ function generateGanttChart(promotion) {
     let weekCounter = 0;
     modules.forEach((module, index) => {
         const moduleId = `module-${index}`;
-        
+
         // Main module row with dropdown toggle
         const row = document.createElement('tr');
         const nameCell = document.createElement('td');
@@ -331,12 +331,12 @@ function generateGanttChart(promotion) {
 
         // Create collapsible section for courses and projects
         const hasSubItems = (module.courses && module.courses.length > 0) || (module.projects && module.projects.length > 0);
-        
+
         if (hasSubItems) {
             const collapseContainer = document.createElement('tbody');
             collapseContainer.className = 'collapse';
             collapseContainer.id = moduleId;
-            
+
             // Create rows for courses
             if (module.courses && module.courses.length > 0) {
                 module.courses.forEach(courseObj => {
@@ -367,7 +367,7 @@ function generateGanttChart(promotion) {
                         cell.style.fontSize = '0.6rem';
                         if (i >= absoluteStart && i < absoluteEnd) {
                             cell.style.backgroundColor = '#d1e7dd';
-    
+
                         }
                         coursesRow.appendChild(cell);
                     }
@@ -405,21 +405,21 @@ function generateGanttChart(promotion) {
                         cell.style.fontSize = '0.6rem';
                         if (i >= absoluteStart && i < absoluteEnd) {
                             cell.style.backgroundColor = '#fce4e4';
-    
+
                         }
                         projectsRow.appendChild(cell);
                     }
                     collapseContainer.appendChild(projectsRow);
                 });
             }
-            
+
             table.appendChild(collapseContainer);
-            
+
             // Add event listener for chevron rotation
             const toggleButton = nameCell.querySelector(`[data-bs-target="#${moduleId}"]`);
             const chevron = document.getElementById(`chevron-${moduleId}`);
-            
-            toggleButton.addEventListener('click', function() {
+
+            toggleButton.addEventListener('click', function () {
                 setTimeout(() => {
                     if (collapseContainer.classList.contains('show')) {
                         chevron.className = 'bi bi-chevron-down';
@@ -537,28 +537,28 @@ function updateSidebarWithExtendedInfo(info) {
         console.error('Sidebar navigation not found');
         return;
     }
-    
+
     console.log('Updating sidebar with extended info:', info);
-    
+
     // Find roadmap item as reference point for píldoras
     const roadmapAnchor = nav.querySelector('a[href="#roadmap"]');
     const roadmapItem = roadmapAnchor ? roadmapAnchor.parentElement : null;
-    
+
     // Find Quick Links item as reference point for other sections
     const quickLinksAnchor = nav.querySelector('a[href="#quick-links"]');
     const quickLinksItem = quickLinksAnchor ? quickLinksAnchor.parentElement : null;
-    
+
     console.log('Roadmap item found:', !!roadmapItem);
     console.log('Quick links item found:', !!quickLinksItem);
-    
+
     // Add Píldoras right after Roadmap if they exist
-    if ((Array.isArray(info.pildoras) && info.pildoras.length > 0) || 
+    if ((Array.isArray(info.pildoras) && info.pildoras.length > 0) ||
         (Array.isArray(info.modulesPildoras) && info.modulesPildoras.some(mp => Array.isArray(mp.pildoras) && mp.pildoras.length > 0))) {
         console.log('Adding pildoras section to sidebar right after roadmap');
         const pildorasLi = document.createElement('li');
         pildorasLi.className = 'nav-item';
         pildorasLi.innerHTML = '<a class="nav-link" href="#pildoras"><i class="bi bi-lightbulb me-2"></i>Píldoras</a>';
-        
+
         if (roadmapItem) {
             roadmapItem.insertAdjacentElement('afterend', pildorasLi);
         } else if (quickLinksItem) {
@@ -572,56 +572,56 @@ function updateSidebarWithExtendedInfo(info) {
         const calendarLi = document.createElement('li');
         calendarLi.className = 'nav-item';
         calendarLi.innerHTML = '<a class="nav-link" href="#calendar"><i class="bi bi-calendar me-2"></i>Calendario</a>';
-        
+
         pildorasLi.insertAdjacentElement('afterend', calendarLi);
     }
-    
+
     // Add other Program Info sections before Quick Links
     if (info.schedule && hasScheduleData(info.schedule)) {
         console.log('Adding schedule section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#horario"><i class="bi bi-clock me-2"></i>Horario</a>';
-        
+
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
         } else {
             nav.appendChild(li);
         }
     }
-    
+
     if (info.team && info.team.length > 0) {
         console.log('Adding team section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#equipo"><i class="bi bi-people me-2"></i>Equipo</a>';
-        
+
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
         } else {
             nav.appendChild(li);
         }
     }
-    
+
     if (info.evaluation && info.evaluation.trim()) {
         console.log('Adding evaluation section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#evaluacion"><i class="bi bi-clipboard-check me-2"></i>Evaluación</a>';
-        
+
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
         } else {
             nav.appendChild(li);
         }
     }
-    
+
     if (info.resources && info.resources.length > 0) {
         console.log('Adding resources section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#resources"><i class="bi bi-tools me-2"></i>Recursos</a>';
-        
+
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
         } else {
@@ -654,7 +654,7 @@ function escapeHtml(text) {
 // Helper function to apply colors to cells based on content
 function applyCellColors(cellContent, cellType) {
     let baseStyle = 'border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;';
-    
+
     if (cellType === 'presentacion') {
         if (cellContent.toLowerCase().includes('presencial')) {
             baseStyle += ' background-color: #d4edda; color: #155724;';
@@ -668,7 +668,7 @@ function applyCellColors(cellContent, cellType) {
             baseStyle += ' background-color: #f8d7da; color: #721c24;';
         }
     }
-    
+
     return baseStyle;
 }
 
@@ -694,22 +694,25 @@ async function loadExtendedInfo() {
 function displayExtendedInfo(info) {
     const sectionsContainer = document.getElementById('sections-container');
     const roadmapSection = document.getElementById('roadmap');
-    
+
     // Store extended info globally for píldoras navigation
     window.publicPromotionExtendedInfo = info;
-    
+
+    // Clear existing extended info sections to avoid duplicates on reload
+    document.querySelectorAll('#pildoras, #horario, #equipo, #recursos, #evaluacion').forEach(el => el.remove());
+
     // Create Program Info sections
     const programInfoSections = createProgramInfoSections(info);
-    
+
     // Find píldoras section and insert it right after roadmap
     const pildorasSection = programInfoSections.find(section => section.id === 'pildoras');
     if (pildorasSection && roadmapSection) {
         // Insert píldoras right after roadmap
         roadmapSection.insertAdjacentElement('afterend', pildorasSection);
-        
+
         // Remove píldoras from the regular sections array
         const otherSections = programInfoSections.filter(section => section.id !== 'pildoras');
-        
+
         // Add remaining sections to sections container
         otherSections.forEach(section => {
             sectionsContainer.appendChild(section);
@@ -720,20 +723,24 @@ function displayExtendedInfo(info) {
             sectionsContainer.appendChild(section);
         });
     }
-    
+
     // Update sidebar to include the new sections
     updateSidebarWithExtendedInfo(info);
-    
+
     console.log('Extended info sections displayed:', programInfoSections.length);
 }
 
 // Create Program Info sections HTML
 function createProgramInfoSections(info) {
     const sections = [];
-    
-    // Píldoras Section (Legacy format) - MOVED TO FIRST POSITION
-    if (Array.isArray(info.pildoras) && info.pildoras.length > 0) {
-        console.log('Creating Legacy píldoras section with navigation arrows');
+
+    // Check if we have module-based píldoras with actual content
+    const modulesWithActualPildoras = Array.isArray(info.modulesPildoras) ?
+        info.modulesPildoras.filter(mp => Array.isArray(mp.pildoras) && mp.pildoras.length > 0) : [];
+
+    // Píldoras Section (Legacy format) - Show if legacy exists AND (no module data exists OR modules are empty)
+    if (Array.isArray(info.pildoras) && info.pildoras.length > 0 && modulesWithActualPildoras.length === 0) {
+        console.log('Creating Legacy píldoras section (no module-based píldoras found)');
         const pildorasSection = document.createElement('div');
         pildorasSection.className = 'col-md-12';
         pildorasSection.id = 'pildoras';
@@ -741,16 +748,16 @@ function createProgramInfoSections(info) {
         // Find the next upcoming date for legacy format
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         let nextDateIndex = -1;
         let nextDate = null;
-        
+
         for (let i = 0; i < info.pildoras.length; i++) {
             const pildora = info.pildoras[i];
             if (pildora.date && pildora.date.trim()) {
                 const pildoraDate = new Date(pildora.date);
                 pildoraDate.setHours(0, 0, 0, 0);
-                
+
                 // Check if this date is today or in the future
                 if (pildoraDate >= today) {
                     if (!nextDate || pildoraDate < nextDate) {
@@ -773,11 +780,11 @@ function createProgramInfoSections(info) {
 
             // Apply orange background for the next upcoming date
             const isNextDate = index === nextDateIndex;
-            
+
             if (isNextDate) {
                 const orangeStyle = 'border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
                 const orangeStyleLeft = 'border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
-                
+
                 return `
                     <tr>
                         <td style="width: 20%; ${orangeStyle}">${escapeHtml(mode)}</td>
@@ -834,20 +841,19 @@ function createProgramInfoSections(info) {
     }
 
     // Píldoras Section (Module-based format) - MOVED TO FIRST POSITION
-    if (Array.isArray(info.modulesPildoras) && info.modulesPildoras.length > 0) {
+    if (modulesWithActualPildoras.length > 0) {
         console.log('Creating Module-based píldoras section with navigation arrows');
-        console.log('Modules with píldoras:', info.modulesPildoras);
-        
+        console.log('Modules with píldoras:', modulesWithActualPildoras);
+
         // Get promotion modules to match with module names
-        const promotionModules = window.publicPromotionData?.modules || [];
-        console.log('Promotion modules:', promotionModules);
-        
-        // Filter modules that have píldoras and enrich with promotion module data
-        const modulesWithPildoras = info.modulesPildoras
-            .filter(moduleData => Array.isArray(moduleData.pildoras) && moduleData.pildoras.length > 0)
+        const promotionModulesData = window.publicPromotionData?.modules || [];
+        console.log('Promotion modules:', promotionModulesData);
+
+        // enrich with promotion module data
+        const modulesWithPildoras = modulesWithActualPildoras
             .map(moduleData => {
                 // Find matching promotion module to get correct name
-                const promotionModule = promotionModules.find(pm => pm.id === moduleData.moduleId);
+                const promotionModule = promotionModulesData.find(pm => pm.id === moduleData.moduleId);
                 return {
                     ...moduleData,
                     moduleName: promotionModule?.name || moduleData.moduleName || 'Unknown Module'
@@ -863,23 +869,23 @@ function createProgramInfoSections(info) {
 
             // Initialize with first module
             let currentModuleIndex = 0;
-            
+
             function renderPildorasTable() {
                 console.log('Rendering píldoras table for module index:', currentModuleIndex);
                 const currentModule = modulesWithPildoras[currentModuleIndex];
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                
+
                 // Find the next upcoming date (closest to today)
                 let nextDateIndex = -1;
                 let nextDate = null;
-                
+
                 for (let i = 0; i < currentModule.pildoras.length; i++) {
                     const pildora = currentModule.pildoras[i];
                     if (pildora.date && pildora.date.trim()) {
                         const pildoraDate = new Date(pildora.date);
                         pildoraDate.setHours(0, 0, 0, 0);
-                        
+
                         // Check if this date is today or in the future
                         if (pildoraDate >= today) {
                             if (!nextDate || pildoraDate < nextDate) {
@@ -889,7 +895,7 @@ function createProgramInfoSections(info) {
                         }
                     }
                 }
-                
+
                 const rows = currentModule.pildoras.map((p, index) => {
                     const mode = p.mode || '';
                     const date = p.date || '';
@@ -902,12 +908,12 @@ function createProgramInfoSections(info) {
 
                     // Apply orange background for the next upcoming date
                     const isNextDate = index === nextDateIndex;
-                    
+
                     // If this is the next date row, apply orange background to all cells
                     if (isNextDate) {
                         const orangeStyle = 'border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
                         const orangeStyleLeft = 'border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
-                        
+
                         return `
                             <tr>
                                 <td style="width: 20%; ${orangeStyle}">${escapeHtml(mode)}</td>
@@ -986,22 +992,22 @@ function createProgramInfoSections(info) {
                                 <i class="bi bi-lightbulb me-2"></i>Píldoras
                             </h5>
                             <div class="d-flex align-items-center gap-3">
-                                <!-- Module Navigation - FORCED VISIBLE -->
-                                <div class="d-flex align-items-center gap-2 border rounded p-2 bg-light" style="min-width: 200px; border: 2px solid #007bff !important;">
-                                    <button class="btn btn-sm btn-primary prev-module-btn" 
+                                <!-- Module Navigation - NOW WITH ORANGE ARROWS -->
+                                <div class="d-flex align-items-center gap-2 border rounded p-2 bg-light" style="min-width: 200px; border: 2px solid #ff6600 !important;">
+                                    <button class="btn btn-sm prev-module-btn" 
                                             onclick="window.navigatePildorasPrevious()" 
                                             title="Módulo anterior"
-                                            style="font-weight: bold; min-width: 35px;">
+                                            style="font-weight: bold; min-width: 35px; background-color: #ff6600; color: white; border: none;">
                                         <i class="bi bi-chevron-left" style="font-size: 1.2em;"></i>
                                     </button>
                                     <div class="d-flex flex-column align-items-center mx-2" style="min-width: 100px;">
                                         <span class="fw-bold text-primary current-module-name" style="font-size: 0.9rem;">Módulo I</span>
                                         <small class="text-muted module-number-display" style="font-size: 0.75rem;">1 / 1</small>
                                     </div>
-                                    <button class="btn btn-sm btn-primary next-module-btn" 
+                                    <button class="btn btn-sm next-module-btn" 
                                             onclick="window.navigatePildorasNext()" 
                                             title="Módulo siguiente"
-                                            style="font-weight: bold; min-width: 35px;">
+                                            style="font-weight: bold; min-width: 35px; background-color: #ff6600; color: white; border: none;">
                                         <i class="bi bi-chevron-right" style="font-size: 1.2em;"></i>
                                     </button>
                                 </div>
@@ -1021,7 +1027,7 @@ function createProgramInfoSections(info) {
             console.log('HTML structure created for module navigation');
 
             // Add navigation functions to window object to ensure global access
-            window.navigatePildorasPrevious = function() {
+            window.navigatePildorasPrevious = function () {
                 console.log('Navigate previous clicked, current index:', currentModuleIndex);
                 if (currentModuleIndex > 0) {
                     currentModuleIndex--;
@@ -1030,7 +1036,7 @@ function createProgramInfoSections(info) {
                 }
             };
 
-            window.navigatePildorasNext = function() {
+            window.navigatePildorasNext = function () {
                 console.log('Navigate next clicked, current index:', currentModuleIndex);
                 if (currentModuleIndex < modulesWithPildoras.length - 1) {
                     currentModuleIndex++;
@@ -1049,12 +1055,12 @@ function createProgramInfoSections(info) {
 
             // Initial render
             renderPildorasTable();
-            
+
             console.log('Initial table rendered');
             sections.push(pildorasSection);
         }
     }
-    
+
     // Schedule Section
     if (info.schedule && hasScheduleData(info.schedule)) {
         const scheduleSection = document.createElement('div');
@@ -1072,7 +1078,7 @@ function createProgramInfoSections(info) {
         `;
         sections.push(scheduleSection);
     }
-    
+
     // Team Section
     if (info.team && info.team.length > 0) {
         const teamSection = document.createElement('div');
@@ -1090,7 +1096,7 @@ function createProgramInfoSections(info) {
         `;
         sections.push(teamSection);
     }
-    
+
     // Evaluation Section
     if (info.evaluation && info.evaluation.trim()) {
         const evaluationSection = document.createElement('div');
@@ -1110,7 +1116,7 @@ function createProgramInfoSections(info) {
         `;
         sections.push(evaluationSection);
     }
-    
+
     // Resources Section
     if (info.resources && info.resources.length > 0) {
         const resourcesSection = document.createElement('div');
@@ -1128,25 +1134,25 @@ function createProgramInfoSections(info) {
         `;
         sections.push(resourcesSection);
     }
-    
+
     return sections;
 }
 
 // Helper function to check if schedule has data
 function hasScheduleData(schedule) {
     if (!schedule) return false;
-    
+
     const hasOnline = schedule.online && Object.values(schedule.online).some(v => v && v.trim());
     const hasPresential = schedule.presential && Object.values(schedule.presential).some(v => v && v.trim());
     const hasNotes = schedule.notes && schedule.notes.trim();
-    
+
     return hasOnline || hasPresential || hasNotes;
 }
 
 // Generate Schedule HTML
 function generateScheduleHTML(schedule) {
     let html = '';
-    
+
     if (schedule.online && Object.values(schedule.online).some(v => v && v.trim())) {
         html += `
             <div class="mb-3">
@@ -1161,7 +1167,7 @@ function generateScheduleHTML(schedule) {
             </div>
         `;
     }
-    
+
     if (schedule.presential && Object.values(schedule.presential).some(v => v && v.trim())) {
         html += `
             <div class="mb-3">
@@ -1176,18 +1182,18 @@ function generateScheduleHTML(schedule) {
             </div>
         `;
     }
-    
+
     if (schedule.notes && schedule.notes.trim()) {
         html += `<div class="alert alert-info"><strong>Notes:</strong> ${escapeHtml(schedule.notes)}</div>`;
     }
-    
+
     return html;
 }
 
 // Generate Team HTML
 function generateTeamHTML(team) {
     let html = '<div class="row">';
-    
+
     team.forEach(member => {
         html += `
             <div class="col-md-6 mb-3">
@@ -1202,7 +1208,7 @@ function generateTeamHTML(team) {
             </div>
         `;
     });
-    
+
     html += '</div>';
     return html;
 }
@@ -1210,7 +1216,7 @@ function generateTeamHTML(team) {
 // Generate Resources HTML
 function generateResourcesHTML(resources) {
     let html = '<div class="list-group">';
-    
+
     resources.forEach(resource => {
         html += `
             <a href="${escapeHtml(resource.url || '#')}" target="_blank" class="list-group-item list-group-item-action">
@@ -1224,7 +1230,7 @@ function generateResourcesHTML(resources) {
             </a>
         `;
     });
-    
+
     html += '</div>';
     return html;
 }
