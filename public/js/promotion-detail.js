@@ -2394,6 +2394,48 @@ function setupForms() {
 }
 
 // ==================== STUDENT MANAGEMENT FUNCTIONS ====================
+async function importStudentsFromExcel(input) {
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('excelFile', file);
+
+    const token = localStorage.getItem('token');
+
+    // Show loading state or disable button if possible, but let's keep it simple first
+    const originalBtnContent = document.querySelector('button[onclick*="students-excel-input"]').innerHTML;
+    const btn = document.querySelector('button[onclick*="students-excel-input"]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing...';
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/upload-excel`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            alert(result.message || 'Students imported successfully');
+            loadStudents(); // Reload the student list
+        } else {
+            const error = await response.json();
+            alert(`Error importing students: ${error.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error importing students:', error);
+        alert('Error importing students from Excel');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalBtnContent;
+        input.value = ''; // Reset input
+    }
+}
+
 
 // Debug function to test student endpoints
 async function debugStudentEndpoints() {

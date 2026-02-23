@@ -729,6 +729,7 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
   }
 });
 
+
 // Update student information
 app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (req, res) => {
   try {
