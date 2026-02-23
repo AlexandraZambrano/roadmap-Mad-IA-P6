@@ -239,8 +239,25 @@
                         </div>
                     </div>
 
-                    <div id="students-list" class="row">
-                        <!-- Students will be loaded here -->
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="students-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" class="form-check-input" id="select-all-students-header"
+                                            onchange="toggleAllStudents(this)">
+                                    </th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Nationality</th>
+                                    <th>Profession</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="students-list">
+                                <!-- Students will be loaded here -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

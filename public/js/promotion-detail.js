@@ -2536,7 +2536,7 @@ async function loadStudents() {
     }
 }
 
-// Display students with checkboxes for multi-select
+// Display students in a table format for better readability
 function displayStudents(students) {
     const studentsContainer = document.getElementById('students-list');
     if (!studentsContainer) {
@@ -2545,43 +2545,37 @@ function displayStudents(students) {
     }
 
     if (!students || students.length === 0) {
-        studentsContainer.innerHTML = '<p class="text-muted">No students registered yet.</p>';
+        studentsContainer.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No students registered yet.</td></tr>';
         return;
     }
 
     studentsContainer.innerHTML = students.map((student, index) => `
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-2">
-                    <input type="checkbox" class="form-check-input me-3 student-checkbox" 
-                           data-student-id="${student.id}" 
-                           onchange="updateSelectionState()">
-                    <h6 class="card-title mb-0">${student.name || 'N/A'} ${student.lastname || ''}</h6>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p class="card-text mb-1"><strong>Email:</strong> ${student.email || 'N/A'}</p>
-                        <p class="card-text mb-1"><strong>Age:</strong> ${student.age || 'N/A'}</p>
-                        <p class="card-text mb-1"><strong>Nationality:</strong> ${student.nationality || 'N/A'}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p class="card-text mb-1"><strong>Profession:</strong> ${student.profession || 'N/A'}</p>
-                        <p class="card-text mb-1"><strong>Address:</strong> ${student.address || 'N/A'}</p>
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <button class="btn btn-sm btn-primary me-2" onclick="editStudent('${student.id}')">
-                        <i class="bi bi-pencil"></i> Edit
+        <tr>
+            <td>
+                <input type="checkbox" class="form-check-input student-checkbox" 
+                       data-student-id="${student.id}" 
+                       onchange="updateSelectionState()">
+            </td>
+            <td>
+                <div class="fw-bold">${student.name || 'N/A'} ${student.lastname || ''}</div>
+            </td>
+            <td>${student.email || 'N/A'}</td>
+            <td>${student.nationality || 'N/A'}</td>
+            <td>${student.profession || 'N/A'}</td>
+            <td class="text-end">
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editStudent('${student.id}')" title="Edit">
+                        <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-info me-2" onclick="trackStudentProgress('${student.id}', '${student.name} ${student.lastname || ''}')">
-                        <i class="bi bi-graph-up"></i> Track Progress
+                    <button class="btn btn-sm btn-outline-info" onclick="trackStudentProgress('${student.id}', '${student.name} ${student.lastname || ''}')" title="Track Progress">
+                        <i class="bi bi-graph-up"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteStudent('${student.id}', '${student.email}')">
-                        <i class="bi bi-trash"></i> Delete
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}', '${student.email}')" title="Delete">
+                        <i class="bi bi-trash"></i>
                     </button>
                 </div>
-            </div>
-        </div>
+            </td>
+        </tr>
     `).join('');
 
     updateSelectionState();
@@ -3201,7 +3195,8 @@ function copyAccessLink() {
 
 function updateSelectionState() {
     const checkboxes = document.querySelectorAll('.student-checkbox');
-    const selectAllCheckbox = document.getElementById('select-all-students');
+    const selectAllCheckboxHeader = document.getElementById('select-all-students-header');
+    const selectAllCheckboxControls = document.getElementById('select-all-students');
     const selectedCountEl = document.getElementById('selected-count');
     const selectionControls = document.getElementById('selection-controls');
     const exportSelectedBtn = document.getElementById('export-selected-btn');
@@ -3216,19 +3211,23 @@ function updateSelectionState() {
         selectedCountEl.textContent = `${selectedCount} selected`;
     }
 
-    // Update select all checkbox state
-    if (selectAllCheckbox && totalCount > 0) {
+    // Helper to update checkbox state (including indeterminate)
+    const updateCheckbox = (cb) => {
+        if (!cb || totalCount === 0) return;
         if (selectedCount === 0) {
-            selectAllCheckbox.indeterminate = false;
-            selectAllCheckbox.checked = false;
+            cb.indeterminate = false;
+            cb.checked = false;
         } else if (selectedCount === totalCount) {
-            selectAllCheckbox.indeterminate = false;
-            selectAllCheckbox.checked = true;
+            cb.indeterminate = false;
+            cb.checked = true;
         } else {
-            selectAllCheckbox.indeterminate = true;
-            selectAllCheckbox.checked = false;
+            cb.indeterminate = true;
+            cb.checked = false;
         }
-    }
+    };
+
+    updateCheckbox(selectAllCheckboxHeader);
+    updateCheckbox(selectAllCheckboxControls);
 
     // Show/hide selection controls and buttons
     if (selectionControls) {
@@ -3244,19 +3243,22 @@ function updateSelectionState() {
     }
 }
 
-function toggleAllStudents() {
-    const selectAllCheckbox = document.getElementById('select-all-students');
+function toggleAllStudents(source) {
     const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+    const isChecked = source.checked;
 
-    if (selectAllCheckbox && studentCheckboxes.length > 0) {
-        const shouldCheck = selectAllCheckbox.checked;
+    studentCheckboxes.forEach(checkbox => {
+        checkbox.checked = isChecked;
+    });
 
-        studentCheckboxes.forEach(checkbox => {
-            checkbox.checked = shouldCheck;
-        });
+    // Sync the other "Select All" checkbox
+    const selectAllHeader = document.getElementById('select-all-students-header');
+    const selectAllControls = document.getElementById('select-all-students');
 
-        updateSelectionState();
-    }
+    if (source === selectAllHeader && selectAllControls) selectAllControls.checked = isChecked;
+    if (source === selectAllControls && selectAllHeader) selectAllHeader.checked = isChecked;
+
+    updateSelectionState();
 }
 
 // Export selected students to CSV
