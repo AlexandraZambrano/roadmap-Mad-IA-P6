@@ -1,45 +1,95 @@
-# Bootcamp 
+# 🚀 Roadmap Manager App
 
-Este repositorio contiene la visión general del Bootcamp de Inteligencia Artificial de Factoría F5 Madrid (Promoción 6). 
+Este repositorio contiene una **aplicación web diseñada para generar y gestionar de forma automatizada roadmaps formativos**, optimizando los procesos académicos y de coordinación.
 
-## 🎯 Infografía de Competencias
+La aplicación es:
 
-![Infografía de Competencias](./img/info.png)
-
-- Esta infografía, generada con IA, proporciona una visión general de las competencias 
-
-## 📊 Diagrama de Gantt
-
-- Visión de secuencia de temas, proyectos y certificaciones
-
-## 📅 Calendario vinculado con Google Calendar
-
-  - Sesiones diarias, Eventos especiales, Masterclass, Fechas de entrega de proyectos, etc.
-
-## 🔗 Centraliza enlaces esenciales
-
-- Zoom, Moodle, Discord, etc.
-
-## 🎯 Desglose de competencias
-
-- Contenido de la competencias, niveles, criterios de evaluación, etc.
-
-## ⭐️ Centraliza Información relevante 
-
-- Horario, sistema de evaluación, material de interés
-
-## 💫 Sigue la Identidad Corporativa F5
-
-- Colores corporativos, Logos, etc.
-
-## 🧠 Construido en Github
-
-Este dashboard está en constante evolución. Como formador puedes:
-1. Proponer mejoras mediante issues
-2. Contribuir directamente mediante pull requests
-3. Solicitar nuevas funcionalidades
-4. Duplicar y personalizar para tu grupo
-5. Visualizar con Github Pages o desplegando en un server
+- 🔒 **Accesible para personal interno**
+- 👀 **Visible para alumnos**
+- ⚡ **Orientada a la automatización y eficiencia**
 
 ---
-Desarrollado por el equipo de formación de Factoría F5 Madrid
+
+## 💡 Origen de la iniciativa
+
+Este proyecto surge como una **idea impulsada por Alexandra Zambrano**, con el objetivo de mejorar la organización, planificación y seguimiento de la experiencia formativa.
+
+---
+
+## 🎯 Propósito de la aplicación
+
+La app permite:
+
+- 🗺️ **Creación automatizada de roadmaps**
+- 📚 **Gestión de píldoras formativas**
+- ✅ **Control de asistencias**
+- 🧩 **Centralización de información académica**
+
+Facilitando el trabajo de:
+
+- 👩‍🏫 **Personal docente**
+- 🧑‍💼 **Equipo de coordinación**
+- 🎓 **Alumnado**
+
+---
+
+## 🧩 Reto del proyecto
+
+El principal desafío de esta iniciativa es:
+
+> **Diseñar y desarrollar una aplicación interna optimizando los recursos disponibles, garantizando accesibilidad, escalabilidad y un coste muy bajo para la organización.**
+
+Este enfoque busca:
+
+- Reducir carga operativa  
+- Mejorar la eficiencia organizativa  
+- Minimizar costes de infraestructura  
+- Asegurar sostenibilidad tecnológica  
+
+---
+
+## 🛠️ Stack tecnológico
+
+La aplicación está construida con:
+
+- **Frontend:** JavaScript Vanilla  
+- **Backend:** Node.js  
+- **Base de datos:** MongoDB  
+
+---
+
+## ☁️ Producción
+
+Preparada para:
+
+- 🚀 Subida a producción  
+- 🌐 Despliegue en servidor  
+- 🔄 Evolución continua  
+
+---
+
+## 🔧 Funcionalidades principales
+
+- Generación dinámica de roadmaps  
+- Gestión de contenidos formativos  
+- Seguimiento de asistencia  
+- Panel de control interno  
+- Visualización para alumnado  
+
+---
+
+## 📌 Estado del proyecto
+
+Aplicación en desarrollo y mejora continua.
+
+Como miembro del equipo puedes:
+
+1. Proponer mejoras mediante *issues*  
+2. Contribuir mediante *pull requests*  
+3. Sugerir nuevas funcionalidades  
+4. Colaborar en la evolución del producto  
+
+---
+
+✨ Desarrollado para optimizar la gestión formativa  
+💡 Idea original impulsada por Alexandra Zambrano  
