@@ -3434,7 +3434,7 @@ function renderAttendanceTable() {
             const dateKey = `${currentAttendanceMonth}-${day < 10 ? '0' : ''}${day}`;
             const record = attendanceData.find(a => a.studentId === student.id && a.date === dateKey);
             const status = record ? record.status : '';
-            const note = record ? record.note : '';
+            const note = (record && record.note) ? record.note : '';
 
             let statusClass = '';
             if (status === 'Presente') statusClass = 'attendance-present';
@@ -3519,7 +3519,7 @@ async function updateAttendance(studentId, date, status, note, cell) {
     try {
         const token = localStorage.getItem('token');
         const body = { studentId, date, status };
-        if (note !== null) body.note = note;
+        if (note !== null && note !== undefined) body.note = note;
 
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance`, {
             method: 'PUT',
@@ -3593,8 +3593,8 @@ function openAttendanceModal(studentId, date) {
 
     document.getElementById('attendance-modal-student-name').textContent = `${student.name} ${student.lastname}`;
     document.getElementById('attendance-modal-date').textContent = date;
-    document.getElementById('attendance-modal-status').value = record ? record.status : '';
-    document.getElementById('attendance-modal-note').value = record ? record.note : '';
+    document.getElementById('attendance-modal-status').value = (record && record.status) ? record.status : '';
+    document.getElementById('attendance-modal-note').value = (record && record.note) ? record.note : '';
 
     // Calculate student stats for this month
     let sPres = 0, sAbs = 0, sLate = 0, sJust = 0;
@@ -3610,8 +3610,68 @@ function openAttendanceModal(studentId, date) {
     document.getElementById('student-stat-late').textContent = sLate;
     document.getElementById('student-stat-justified').textContent = sJust;
 
-    const modal = new bootstrap.Modal(document.getElementById('attendanceModal'));
+    const modalEl = document.getElementById('attendanceModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    // Focus note field when modal is shown
+    modalEl.addEventListener('shown.bs.modal', () => {
+        document.getElementById('attendance-modal-note').focus();
+    }, { once: true });
+
+    // Wire up summary button
+    const summaryBtn = document.getElementById('view-student-summary-btn');
+    summaryBtn.onclick = () => {
+        modal.hide();
+        openStudentSummary(studentId);
+    };
+
     modal.show();
+}
+
+function openStudentSummary(studentId) {
+    const student = studentsForAttendance.find(s => s.id === studentId);
+    if (!student) return;
+
+    document.getElementById('summary-student-name').textContent = `${student.name} ${student.lastname}`;
+
+    const [year, month] = currentAttendanceMonth.split('-');
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    document.getElementById('summary-month-title').textContent = `${monthNames[parseInt(month) - 1]} ${year}`;
+
+    const tbody = document.getElementById('student-summary-body');
+    tbody.innerHTML = '';
+
+    // Get all records for this student in this month, sorted by date
+    const records = attendanceData
+        .filter(a => a.studentId === studentId && a.date.startsWith(currentAttendanceMonth))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3 text-muted">No attendance records found for this month.</td></tr>';
+    } else {
+        records.forEach(r => {
+            const tr = document.createElement('tr');
+
+            let statusBadge = '';
+            if (r.status === 'Presente') statusBadge = '<span class="badge bg-success">Presente</span>';
+            else if (r.status === 'Ausente') statusBadge = '<span class="badge bg-danger">Ausente</span>';
+            else if (r.status === 'Con retraso') statusBadge = '<span class="badge bg-warning text-dark">Con retraso</span>';
+            else if (r.status === 'Justificado') statusBadge = '<span class="badge bg-info text-dark">Justificado</span>';
+            else statusBadge = '<span class="badge bg-light text-dark">No marcado</span>';
+
+            tr.innerHTML = `
+                <td class="fw-bold">${r.date.split('-')[2]}</td>
+                <td>${statusBadge}</td>
+                <td class="small">${escapeHtml(r.note || '-')}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    const summaryModal = new bootstrap.Modal(document.getElementById('studentSummaryModal'));
+    summaryModal.show();
 }
 
 function saveAttendanceFromModal() {
