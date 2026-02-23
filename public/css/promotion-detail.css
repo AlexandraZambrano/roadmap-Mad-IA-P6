@@ -350,3 +350,28 @@ main {
     border-width: 0 6px 6px 0;
     border-color: transparent #333 transparent transparent;
 }
+
+/* Disabled navigation buttons */
+.btn:disabled,
+.btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed !important;
+    pointer-events: auto !important;
+}
+
+.btn:disabled:hover,
+.btn.disabled:hover {
+    background-color: var(--bs-btn-bg, #e9ecef) !important;
+    border-color: var(--bs-btn-border-color, #dee2e6) !important;
+    color: var(--bs-btn-color, #6c757d) !important;
+}
+
+/* Attendance export button styling */
+.btn-outline-success {
+    transition: all 0.2s ease;
+}
+
+.btn-outline-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
