@@ -737,7 +737,30 @@ function createProgramInfoSections(info) {
         pildorasSection.className = 'col-md-12';
         pildorasSection.id = 'pildoras';
 
-        const rows = info.pildoras.map(p => {
+        // Find the next upcoming date for legacy format
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        let nextDateIndex = -1;
+        let nextDate = null;
+        
+        for (let i = 0; i < info.pildoras.length; i++) {
+            const pildora = info.pildoras[i];
+            if (pildora.date && pildora.date.trim()) {
+                const pildoraDate = new Date(pildora.date);
+                pildoraDate.setHours(0, 0, 0, 0);
+                
+                // Check if this date is today or in the future
+                if (pildoraDate >= today) {
+                    if (!nextDate || pildoraDate < nextDate) {
+                        nextDate = pildoraDate;
+                        nextDateIndex = i;
+                    }
+                }
+            }
+        }
+
+        const rows = info.pildoras.map((p, index) => {
             const mode = p.mode || '';
             const date = p.date || '';
             const title = p.title || '';
@@ -747,15 +770,33 @@ function createProgramInfoSections(info) {
                 : 'Desierta';
             const status = p.status || '';
 
-            return `
-                <tr>
-                    <td style="width: 20%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
-                    <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
-                    <td style="width: 30%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
-                    <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
-                    <td style="width: 10%; ${applyCellColors(status, 'estado')}">${escapeHtml(status)}</td>
-                </tr>
-            `;
+            // Apply orange background for the next upcoming date
+            const isNextDate = index === nextDateIndex;
+            
+            if (isNextDate) {
+                const orangeStyle = 'border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
+                const orangeStyleLeft = 'border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
+                
+                return `
+                    <tr>
+                        <td style="width: 20%; ${orangeStyle}">${escapeHtml(mode)}</td>
+                        <td style="width: 15%; ${orangeStyle}">${escapeHtml(date)}</td>
+                        <td style="width: 30%; ${orangeStyleLeft}">${escapeHtml(title)}</td>
+                        <td style="width: 25%; ${orangeStyleLeft}">${escapeHtml(studentsText)}</td>
+                        <td style="width: 10%; ${orangeStyle}">${escapeHtml(status)}</td>
+                    </tr>
+                `;
+            } else {
+                return `
+                    <tr>
+                        <td style="width: 20%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
+                        <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
+                        <td style="width: 30%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
+                        <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
+                        <td style="width: 10%; ${applyCellColors(status, 'estado')}">${escapeHtml(status)}</td>
+                    </tr>
+                `;
+            }
         }).join('');
 
         pildorasSection.innerHTML = `
@@ -816,7 +857,7 @@ function createProgramInfoSections(info) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 
-                // Find the next upcoming date
+                // Find the next upcoming date (closest to today)
                 let nextDateIndex = -1;
                 let nextDate = null;
                 
@@ -848,21 +889,33 @@ function createProgramInfoSections(info) {
 
                     // Apply orange background for the next upcoming date
                     const isNextDate = index === nextDateIndex;
-                    const rowStyle = isNextDate ? 'background-color: #ff4700; color: white;' : '';
                     
-                    // Get cell styles with special handling for next date row
-                    const modeStyle = isNextDate ? 'width: 20%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px; background-color: #ff4700; color: white;' : `width: 20%; ${applyCellColors(mode, 'presentacion')}`;
-                    const statusStyle = isNextDate ? 'width: 10%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px; background-color: #ff4700; color: white;' : `width: 10%; ${applyCellColors(status, 'estado')}`;
-                    
-                    return `
-                        <tr style="${rowStyle}">
-                            <td style="${modeStyle}">${escapeHtml(mode)}</td>
-                            <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
-                            <td style="width: 30%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
-                            <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
-                            <td style="${statusStyle}">${escapeHtml(status)}</td>
-                        </tr>
-                    `;
+                    // If this is the next date row, apply orange background to all cells
+                    if (isNextDate) {
+                        const orangeStyle = 'border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
+                        const orangeStyleLeft = 'border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
+                        
+                        return `
+                            <tr>
+                                <td style="width: 20%; ${orangeStyle}">${escapeHtml(mode)}</td>
+                                <td style="width: 15%; ${orangeStyle}">${escapeHtml(date)}</td>
+                                <td style="width: 30%; ${orangeStyleLeft}">${escapeHtml(title)}</td>
+                                <td style="width: 25%; ${orangeStyleLeft}">${escapeHtml(studentsText)}</td>
+                                <td style="width: 10%; ${orangeStyle}">${escapeHtml(status)}</td>
+                            </tr>
+                        `;
+                    } else {
+                        // Normal row with color coding for specific cells
+                        return `
+                            <tr>
+                                <td style="width: 20%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
+                                <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
+                                <td style="width: 30%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
+                                <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(studentsText)}</td>
+                                <td style="width: 10%; ${applyCellColors(status, 'estado')}">${escapeHtml(status)}</td>
+                            </tr>
+                        `;
+                    }
                 }).join('');
 
                 const tableContainer = pildorasSection.querySelector('.pildoras-table-container');
