@@ -74,6 +74,7 @@ main {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(7, 7, 7, 0.3);
 }
 
 .btn-primary:hover {
@@ -104,6 +105,10 @@ main {
 
 .page-title{
     color:#ffffff;
+    margin-right: 2rem;
+    font-family: 'Pacifico', serif;
+    font-size: 50px;
+
 }
 .form-control,
 .form-select {

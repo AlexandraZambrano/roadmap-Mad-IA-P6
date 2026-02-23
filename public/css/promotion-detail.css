@@ -8,6 +8,13 @@ body {
     background-color: #ffffff;
 }
 
+.page-title{
+    color:#ffffff;
+    margin-inline-start: 2rem;
+    font-family: 'Pacifico', serif;
+    font-size: 50px;
+}
+
 .sidebar {
     position: fixed;
     top: 56px;
