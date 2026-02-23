@@ -1060,6 +1060,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/projects/:assignmentId
 // Helper to convert Excel date to JS Date
 function excelDateToJSDate(serial) {
   if (typeof serial === 'string') return serial; // Already a string format
+  if (!serial || serial <= 0) return null; // Handle 0 or invalid serials
   const utc_days = Math.floor(serial - 25569);
   const utc_value = utc_days * 86400;
   const date_info = new Date(utc_value * 1000);
@@ -1147,12 +1148,17 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
             date = new Date(dateText);
           }
 
-          if (!isNaN(date.getTime())) {
+          if (date && !isNaN(date.getTime())) {
             isoDate = date.toISOString().split('T')[0];
+          } else {
+            isoDate = new Date().toISOString().split('T')[0];
           }
         } catch (e) {
           console.warn('Invalid date format:', dateText);
+          isoDate = new Date().toISOString().split('T')[0];
         }
+      } else {
+        isoDate = new Date().toISOString().split('T')[0];
       }
 
       if (title) { // Only add if title is provided
@@ -1287,12 +1293,17 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
             date = new Date(dateText);
           }
 
-          if (!isNaN(date.getTime())) {
+          if (date && !isNaN(date.getTime())) {
             isoDate = date.toISOString().split('T')[0];
+          } else {
+            isoDate = new Date().toISOString().split('T')[0];
           }
         } catch (e) {
           console.warn('Invalid date format:', dateText);
+          isoDate = new Date().toISOString().split('T')[0];
         }
+      } else {
+        isoDate = new Date().toISOString().split('T')[0];
       }
 
       if (title) { // Only add if title is provided

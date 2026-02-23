@@ -322,6 +322,13 @@ function displayPildoras() {
         const modeValue = p.mode || 'Virtual';
         const statusValue = p.status || '';
 
+        // Ensure date doesn't default to 1970 or empty if we prefer today
+        const todayStr = new Date().toISOString().split('T')[0];
+        let dateValue = p.date || '';
+        if (!dateValue || dateValue === '1970-01-01') {
+            dateValue = todayStr;
+        }
+
         const tr = document.createElement('tr');
         tr.dataset.index = index;
         tr.innerHTML = `
@@ -333,7 +340,7 @@ function displayPildoras() {
                 </select>
             </td>
             <td>
-                <input type="date" class="form-control form-control-sm pildora-date" value="${escapeHtml(p.date || '')}">
+                <input type="date" class="form-control form-control-sm pildora-date" value="${escapeHtml(dateValue)}">
             </td>
             <td>
                 <input type="text" class="form-control form-control-sm pildora-title" value="${escapeHtml(p.title || '')}" placeholder="Título de la píldora">
@@ -511,10 +518,11 @@ function addPildoraRow() {
         extendedInfoData.modulesPildoras.push(modulePildoras);
     }
 
-    // Add new píldora to current module
+    // Add new píldora to current module with today's date as default
+    const today = new Date().toISOString().split('T')[0];
     modulePildoras.pildoras.push({
         mode: 'Virtual',
-        date: '',
+        date: today,
         title: '',
         students: [],
         status: ''
