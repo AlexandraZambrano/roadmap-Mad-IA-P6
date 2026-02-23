@@ -733,6 +733,7 @@ function createProgramInfoSections(info) {
     
     // Píldoras Section (Legacy format) - MOVED TO FIRST POSITION
     if (Array.isArray(info.pildoras) && info.pildoras.length > 0) {
+        console.log('Creating Legacy píldoras section with navigation arrows');
         const pildorasSection = document.createElement('div');
         pildorasSection.className = 'col-md-12';
         pildorasSection.id = 'pildoras';
@@ -802,9 +803,14 @@ function createProgramInfoSections(info) {
         pildorasSection.innerHTML = `
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title section-title">
-                        <i class="bi bi-lightbulb me-2"></i>Píldoras
-                    </h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title section-title mb-0">
+                            <i class="bi bi-lightbulb me-2"></i>Píldoras (Formato Legacy)
+                        </h5>
+                        <div class="alert alert-info mb-0 py-2 px-3">
+                            <small><i class="bi bi-info-circle me-1"></i>Para ver navegación por módulos, configure píldoras por módulo en el dashboard del profesor</small>
+                        </div>
+                    </div>
                     <div class="table-responsive mt-3">
                         <table class="table table-sm table-bordered" style="border-color: #dee2e6;">
                             <thead class="table-light">
@@ -829,8 +835,12 @@ function createProgramInfoSections(info) {
 
     // Píldoras Section (Module-based format) - MOVED TO FIRST POSITION
     if (Array.isArray(info.modulesPildoras) && info.modulesPildoras.length > 0) {
+        console.log('Creating Module-based píldoras section with navigation arrows');
+        console.log('Modules with píldoras:', info.modulesPildoras);
+        
         // Get promotion modules to match with module names
         const promotionModules = window.publicPromotionData?.modules || [];
+        console.log('Promotion modules:', promotionModules);
         
         // Filter modules that have píldoras and enrich with promotion module data
         const modulesWithPildoras = info.modulesPildoras
@@ -844,6 +854,8 @@ function createProgramInfoSections(info) {
                 };
             });
 
+        console.log('Filtered modules with píldoras:', modulesWithPildoras);
+
         if (modulesWithPildoras.length > 0) {
             const pildorasSection = document.createElement('div');
             pildorasSection.className = 'col-md-12';
@@ -853,6 +865,7 @@ function createProgramInfoSections(info) {
             let currentModuleIndex = 0;
             
             function renderPildorasTable() {
+                console.log('Rendering píldoras table for module index:', currentModuleIndex);
                 const currentModule = modulesWithPildoras[currentModuleIndex];
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -936,20 +949,35 @@ function createProgramInfoSections(info) {
                             </tbody>
                         </table>
                     `;
+                } else {
+                    console.error('Table container not found!');
                 }
 
-                // Update navigation
+                // Update navigation controls
                 const moduleTitle = pildorasSection.querySelector('.current-module-name');
                 const prevBtn = pildorasSection.querySelector('.prev-module-btn');
                 const nextBtn = pildorasSection.querySelector('.next-module-btn');
                 const countBadge = pildorasSection.querySelector('.module-pildoras-count');
+                const moduleNumber = pildorasSection.querySelector('.module-number-display');
 
                 if (moduleTitle) moduleTitle.textContent = currentModule.moduleName;
-                if (prevBtn) prevBtn.disabled = currentModuleIndex === 0;
-                if (nextBtn) nextBtn.disabled = currentModuleIndex === modulesWithPildoras.length - 1;
+                if (prevBtn) {
+                    prevBtn.disabled = currentModuleIndex === 0;
+                    prevBtn.style.opacity = currentModuleIndex === 0 ? '0.5' : '1';
+                    console.log('Previous button updated, disabled:', prevBtn.disabled);
+                }
+                if (nextBtn) {
+                    nextBtn.disabled = currentModuleIndex === modulesWithPildoras.length - 1;
+                    nextBtn.style.opacity = currentModuleIndex === modulesWithPildoras.length - 1 ? '0.5' : '1';
+                    console.log('Next button updated, disabled:', nextBtn.disabled);
+                }
                 if (countBadge) countBadge.textContent = currentModule.pildoras.length;
+                if (moduleNumber) moduleNumber.textContent = `${currentModuleIndex + 1} / ${modulesWithPildoras.length}`;
+
+                console.log('Navigation controls updated successfully');
             }
 
+            // Create the HTML structure with enhanced navigation - FORCE VISIBILITY
             pildorasSection.innerHTML = `
                 <div class="card">
                     <div class="card-body">
@@ -958,17 +986,27 @@ function createProgramInfoSections(info) {
                                 <i class="bi bi-lightbulb me-2"></i>Píldoras
                             </h5>
                             <div class="d-flex align-items-center gap-3">
-                                <!-- Module Navigation -->
-                                <div class="d-flex align-items-center gap-2">
-                                    <button class="btn btn-sm btn-outline-secondary prev-module-btn" onclick="navigatePildorasPrevious()">
-                                        <i class="bi bi-chevron-left"></i>
+                                <!-- Module Navigation - FORCED VISIBLE -->
+                                <div class="d-flex align-items-center gap-2 border rounded p-2 bg-light" style="min-width: 200px; border: 2px solid #007bff !important;">
+                                    <button class="btn btn-sm btn-primary prev-module-btn" 
+                                            onclick="window.navigatePildorasPrevious()" 
+                                            title="Módulo anterior"
+                                            style="font-weight: bold; min-width: 35px;">
+                                        <i class="bi bi-chevron-left" style="font-size: 1.2em;"></i>
                                     </button>
-                                    <span class="fw-semibold text-primary current-module-name">Módulo I</span>
-                                    <button class="btn btn-sm btn-outline-secondary next-module-btn" onclick="navigatePildorasNext()">
-                                        <i class="bi bi-chevron-right"></i>
+                                    <div class="d-flex flex-column align-items-center mx-2" style="min-width: 100px;">
+                                        <span class="fw-bold text-primary current-module-name" style="font-size: 0.9rem;">Módulo I</span>
+                                        <small class="text-muted module-number-display" style="font-size: 0.75rem;">1 / 1</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-primary next-module-btn" 
+                                            onclick="window.navigatePildorasNext()" 
+                                            title="Módulo siguiente"
+                                            style="font-weight: bold; min-width: 35px;">
+                                        <i class="bi bi-chevron-right" style="font-size: 1.2em;"></i>
                                     </button>
                                 </div>
-                                <div class="badge bg-info text-dark">
+                                <div class="badge bg-info text-dark" style="font-size: 0.9rem;">
+                                    <i class="bi bi-lightbulb-fill me-1"></i>
                                     <span class="module-pildoras-count">0</span> píldoras
                                 </div>
                             </div>
@@ -980,24 +1018,39 @@ function createProgramInfoSections(info) {
                 </div>
             `;
 
-            // Add navigation functions to window object
+            console.log('HTML structure created for module navigation');
+
+            // Add navigation functions to window object to ensure global access
             window.navigatePildorasPrevious = function() {
+                console.log('Navigate previous clicked, current index:', currentModuleIndex);
                 if (currentModuleIndex > 0) {
                     currentModuleIndex--;
+                    console.log('Moving to module index:', currentModuleIndex);
                     renderPildorasTable();
                 }
             };
 
             window.navigatePildorasNext = function() {
+                console.log('Navigate next clicked, current index:', currentModuleIndex);
                 if (currentModuleIndex < modulesWithPildoras.length - 1) {
                     currentModuleIndex++;
+                    console.log('Moving to module index:', currentModuleIndex);
                     renderPildorasTable();
                 }
             };
 
+            // Store functions in the section for easier access
+            pildorasSection._navigatePrevious = window.navigatePildorasPrevious;
+            pildorasSection._navigateNext = window.navigatePildorasNext;
+            pildorasSection._renderTable = renderPildorasTable;
+            pildorasSection._modulesData = modulesWithPildoras;
+
+            console.log('Navigation functions assigned');
+
             // Initial render
             renderPildorasTable();
             
+            console.log('Initial table rendered');
             sections.push(pildorasSection);
         }
     }
