@@ -1,3 +1,5 @@
+<img src="./public/img/f5_banner_roadmpa_manager.PNG">
+
 # 👋 Roadmap Manager App
 
 Este repositorio contiene una **aplicación web diseñada para generar y gestionar de forma automatizada roadmaps formativos**, optimizando los procesos académicos y de coordinación.
