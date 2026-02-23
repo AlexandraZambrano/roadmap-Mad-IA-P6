@@ -20,6 +20,11 @@ let extendedInfoData = {
     pildorasAssignmentOpen: false
 };
 
+// Attendance state
+let currentAttendanceMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+let attendanceData = []; // Store attendance records for the current month
+let studentsForAttendance = []; // Local copy of students for rendering current view
+
 // Utility function to escape HTML to prevent XSS
 function escapeHtml(text) {
     if (!text) return '';
@@ -1232,34 +1237,40 @@ function checkAuth() {
     }
 }
 
-function switchTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.section-content').forEach(el => {
-        el.classList.add('hidden');
+function switchTab(tabId) {
+    document.querySelectorAll('.section-content').forEach(section => {
+        section.classList.add('hidden');
     });
 
-    // Show selected tab
-    const tabElement = document.getElementById(tabName + '-tab');
-    if (tabElement) {
-        tabElement.classList.remove('hidden');
+    const activeTab = document.getElementById(`${tabId}-tab`);
+    if (activeTab) {
+        activeTab.classList.remove('hidden');
     }
 
-    // Load specific tab data if needed
-    if (tabName === 'access-settings' && userRole === 'teacher') {
-        loadAccessPassword();
-    }
+    // Refresh data if needed
+    if (tabId === 'calendar') loadCalendar();
+    if (tabId === 'roadmap') loadModules();
+    if (tabId === 'students') loadStudents();
+    if (tabId === 'attendance') loadAttendance();
+    if (tabId === 'info') loadExtendedInfo();
+    if (tabId === 'collaborators') loadCollaborators();
+    if (tabId === 'access-settings') loadAccessSettings();
 
-    // Load Quick Links and Sections when Program Info tab is accessed
-    if (tabName === 'info' && userRole === 'teacher') {
-        loadQuickLinks();
-        loadSections();
-    }
-
-    // Update active nav link
-    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+    // Update active state in sidebar
+    document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
+        if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(tabId)) {
+            link.classList.add('active');
+        }
     });
-    event.target.classList.add('active');
+
+    // Handle iframe height to fit content if possible
+    if (tabId === 'overview') {
+        const previewIframe = document.getElementById('student-preview-iframe');
+        if (previewIframe) {
+            previewIframe.style.height = '600px';
+        }
+    }
 }
 
 async function loadPromotion() {
@@ -3353,3 +3364,178 @@ async function deleteSelectedStudents() {
         alert('Error deleting students. Please try again.');
     }
 }
+
+// Attendance Control Functions
+async function loadAttendance() {
+    try {
+        const token = localStorage.getItem('token');
+        const [year, month] = currentAttendanceMonth.split('-');
+
+        // Update display
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        document.getElementById('current-attendance-month-display').textContent = `${monthNames[parseInt(month) - 1]} ${year}`;
+
+        // Get students first (if not already loaded)
+        const studentsRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        studentsForAttendance = await studentsRes.json();
+
+        // Get attendance data
+        const attendanceRes = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance?month=${currentAttendanceMonth}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        attendanceData = await attendanceRes.json();
+
+        renderAttendanceTable();
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+    }
+}
+
+function renderAttendanceTable() {
+    const headerRow = document.getElementById('attendance-header-row');
+    const body = document.getElementById('attendance-body');
+
+    // Clear previous
+    headerRow.innerHTML = '<th class="sticky-column bg-light" style="min-width: 250px; z-index: 10;">Student</th>';
+    body.innerHTML = '';
+
+    if (studentsForAttendance.length === 0) {
+        body.innerHTML = '<tr><td colspan="100" class="text-center py-4 text-muted">No students found in this promotion.</td></tr>';
+        return;
+    }
+
+    // Determine days in month
+    const [year, month] = currentAttendanceMonth.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // Generate headers
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${day < 10 ? '0' : ''}${day}`;
+        headerRow.innerHTML += `<th class="text-center">${dateStr}</th>`;
+    }
+
+    // Generate rows
+    studentsForAttendance.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(student => {
+        const tr = document.createElement('tr');
+
+        // Name column
+        tr.innerHTML = `<td class="sticky-column bg-white">${student.name || ''} ${student.lastname || ''}</td>`;
+
+        // Day columns
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateKey = `${currentAttendanceMonth}-${day < 10 ? '0' : ''}${day}`;
+            const record = attendanceData.find(a => a.studentId === student.id && a.date === dateKey);
+            const status = record ? record.status : '';
+
+            let statusClass = '';
+            if (status === 'Presente') statusClass = 'attendance-present';
+            else if (status === 'Ausente') statusClass = 'attendance-absent';
+            else if (status === 'Con retraso') statusClass = 'attendance-late';
+
+            const td = document.createElement('td');
+            td.className = `attendance-cell ${statusClass}`;
+            td.dataset.studentId = student.id;
+            td.dataset.date = dateKey;
+            td.dataset.status = status;
+
+            // Icon or text representation
+            if (status === 'Presente') td.innerHTML = '<i class="bi bi-check-lg"></i>';
+            else if (status === 'Ausente') td.innerHTML = '<i class="bi bi-x-lg"></i>';
+            else if (status === 'Con retraso') td.innerHTML = '<i class="bi bi-clock"></i>';
+            else td.innerHTML = '';
+
+            td.onclick = () => cycleAttendanceStatus(td);
+            tr.appendChild(td);
+        }
+
+        body.appendChild(tr);
+    });
+}
+
+function cycleAttendanceStatus(cell) {
+    const studentId = cell.dataset.studentId;
+    const date = cell.dataset.date;
+    const currentStatus = cell.dataset.status;
+
+    // Cycle: "" -> "Presente" -> "Ausente" -> "Con retraso" -> ""
+    let nextStatus = "";
+    if (currentStatus === "") nextStatus = "Presente";
+    else if (currentStatus === "Presente") nextStatus = "Ausente";
+    else if (currentStatus === "Ausente") nextStatus = "Con retraso";
+    else if (currentStatus === "Con retraso") nextStatus = "";
+
+    updateAttendance(studentId, date, nextStatus, cell);
+}
+
+async function updateAttendance(studentId, date, status, cell) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ studentId, date, status })
+        });
+
+        if (response.ok) {
+            // Update local state and UI
+            cell.dataset.status = status;
+            cell.className = 'attendance-cell';
+
+            if (status === 'Presente') {
+                cell.classList.add('attendance-present');
+                cell.innerHTML = '<i class="bi bi-check-lg"></i>';
+            } else if (status === 'Ausente') {
+                cell.classList.add('attendance-absent');
+                cell.innerHTML = '<i class="bi bi-x-lg"></i>';
+            } else if (status === 'Con retraso') {
+                cell.classList.add('attendance-late');
+                cell.innerHTML = '<i class="bi bi-clock"></i>';
+            } else {
+                cell.innerHTML = '';
+            }
+
+            // Update local attendanceData array to keep it in sync
+            const index = attendanceData.findIndex(a => a.studentId === studentId && a.date === date);
+            if (index > -1) {
+                if (status === "") attendanceData.splice(index, 1);
+                else attendanceData[index].status = status;
+            } else if (status !== "") {
+                attendanceData.push({ studentId, date, status });
+            }
+        }
+    } catch (error) {
+        console.error('Error updating attendance:', error);
+    }
+}
+
+function prevAttendanceMonth() {
+    const [year, month] = currentAttendanceMonth.split('-').map(Number);
+    let newYear = year;
+    let newMonth = month - 1;
+    if (newMonth === 0) {
+        newMonth = 12;
+        newYear--;
+    }
+    currentAttendanceMonth = `${newYear}-${newMonth < 10 ? '0' : ''}${newMonth}`;
+    loadAttendance();
+}
+
+function nextAttendanceMonth() {
+    const [year, month] = currentAttendanceMonth.split('-').map(Number);
+    let newYear = year;
+    let newMonth = month + 1;
+    if (newMonth === 13) {
+        newMonth = 1;
+        newYear++;
+    }
+    currentAttendanceMonth = `${newYear}-${newMonth < 10 ? '0' : ''}${newMonth}`;
+    loadAttendance();
+}
+

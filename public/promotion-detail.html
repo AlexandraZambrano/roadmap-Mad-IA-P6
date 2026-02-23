@@ -76,6 +76,11 @@
                                 <i class="bi bi-people me-2"></i>Students
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#attendance" onclick="switchTab('attendance')">
+                                <i class="bi bi-calendar-check me-2"></i>Attendance
+                            </a>
+                        </li>
                         <li class="nav-item teacher-only">
                             <a class="nav-link" href="#access-settings" onclick="switchTab('access-settings')">
                                 <i class="bi bi-lock me-2"></i>Access Settings
@@ -260,6 +265,55 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Attendance Tab -->
+                <div id="attendance-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2>Attendance Control</h2>
+                        <div class="d-flex align-items-center gap-3">
+                            <button class="btn btn-outline-primary" onclick="prevAttendanceMonth()">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <h4 class="mb-0 mx-2" id="current-attendance-month-display">February 2026</h4>
+                            <button class="btn btn-outline-primary" onclick="nextAttendanceMonth()">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card mb-4">
+                        <div class="card-body p-0">
+                            <div class="table-responsive attendance-table-wrapper">
+                                <table class="table table-bordered mb-0" id="attendance-table">
+                                    <thead class="table-light">
+                                        <tr id="attendance-header-row">
+                                            <th class="sticky-column bg-light" style="min-width: 250px; z-index: 10;">
+                                                Student</th>
+                                            <!-- Dates will be loaded here -->
+                                        </tr>
+                                    </thead>
+                                    <tbody id="attendance-body">
+                                        <!-- Attendance data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <div class="d-flex flex-wrap gap-4 small text-muted">
+                                <div class="d-flex align-items-center"><span
+                                        class="attendance-dot bg-success me-2"></span> Presente</div>
+                                <div class="d-flex align-items-center"><span
+                                        class="attendance-dot bg-danger me-2"></span> Ausente</div>
+                                <div class="d-flex align-items-center"><span
+                                        class="attendance-dot bg-warning me-2"></span> Con retraso</div>
+                                <div class="d-flex align-items-center"><span
+                                        class="attendance-dot border bg-white me-2"></span> No marcado</div>
+                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i> Click on a cell to change
+                                    status</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
 
                 <!-- Access Settings Tab -->
                 <div id="access-settings-tab" class="section-content hidden">

@@ -20,6 +20,7 @@ import QuickLink from './backend/models/QuickLink.js';
 import Section from './backend/models/Section.js';
 import ExtendedInfo from './backend/models/ExtendedInfo.js';
 import Calendar from './backend/models/Calendar.js';
+import Attendance from './backend/models/Attendance.js';
 import BootcampTemplate from './backend/models/BootcampTemplate.js';
 import { sendPasswordEmail } from './backend/utils/email.js';
 
@@ -682,7 +683,54 @@ app.get('/api/promotions/:promotionId/students', verifyToken, async (req, res) =
     console.error('Error fetching students:', error);
     res.status(500).json({ error: error.message });
   }
-});// Add student manually (teacher adds student for tracking)
+});
+
+// Get attendance for a specific month
+app.get('/api/promotions/:promotionId/attendance', verifyToken, async (req, res) => {
+  try {
+    const { month } = req.query; // Format: YYYY-MM
+    console.log('Attendance request - promotionId:', req.params.promotionId, 'month:', month);
+    if (!month) return res.status(400).json({ error: 'Month is required (YYYY-MM)' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    console.log('Promotion found:', promotion ? promotion.id : 'NOT FOUND');
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    // Fetch all attendance for this promotion in the given month using regex
+    const attendance = await Attendance.find({
+      promotionId: req.params.promotionId,
+      date: { $regex: new RegExp(`^${month}-`) }
+    });
+
+    res.json(attendance);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update or create attendance record
+app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res) => {
+  try {
+    const { studentId, date, status } = req.body;
+    if (!studentId || !date) return res.status(400).json({ error: 'studentId and date are required' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const attendance = await Attendance.findOneAndUpdate(
+      { promotionId: req.params.promotionId, studentId, date },
+      { status },
+      { upsert: true, new: true }
+    );
+
+    res.json(attendance);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// Add student manually (teacher adds student for tracking)
 app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) => {
   try {
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
