@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Promotion Details - Bootcamp Manager</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Pacifico" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
     <link href="css/promotion-detail.css" rel="stylesheet" />
     <style>
@@ -42,7 +42,7 @@
             <a class="navbar-brand" href="dashboard.html">
                 <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" height="40" />
             </a>
-        <h1 class="page-title"> Bootcamp Manager</h1>
+            <h1 class="page-title"> Bootcamp Manager</h1>
         </div>
     </nav>
 
@@ -281,6 +281,51 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- Attendance Stats Row -->
+                    <div class="row mb-4" id="attendance-stats-container">
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center py-2">
+                                    <h6 class="mb-0">Presente</h6>
+                                    <h3 class="mb-0" id="stat-present-total">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center py-2">
+                                    <h6 class="mb-0">Ausente</h6>
+                                    <h3 class="mb-0" id="stat-absent-total">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-warning text-dark">
+                                <div class="card-body text-center py-2">
+                                    <h6 class="mb-0">Retraso</h6>
+                                    <h3 class="mb-0" id="stat-late-total">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="card bg-info text-dark">
+                                <div class="card-body text-center py-2">
+                                    <h6 class="mb-0">Justificado</h6>
+                                    <h3 class="mb-0" id="stat-justified-total">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center py-2">
+                                    <h6 class="mb-0">Attendance Avg.</h6>
+                                    <h3 class="mb-0" id="stat-attendance-avg">0%</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card mb-4">
                         <div class="card-body p-0">
                             <div class="table-responsive attendance-table-wrapper">
@@ -306,10 +351,12 @@
                                         class="attendance-dot bg-danger me-2"></span> Ausente</div>
                                 <div class="d-flex align-items-center"><span
                                         class="attendance-dot bg-warning me-2"></span> Con retraso</div>
+                                <div class="d-flex align-items-center"><span class="attendance-dot bg-info me-2"></span>
+                                    Justificado</div>
                                 <div class="d-flex align-items-center"><span
                                         class="attendance-dot border bg-white me-2"></span> No marcado</div>
-                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i> Click on a cell to change
-                                    status</div>
+                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i> Click on a cell or student
+                                    name for details</div>
                             </div>
                         </div>
                     </div>
@@ -1283,6 +1330,65 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" onclick="saveEmployabilityItem()">Save Item</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Detail Modal -->
+    <div class="modal fade" id="attendanceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Attendance Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="attendance-detail-info" class="mb-3">
+                        <p><strong>Student:</strong> <span id="attendance-modal-student-name">-</span></p>
+                        <p><strong>Date:</strong> <span id="attendance-modal-date">-</span></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="attendance-modal-status">
+                            <option value="">No marcado</option>
+                            <option value="Presente">Presente</option>
+                            <option value="Ausente">Ausente</option>
+                            <option value="Con retraso">Con retraso</option>
+                            <option value="Justificado">Justificado</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Note / Comment</label>
+                        <textarea class="form-control" id="attendance-modal-note" rows="3"
+                            placeholder="Add a comment..."></textarea>
+                    </div>
+
+                    <hr>
+                    <h6>Student Statistics (This Month)</h6>
+                    <div class="row text-center mt-2">
+                        <div class="col-3">
+                            <div class="small fw-bold text-success">Pres.</div>
+                            <div id="student-stat-present">0</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="small fw-bold text-danger">Aus.</div>
+                            <div id="student-stat-absent">0</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="small fw-bold text-warning">Retr.</div>
+                            <div id="student-stat-late">0</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="small fw-bold text-info">Just.</div>
+                            <div id="student-stat-justified">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAttendanceFromModal()">Save
+                        Changes</button>
                 </div>
             </div>
         </div>

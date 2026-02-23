@@ -712,7 +712,7 @@ app.get('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
 // Update or create attendance record
 app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res) => {
   try {
-    const { studentId, date, status } = req.body;
+    const { studentId, date, status, note } = req.body;
     if (!studentId || !date) return res.status(400).json({ error: 'studentId and date are required' });
 
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
@@ -721,7 +721,7 @@ app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
 
     const attendance = await Attendance.findOneAndUpdate(
       { promotionId: req.params.promotionId, studentId, date },
-      { status },
+      { status, note },
       { upsert: true, new: true }
     );
 
