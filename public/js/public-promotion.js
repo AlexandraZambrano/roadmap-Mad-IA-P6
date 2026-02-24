@@ -836,13 +836,16 @@ function createProgramInfoSections(info) {
 
             // Apply orange background for the next upcoming date
             const isNextDate = index === nextDateIndex;
+            const maxVisible = 5;
+            const isHidden = index >= maxVisible;
+            const rowClass = isHidden ? 'pildora-table-row-hidden' : '';
 
             if (isNextDate) {
                 const orangeStyle = 'border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
                 const orangeStyleLeft = 'border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
 
                 return `
-                    <tr>
+                    <tr class="${rowClass}">
                         <td style="width: 15%; ${orangeStyle}">${escapeHtml(mode)}</td>
                         <td style="width: 15%; ${orangeStyle}">${escapeHtml(date)}</td>
                         <td style="width: 25%; ${orangeStyleLeft}">${escapeHtml(title)}</td>
@@ -853,7 +856,7 @@ function createProgramInfoSections(info) {
                 `;
             } else {
                 return `
-                    <tr>
+                    <tr class="${rowClass}">
                         <td style="width: 15%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
                         <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
                         <td style="width: 25%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
@@ -865,6 +868,9 @@ function createProgramInfoSections(info) {
             }
         }).join('');
 
+        const maxVisible = 5;
+        const showExpandButton = info.pildoras.length > maxVisible;
+        
         pildorasSection.innerHTML = `
             <div class="card">
                 <div class="card-body">
@@ -894,6 +900,14 @@ function createProgramInfoSections(info) {
                             </tbody>
                         </table>
                     </div>
+                    ${showExpandButton ? `
+                        <div class="pildora-table-expand-row">
+                            <button class="btn btn-link" onclick="window.togglePildorasTableExpandLegacy()">
+                                <span class="pildora-expand-text-legacy">Ver todas las píldoras</span>
+                                <i class="bi bi-chevron-down pildora-expand-icon-legacy"></i>
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -991,6 +1005,9 @@ function createProgramInfoSections(info) {
 
                     // Apply orange background for the next upcoming date
                     const isNextDate = index === nextDateIndex;
+                    const maxVisible = 5;
+                    const isHidden = index >= maxVisible;
+                    const rowClass = isHidden ? 'pildora-table-row-hidden' : '';
 
                     // If this is the next date row, apply orange background to all cells
                     if (isNextDate) {
@@ -998,7 +1015,7 @@ function createProgramInfoSections(info) {
                         const orangeStyleLeft = 'border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px; background-color: #ff6600; color: white;';
 
                         return `
-                            <tr>
+                            <tr class="${rowClass}">
                                 <td style="width: 15%; ${orangeStyle}">${escapeHtml(mode)}</td>
                                 <td style="width: 15%; ${orangeStyle}">${escapeHtml(date)}</td>
                                 <td style="width: 30%; ${orangeStyleLeft}">${escapeHtml(title)}</td>
@@ -1010,7 +1027,7 @@ function createProgramInfoSections(info) {
                     } else {
                         // Normal row with color coding for specific cells
                         return `
-                            <tr>
+                            <tr class="${rowClass}">
                                 <td style="width: 15%; ${applyCellColors(mode, 'presentacion')}">${escapeHtml(mode)}</td>
                                 <td style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle; padding: 8px;">${escapeHtml(date)}</td>
                                 <td style="width: 30%; border: 1px solid #dee2e6; text-align: left; vertical-align: middle; padding: 8px;">${escapeHtml(title)}</td>
@@ -1025,6 +1042,9 @@ function createProgramInfoSections(info) {
                 const tableContainer = pildorasSection.querySelector('.pildoras-table-container');
                 if (tableContainer) {
                     const actionHeader = info.pildorasAssignmentOpen ? '<th style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Acción</th>' : '';
+                    const maxVisible = 5;
+                    const showExpandButton = currentModule.pildoras.length > maxVisible;
+                    
                     tableContainer.innerHTML = `
                         <table class="table table-sm table-bordered" style="border-color: #dee2e6;">
                             <thead class="table-light">
@@ -1041,7 +1061,15 @@ function createProgramInfoSections(info) {
                                 ${rows}
                             </tbody>
                         </table>
-                    `;
+                        ${showExpandButton ? `
+                            <div class="pildora-table-expand-row">
+                                <button class="btn btn-link pildora-expand-btn-${currentModule.moduleId}" onclick="window.togglePildorasTableExpand('${currentModule.moduleId}')">
+                                    <span class="pildora-expand-text-${currentModule.moduleId}">Ver todas las píldoras</span>
+                                    <i class="bi bi-chevron-down pildora-expand-icon-${currentModule.moduleId}"></i>
+                                </button>
+                            </div>
+                        ` : ''}`
+                    ;
                 } else {
                     console.error('Table container not found!');
                 }
@@ -1193,6 +1221,55 @@ function createProgramInfoSections(info) {
                     currentModuleIndex++;
                     console.log('Moving to module index:', currentModuleIndex);
                     renderPildorasTable();
+                }
+            };
+
+            // Toggle expand/collapse for píldoras table
+            window.togglePildorasTableExpand = function(moduleId) {
+                const hiddenRows = document.querySelectorAll('.pildora-table-row-hidden');
+                const btn = document.querySelector(`.pildora-expand-btn-${moduleId}`);
+                const text = document.querySelector(`.pildora-expand-text-${moduleId}`);
+                const icon = document.querySelector(`.pildora-expand-icon-${moduleId}`);
+                
+                if (!hiddenRows.length) return;
+                
+                const isCollapsed = hiddenRows[0].style.display !== 'table-row';
+                hiddenRows.forEach(row => {
+                    row.style.display = isCollapsed ? 'table-row' : 'none';
+                });
+                
+                if (isCollapsed) {
+                    text.textContent = 'Ver menos';
+                    icon.classList.remove('bi-chevron-down');
+                    icon.classList.add('bi-chevron-up');
+                } else {
+                    text.textContent = 'Ver todas las píldoras';
+                    icon.classList.remove('bi-chevron-up');
+                    icon.classList.add('bi-chevron-down');
+                }
+            };
+
+            // Toggle expand/collapse for legacy píldoras table
+            window.togglePildorasTableExpandLegacy = function() {
+                const hiddenRows = document.querySelectorAll('.pildora-table-row-hidden');
+                const text = document.querySelector('.pildora-expand-text-legacy');
+                const icon = document.querySelector('.pildora-expand-icon-legacy');
+                
+                if (!hiddenRows.length) return;
+                
+                const isCollapsed = hiddenRows[0].style.display !== 'table-row';
+                hiddenRows.forEach(row => {
+                    row.style.display = isCollapsed ? 'table-row' : 'none';
+                });
+                
+                if (isCollapsed) {
+                    text.textContent = 'Ver menos';
+                    icon.classList.remove('bi-chevron-down');
+                    icon.classList.add('bi-chevron-up');
+                } else {
+                    text.textContent = 'Ver todas las píldoras';
+                    icon.classList.remove('bi-chevron-up');
+                    icon.classList.add('bi-chevron-down');
                 }
             };
 
