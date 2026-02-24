@@ -26,68 +26,47 @@
             max-width: 450px;
             background: white;
             margin: 1rem;
-            padding: 50px 40px;
+            padding: 0;
             border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: none;
+            overflow: hidden;
         }
 
         .logo-section {
             text-align: center;
-    
+            background: #FF4700;
+            padding: 20px 20px;
+            color: white;
         }
 
         .logo-section img {
-            max-width: 70%;
+            max-width: 90%;
         }
 
         .logo-section h1 {
-            color: #333;
+            color: white;
             font-size: 1.8rem;
             font-weight: 700;
             margin-bottom: 5px;
         }
 
         .logo-section p {
-            color: #999;
+            color: #f0f0f0;
             font-size: 0.9rem;
+        }
+
+        .logo-section h2 {
+            color: #FF4700;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0;
+            text-align: center;
         }
 
         .role-selection {
             display: flex;
             gap: 15px;
             margin-bottom: 30px;
-        }
-
-        .role-btn {
-            flex: 1;
-            padding: 15px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .role-btn:hover {
-            border-color: #ff4700;
-            background: #ffe6d0;
-        }
-
-        .role-btn.active {
-            background: #ff4700;
-            color: white;
-            border-color: #ff4700;
-        }
-
-        .role-btn i {
-            display: block;
-            font-size: 2rem;
-            margin-bottom: 8px;
-        }
-
-        .role-btn span {
-            font-weight: 600;
         }
 
         .form-group {
@@ -98,6 +77,10 @@
             color: #555;
             font-weight: 500;
             margin-bottom: 8px;
+        }
+
+        #login-form {
+            padding: 10px 40px 40px 40px;
         }
 
         .form-control {
@@ -219,10 +202,11 @@
     <div class="login-container">
 
         <div class="logo-section">
-            <img src="./img/Factoria-F5-Official-Logo-2.png" alt="FactoriaF5" />
-            <h2  style="margin-top: 30px; font-size: 1.8rem;">Welcome to roadmap generator!</h2>
-        </div>
+                    <img class="logotype"src="./img/bootcamp_manager_logotype_bold_organge.png" /> 
 
+            <!-- <img src="./img/Factoria-F5-Official-Logo-2.png" alt="FactoriaF5" /> -->
+        </div>
+        <h2 class="welcome-title">Welcome to roadmap generator!</h2>
         <div id="danger-alert" class="alert alert-danger hidden" role="alert"></div>
         <div id="success-alert" class="alert alert-success hidden" role="alert"></div>
 
@@ -251,7 +235,7 @@
             </button>
         </form>
     </div>
-        <img class="logotype"src="./img/bootcamp_manager_logotype_bold_organge.png" /> 
+        <!-- <img class="logotype"src="./img/bootcamp_manager_logotype_bold_organge.png" />  -->
 
     <script src="js/config.js"></script>
     <script src="js/translations.js"></script>
