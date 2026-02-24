@@ -24,6 +24,9 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f5f7fa;
+    height: 100vh;
+    display: flex;
+    flex-wrap: wrap;
 }
 
 /* sidebar */
@@ -67,6 +70,13 @@ body {
 
 .section-title {
     color: var(--principal-1);
+}
+
+.logotype{
+ width: 25%;
+ align-items: center;
+ filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.2));
+ justify-content: center;
 }
 
 .section-container {
