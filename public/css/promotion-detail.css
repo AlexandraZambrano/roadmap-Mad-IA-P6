@@ -375,3 +375,157 @@ main {
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
+/* ==================== MOBILE RESPONSIVE - SIDEBAR HAMBURGER MENU ==================== */
+
+@media (max-width: 992px) {
+    .sidebar {
+        position: fixed;
+        top: 56px;
+        left: -100%;
+        width: 250px;
+        height: calc(100vh - 56px);
+        transition: left 0.3s ease;
+        overflow-y: auto;
+        z-index: 1000;
+        border-right: 2px solid #ff4700;
+    }
+
+    .sidebar.show {
+        left: 0;
+    }
+
+    .sidebar-sticky {
+        padding: 0 20px;
+    }
+
+    main {
+        margin-top: 56px;
+        padding: 20px;
+        width: 100%;
+    }
+
+    /* Hamburger button styling */
+    .navbar-toggler {
+        border: none;
+        padding: 0.25rem 0.5rem;
+
+    }
+
+    .navbar-toggler:focus {
+        box-shadow: none;
+    }
+
+    .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+
+    /* Add overlay when sidebar is open */
+    .sidebar-overlay {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        display: none;
+    }
+
+    .sidebar-overlay.show {
+        display: block;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 30px;
+        margin-inline-start: 1rem;
+    }
+
+    main {
+        padding: 15px;
+    }
+
+    .card {
+        margin-bottom: 16px;
+    }
+
+    .sidebar .nav-link {
+        padding: 12px 15px;
+        margin: 0.5rem 0;
+        border-radius: 3px;
+    }
+
+    .sidebar .nav-link:hover {
+        border-left: none;
+        padding-left: 15px;
+    }
+
+    /* Reduce font sizes for mobile */
+    .card-title {
+        font-size: 1rem;
+    }
+
+    .promotion-card-title {
+        font-size: 1rem;
+    }
+
+    /* Adjust attendance table for mobile */
+    .attendance-cell {
+        width: 32px;
+        height: 32px;
+        font-size: 0.7rem;
+    }
+
+    .sticky-column {
+        min-width: 100px;
+    }
+}
+
+@media (max-width: 576px) {
+    .page-title {
+        font-size: 24px;
+        margin-inline-start: 0.5rem;
+    }
+
+    main {
+        padding: 10px;
+    }
+
+    .navbar-brand img {
+        height: 32px;
+    }
+
+    .card {
+        margin-bottom: 12px;
+        border-radius: 4px;
+    }
+
+    .btn-primary {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+
+    .attendance-cell {
+        width: 28px;
+        height: 28px;
+        font-size: 0.6rem;
+    }
+
+    .sidebar .nav-link {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    /* Stack grid layouts on extra small screens */
+    .row {
+        margin-right: -5px;
+        margin-left: -5px;
+    }
+
+    .row > [class*='col-'] {
+        padding-right: 5px;
+        padding-left: 5px;
+    }
+}
