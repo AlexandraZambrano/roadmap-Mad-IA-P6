@@ -102,7 +102,9 @@ main {
     align-items: center;
     gap: 10px;
 }
-
+#userMenu  {
+        color:#ffffff;
+}
 .page-title{
     color:#ffffff;
     margin-right: 2rem;
