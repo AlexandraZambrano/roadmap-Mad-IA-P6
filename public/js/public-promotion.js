@@ -1074,29 +1074,41 @@ function createProgramInfoSections(info) {
                     console.error('Table container not found!');
                 }
 
-                // Update navigation controls
-                const moduleTitle = pildorasSection.querySelector('.current-module-name');
-                const prevBtn = pildorasSection.querySelector('.prev-module-btn');
-                const nextBtn = pildorasSection.querySelector('.next-module-btn');
+                // Update navigation controls - Update button styles
                 const countBadge = pildorasSection.querySelector('.module-pildoras-count');
-                const moduleNumber = pildorasSection.querySelector('.module-number-display');
-
-                if (moduleTitle) moduleTitle.textContent = currentModule.moduleName;
-                if (prevBtn) {
-                    prevBtn.disabled = currentModuleIndex === 0;
-                    prevBtn.style.opacity = currentModuleIndex === 0 ? '0.5' : '1';
-                    console.log('Previous button updated, disabled:', prevBtn.disabled);
+                
+                // Update all module buttons
+                for (let i = 0; i < modulesWithPildoras.length; i++) {
+                    const btn = pildorasSection.querySelector(`.module-selector-btn-${i}`);
+                    if (btn) {
+                        if (i === currentModuleIndex) {
+                            btn.className = 'btn btn-sm module-selector-btn-' + i;
+                            btn.classList.add('btn-primary');
+                            btn.classList.remove('btn-outline-secondary');
+                            btn.style.backgroundColor = '#ff6600';
+                            btn.style.borderColor = '#ff6600';
+                            btn.style.color = 'white';
+                        } else {
+                            btn.className = 'btn btn-sm module-selector-btn-' + i;
+                            btn.classList.add('btn-outline-secondary');
+                            btn.classList.remove('btn-primary');
+                            btn.style.backgroundColor = '';
+                            btn.style.borderColor = '';
+                            btn.style.color = '';
+                        }
+                    }
                 }
-                if (nextBtn) {
-                    nextBtn.disabled = currentModuleIndex === modulesWithPildoras.length - 1;
-                    nextBtn.style.opacity = currentModuleIndex === modulesWithPildoras.length - 1 ? '0.5' : '1';
-                    console.log('Next button updated, disabled:', nextBtn.disabled);
-                }
+                
                 if (countBadge) countBadge.textContent = currentModule.pildoras.length;
-                if (moduleNumber) moduleNumber.textContent = `${currentModuleIndex + 1} / ${modulesWithPildoras.length}`;
 
                 console.log('Navigation controls updated successfully');
             }
+
+            // Navigate to specific píldoras module
+            window.navigateToPildorasModule = function(moduleIdx) {
+                currentModuleIndex = moduleIdx;
+                renderPildorasTable();
+            };
 
             // Create the HTML structure with enhanced navigation - FORCE VISIBILITY
             pildorasSection.innerHTML = `
@@ -1107,25 +1119,16 @@ function createProgramInfoSections(info) {
                                 <i class="bi bi-lightbulb me-2"></i>Píldoras
                                 ${info.pildorasAssignmentOpen ? '<span class="badge bg-success ms-2" style="font-size: 0.7rem;">Auto-asignación Abierta</span>' : ''}
                             </h5>
-                            <div class="d-flex align-items-center gap-3">
-                                <!-- Module Navigation - NOW WITH ORANGE ARROWS -->
-                                <div class="d-flex align-items-center gap-2 border rounded p-2 bg-light" style="min-width: 200px; border: 2px solid #ff6600 !important;">
-                                    <button class="btn btn-sm prev-module-btn" 
-                                            onclick="window.navigatePildorasPrevious()" 
-                                            title="Módulo anterior"
-                                            style="font-weight: bold; min-width: 35px; background-color: #ff6600; color: white; border: none;">
-                                        <i class="bi bi-chevron-left" style="font-size: 1.2em;"></i>
-                                    </button>
-                                    <div class="d-flex flex-column align-items-center mx-2" style="min-width: 100px;">
-                                        <span class="fw-bold text-primary current-module-name" style="font-size: 0.9rem;">Módulo I</span>
-                                        <small class="text-muted module-number-display" style="font-size: 0.75rem;">1 / 1</small>
-                                    </div>
-                                    <button class="btn btn-sm next-module-btn" 
-                                            onclick="window.navigatePildorasNext()" 
-                                            title="Módulo siguiente"
-                                            style="font-weight: bold; min-width: 35px; background-color: #ff6600; color: white; border: none;">
-                                        <i class="bi bi-chevron-right" style="font-size: 1.2em;"></i>
-                                    </button>
+                            <div class="d-flex align-items-center gap-2">
+                                <!-- Module buttons navigation -->
+                                <div class="d-flex gap-2 flex-wrap">
+                                    ${modulesWithPildoras.map((mod, idx) => `
+                                        <button class="btn btn-sm module-selector-btn-${idx} ${idx === currentModuleIndex ? 'btn-primary' : 'btn-outline-secondary'}" 
+                                                onclick="window.navigateToPildorasModule(${idx})"
+                                                style="${idx === currentModuleIndex ? 'background-color: #ff6600; border-color: #ff6600; color: white;' : ''}">
+                                            ${mod.moduleName}
+                                        </button>
+                                    `).join('')}
                                 </div>
                                 <div class="badge bg-info text-dark" style="font-size: 0.9rem;">
                                     <i class="bi bi-lightbulb-fill me-1"></i>
