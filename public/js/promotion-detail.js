@@ -3366,39 +3366,7 @@ async function deleteSelectedStudents() {
 }
 
 // Attendance Control Functions
-function initializeAttendanceMonth() {
-    const promotion = window.currentPromotion;
-    if (!promotion || !promotion.startDate || !promotion.endDate) {
-        return; // Keep current month if no program dates
-    }
-    
-    const startDate = new Date(promotion.startDate);
-    const endDate = new Date(promotion.endDate);
-    const currentDate = new Date();
-    
-    // Determine the appropriate month to display
-    let targetDate;
-    
-    if (currentDate >= startDate && currentDate <= endDate) {
-        // Current date is within program, use current month
-        targetDate = currentDate;
-    } else if (currentDate < startDate) {
-        // Current date is before program, use program start month
-        targetDate = startDate;
-    } else {
-        // Current date is after program, use program end month
-        targetDate = endDate;
-    }
-    
-    const targetYear = targetDate.getFullYear();
-    const targetMonth = targetDate.getMonth() + 1;
-    currentAttendanceMonth = `${targetYear}-${targetMonth < 10 ? '0' : ''}${targetMonth}`;
-}
-
 async function loadAttendance() {
-    // Initialize attendance month based on program dates
-    initializeAttendanceMonth();
-    
     try {
         const token = localStorage.getItem('token');
         const [year, month] = currentAttendanceMonth.split('-');
@@ -3422,7 +3390,6 @@ async function loadAttendance() {
         attendanceData = await attendanceRes.json();
 
         renderAttendanceTable();
-        updateAttendanceNavigationButtons();
     } catch (error) {
         console.error('Error loading attendance:', error);
     }
@@ -3506,48 +3473,6 @@ function renderAttendanceTable() {
     });
 
     updateAttendanceStats();
-}
-
-// Update attendance navigation button states based on program dates
-function updateAttendanceNavigationButtons() {
-    const promotion = window.currentPromotion;
-    if (!promotion || !promotion.startDate || !promotion.endDate) {
-        return; // Keep buttons enabled if no program dates
-    }
-    
-    const startDate = new Date(promotion.startDate);
-    const endDate = new Date(promotion.endDate);
-    const [currentYear, currentMonth] = currentAttendanceMonth.split('-').map(Number);
-    const currentMonthDate = new Date(currentYear, currentMonth - 1, 1);
-    
-    const programStartMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-    const programEndMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
-    
-    // Update previous button
-    const prevBtn = document.querySelector('button[onclick="prevAttendanceMonth()"]');
-    if (prevBtn) {
-        prevBtn.disabled = currentMonthDate <= programStartMonth;
-        if (prevBtn.disabled) {
-            prevBtn.classList.add('disabled');
-            prevBtn.title = 'Cannot navigate before program start date';
-        } else {
-            prevBtn.classList.remove('disabled');
-            prevBtn.title = '';
-        }
-    }
-    
-    // Update next button
-    const nextBtn = document.querySelector('button[onclick="nextAttendanceMonth()"]');
-    if (nextBtn) {
-        nextBtn.disabled = currentMonthDate >= programEndMonth;
-        if (nextBtn.disabled) {
-            nextBtn.classList.add('disabled');
-            nextBtn.title = 'Cannot navigate after program end date';
-        } else {
-            nextBtn.classList.remove('disabled');
-            nextBtn.title = '';
-        }
-    }
 }
 
 function updateAttendanceStats() {
@@ -3765,21 +3690,7 @@ function prevAttendanceMonth() {
         newMonth = 12;
         newYear--;
     }
-    
-    const newMonthString = `${newYear}-${newMonth < 10 ? '0' : ''}${newMonth}`;
-    
-    // Check if new month is before program start date
-    const promotion = window.currentPromotion;
-    if (promotion && promotion.startDate) {
-        const programStartDate = new Date(promotion.startDate);
-        const newMonthDate = new Date(newYear, newMonth - 1, 1);
-        
-        if (newMonthDate < new Date(programStartDate.getFullYear(), programStartDate.getMonth(), 1)) {
-            return; // Don't navigate before program start
-        }
-    }
-    
-    currentAttendanceMonth = newMonthString;
+    currentAttendanceMonth = `${newYear}-${newMonth < 10 ? '0' : ''}${newMonth}`;
     loadAttendance();
 }
 
@@ -3791,355 +3702,92 @@ function nextAttendanceMonth() {
         newMonth = 1;
         newYear++;
     }
-    
-    const newMonthString = `${newYear}-${newMonth < 10 ? '0' : ''}${newMonth}`;
-    
-    // Check if new month is after program end date
-    const promotion = window.currentPromotion;
-    if (promotion && promotion.endDate) {
-        const programEndDate = new Date(promotion.endDate);
-        const newMonthDate = new Date(newYear, newMonth - 1, 1);
-        
-        if (newMonthDate > new Date(programEndDate.getFullYear(), programEndDate.getMonth(), 1)) {
-            return; // Don't navigate after program end
-        }
-    }
-    
-    currentAttendanceMonth = newMonthString;
+    currentAttendanceMonth = `${newYear}-${newMonth < 10 ? '0' : ''}${newMonth}`;
     loadAttendance();
 }
 
-// Export attendance to Excel with each month as a separate tab
+// Export attendance to Excel for the entire promotion period
 async function exportAttendanceToExcel() {
     try {
         const token = localStorage.getItem('token');
-        const promotion = window.currentPromotion;
-        
-        if (!promotion) {
-            alert('Promotion data not loaded. Please refresh the page and try again.');
+        if (!token) {
+            alert('No se encontró token de autenticación. Por favor, inicie sesión nuevamente.');
             return;
         }
+
+        // Get promotion data to show user what period will be exported
+        const promotionData = window.currentPromotion;
+        let confirmMessage = 'Se exportará la asistencia completa del programa';
         
-        if (!promotion.startDate || !promotion.endDate) {
-            alert('Program start and end dates are not configured. Please set them in the promotion settings.');
+        if (promotionData && promotionData.startDate && promotionData.endDate) {
+            confirmMessage = `Se exportará la asistencia desde ${promotionData.startDate} hasta ${promotionData.endDate} (solo días laborables L-V).\n\nEl archivo Excel tendrá una pestaña por cada mes con datos de asistencia.\n\n¿Desea continuar?`;
+        } else {
+            confirmMessage += ' para el período completo del programa.\n\nEl archivo Excel tendrá una pestaña por cada mes con datos de asistencia.\n\n¿Desea continuar?';
+        }
+
+        if (!confirm(confirmMessage)) {
             return;
         }
-        
-        // Calculate program months
-        const startDate = new Date(promotion.startDate);
-        const endDate = new Date(promotion.endDate);
-        
-        // Validate dates
-        if (startDate > endDate) {
-            alert('Program start date is after end date. Please check the promotion settings.');
-            return;
-        }
-        
-        const programMonths = [];
-        const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-        const end = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
-        
-        while (current <= end) {
-            const monthString = `${current.getFullYear()}-${(current.getMonth() + 1).toString().padStart(2, '0')}`;
-            programMonths.push(monthString);
-            current.setMonth(current.getMonth() + 1);
-        }
-        
-        if (programMonths.length === 0) {
-            alert('No valid months found for this program.');
-            return;
-        }
-        
-        // Show loading indicator
-        const exportBtn = document.querySelector('button[onclick="exportAttendanceToExcel()"]');
-        const originalText = exportBtn?.innerHTML || 'Export Excel';
+
+        // Show loading state
+        const exportBtn = document.querySelector('[onclick="exportAttendanceToExcel()"]');
+        const originalText = exportBtn ? exportBtn.innerHTML : '';
         if (exportBtn) {
-            exportBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Exporting...';
+            exportBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Exportando...';
             exportBtn.disabled = true;
         }
-        
-        // Create workbook
-        const workbook = XLSX.utils.book_new();
-        
-        // Get students list
-        const studentsRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (!studentsRes.ok) {
-            throw new Error('Failed to fetch students data');
-        }
-        
-        const students = await studentsRes.json();
-        
-        if (!students || students.length === 0) {
-            alert('No students found in this promotion.');
-            return;
-        }
-        
-        // Process each month
-        let successfulMonths = 0;
-        for (const monthString of programMonths) {
-            try {
-                // Get attendance data for this month
-                const attendanceRes = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance?month=${monthString}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (!attendanceRes.ok) {
-                    console.warn(`Failed to fetch attendance for ${monthString}:`, attendanceRes.statusText);
-                    continue;
-                }
-                
-                const attendanceData = await attendanceRes.json();
-                
-                // Create worksheet data for this month
-                const { data: worksheetData, cellStyles } = createAttendanceWorksheetData(students, attendanceData, monthString);
-                
-                // Create worksheet
-                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-                
-                // Apply cell styles (colors)
-                if (cellStyles) {
-                    for (const [cellRef, style] of Object.entries(cellStyles)) {
-                        if (!worksheet[cellRef]) continue;
-                        worksheet[cellRef].s = {
-                            fill: style,
-                            alignment: { horizontal: 'center', vertical: 'center' }
-                        };
-                    }
-                }
-                
-                // Set column widths
-                const colWidths = [{ width: 25 }]; // Student name column
-                for (let i = 1; i < worksheetData[0].length; i++) {
-                    colWidths.push({ width: 8 });
-                }
-                worksheet['!cols'] = colWidths;
-                
-                // Format month name for sheet name (Excel sheet names have character limits)
-                const [year, month] = monthString.split('-');
-                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                const sheetName = `${monthNames[parseInt(month) - 1]} ${year}`;
-                
-                // Add worksheet to workbook
-                XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-                successfulMonths++;
-                
-            } catch (error) {
-                console.error(`Error processing month ${monthString}:`, error);
+
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance/export`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Error del servidor: ${response.status}`);
+        }
+
+        // Get the blob and create download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        
+        // Extract filename from response header or use default
+        const disposition = response.headers.get('Content-Disposition');
+        let filename = 'asistencia-completa.xlsx';
+        if (disposition && disposition.includes('filename=')) {
+            filename = disposition.split('filename=')[1].replace(/"/g, '');
         }
         
-        if (successfulMonths === 0) {
-            alert('No attendance data could be exported. Please check that attendance has been recorded.');
-            return;
-        }
-        
-        // Generate filename
-        const safeName = promotion.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
-        const dateStr = new Date().toISOString().split('T')[0];
-        const filename = `attendance-${safeName}-${dateStr}.xlsx`;
-        
-        // Save file
-        XLSX.writeFile(workbook, filename);
-        
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
         // Show success message
-        const monthText = successfulMonths === 1 ? 'month' : 'months';
-        alert(`Successfully exported attendance data for ${successfulMonths} ${monthText} to ${filename}`);
-        
+        alert('✅ Asistencia exportada exitosamente.\n\nEl archivo Excel incluye:\n• Una pestaña por cada mes del programa\n• Todos los estudiantes en cada mes\n• Solo días laborables (L-V)\n• Estados: P=Presente, A=Ausente, T=Tardanza, J=Justificado\n• Leyenda en cada pestaña');
+
     } catch (error) {
-        console.error('Error exporting attendance to Excel:', error);
-        alert(`Error exporting attendance data: ${error.message}. Please try again.`);
+        console.error('Error exporting attendance:', error);
+        alert(`❌ Error al exportar la asistencia: ${error.message}`);
     } finally {
-        // Restore button text
-        const exportBtn = document.querySelector('button[onclick="exportAttendanceToExcel()"]');
+        // Restore button state
+        const exportBtn = document.querySelector('[onclick="exportAttendanceToExcel()"]');
         if (exportBtn) {
-            exportBtn.innerHTML = '<i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel';
+            exportBtn.innerHTML = originalText || '<i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel';
             exportBtn.disabled = false;
         }
     }
 }
 
-// Helper function to create worksheet data for a specific month
-function createAttendanceWorksheetData(students, attendanceData, monthString) {
-    const [year, month] = monthString.split('-').map(Number);
-    const daysInMonth = new Date(year, month, 0).getDate();
-    
-    // Create header row
-    const headerRow = ['Student'];
-    for (let day = 1; day <= daysInMonth; day++) {
-        headerRow.push(day.toString());
-    }
-    headerRow.push('Present', 'Absent', 'Late', 'Justified', 'Total Days', 'Attendance %');
-    
-    const data = [headerRow];
-    const cellStyles = {}; // Store cell styles for coloring
-    
-    // Sort students alphabetically
-    students.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    
-    // Process each student
-    students.forEach((student, studentIndex) => {
-        const rowIndex = studentIndex + 1; // +1 because of header row
-        const row = [`${student.name || ''} ${student.lastname || ''}`.trim()];
-        
-        let presentCount = 0, absentCount = 0, lateCount = 0, justifiedCount = 0;
-        
-        // Process each day of the month
-        for (let day = 1; day <= daysInMonth; day++) {
-            const colIndex = day; // Column index for this day
-            const dateKey = `${monthString}-${day < 10 ? '0' : ''}${day}`;
-            const record = attendanceData.find(a => a.studentId === student.id && a.date === dateKey);
-            
-            let cellValue = '';
-            let cellColor = null;
-            
-            if (record && record.status) {
-                switch (record.status) {
-                    case 'Presente':
-                        cellValue = 'P';
-                        cellColor = { fgColor: { rgb: 'd4edda' } }; // Light green
-                        presentCount++;
-                        break;
-                    case 'Ausente':
-                        cellValue = 'A';
-                        cellColor = { fgColor: { rgb: 'f8d7da' } }; // Light red
-                        absentCount++;
-                        break;
-                    case 'Con retraso':
-                        cellValue = 'L';
-                        cellColor = { fgColor: { rgb: 'fff3cd' } }; // Light yellow
-                        lateCount++;
-                        break;
-                    case 'Justificado':
-                        cellValue = 'J';
-                        cellColor = { fgColor: { rgb: 'd1ecf1' } }; // Light blue
-                        justifiedCount++;
-                        break;
-                    default:
-                        cellValue = '';
-                }
-            }
-            
-            row.push(cellValue);
-            
-            // Store cell style if needed
-            if (cellColor) {
-                const cellRef = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
-                cellStyles[cellRef] = cellColor;
-            }
-        }
-        
-        // Add statistics with colors
-        const statsStartCol = daysInMonth + 1;
-        
-        // Present count - green background
-        const presentCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: statsStartCol });
-        cellStyles[presentCellRef] = { fgColor: { rgb: 'd4edda' } };
-        
-        // Absent count - red background
-        const absentCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: statsStartCol + 1 });
-        cellStyles[absentCellRef] = { fgColor: { rgb: 'f8d7da' } };
-        
-        // Late count - yellow background
-        const lateCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: statsStartCol + 2 });
-        cellStyles[lateCellRef] = { fgColor: { rgb: 'fff3cd' } };
-        
-        // Justified count - blue background
-        const justifiedCellRef = XLSX.utils.encode_cell({ r: rowIndex, c: statsStartCol + 3 });
-        cellStyles[justifiedCellRef] = { fgColor: { rgb: 'd1ecf1' } };
-        
-        const totalMarked = presentCount + absentCount + lateCount + justifiedCount;
-        const attendancePercentage = totalMarked > 0 
-            ? Math.round(((presentCount + lateCount + justifiedCount) / totalMarked) * 100)
-            : 0;
-        
-        row.push(presentCount, absentCount, lateCount, justifiedCount, totalMarked, `${attendancePercentage}%`);
-        data.push(row);
-    });
-    
-    // Add summary row
-    const summaryRowIndex = students.length + 1;
-    const summaryRow = ['TOTALS'];
-    
-    // Calculate totals for each day
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dateKey = `${monthString}-${day < 10 ? '0' : ''}${day}`;
-        const dayRecords = attendanceData.filter(a => a.date === dateKey && a.status);
-        summaryRow.push(dayRecords.length);
-    }
-    
-    // Calculate overall totals with colors
-    const totalPresent = attendanceData.filter(a => a.status === 'Presente').length;
-    const totalAbsent = attendanceData.filter(a => a.status === 'Ausente').length;
-    const totalLate = attendanceData.filter(a => a.status === 'Con retraso').length;
-    const totalJustified = attendanceData.filter(a => a.status === 'Justificado').length;
-    const totalMarked = totalPresent + totalAbsent + totalLate + totalJustified;
-    const overallPercentage = totalMarked > 0 
-        ? Math.round(((totalPresent + totalLate + totalJustified) / totalMarked) * 100)
-        : 0;
-    
-    // Add colors to summary row statistics
-    const summaryStatsStartCol = daysInMonth + 1;
-    const summaryPresentRef = XLSX.utils.encode_cell({ r: summaryRowIndex, c: summaryStatsStartCol });
-    cellStyles[summaryPresentRef] = { fgColor: { rgb: 'd4edda' } };
-    
-    const summaryAbsentRef = XLSX.utils.encode_cell({ r: summaryRowIndex, c: summaryStatsStartCol + 1 });
-    cellStyles[summaryAbsentRef] = { fgColor: { rgb: 'f8d7da' } };
-    
-    const summaryLateRef = XLSX.utils.encode_cell({ r: summaryRowIndex, c: summaryStatsStartCol + 2 });
-    cellStyles[summaryLateRef] = { fgColor: { rgb: 'fff3cd' } };
-    
-    const summaryJustifiedRef = XLSX.utils.encode_cell({ r: summaryRowIndex, c: summaryStatsStartCol + 3 });
-    cellStyles[summaryJustifiedRef] = { fgColor: { rgb: 'd1ecf1' } };
-    
-    summaryRow.push(totalPresent, totalAbsent, totalLate, totalJustified, totalMarked, `${overallPercentage}%`);
-    data.push(summaryRow);
-    
-    return { data, cellStyles };
+// Selection state management
+function updateSelectionState(checkbox) {
+    // This function is called when checkboxes are clicked
+    // You can add logic here to update UI based on selection
 }
-
-// ==================== MOBILE SIDEBAR HAMBURGER MENU ====================
-
-document.addEventListener('DOMContentLoaded', () => {
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.querySelector('.sidebar');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
-
-    // Toggle sidebar when hamburger button is clicked
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            sidebar.classList.toggle('show');
-            sidebarOverlay.classList.toggle('show');
-        });
-    }
-
-    // Close sidebar when overlay is clicked
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', () => {
-            sidebar.classList.remove('show');
-            sidebarOverlay.classList.remove('show');
-        });
-    }
-
-    // Close sidebar when a nav link is clicked
-    const navLinks = document.querySelectorAll('.sidebar .nav-link');
-    navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            sidebar.classList.remove('show');
-            sidebarOverlay.classList.remove('show');
-        });
-    });
-
-    // Close sidebar when window is resized to desktop size
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 992) {
-            sidebar.classList.remove('show');
-            sidebarOverlay.classList.remove('show');
-        }
-    });
-});
 

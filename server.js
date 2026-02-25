@@ -736,6 +736,174 @@ app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
     res.status(500).json({ error: error.message });
   }
 });
+
+// Export attendance for entire promotion period as Excel
+app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const startDate = promotion.startDate;
+    const endDate = promotion.endDate;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'La promoción debe tener fechas de inicio y fin válidas' });
+    }
+
+    console.log(`Exporting attendance for promotion ${req.params.promotionId} from ${startDate} to ${endDate}`);
+
+    // Get all students for this promotion
+    const students = await Student.find({ promotionId: req.params.promotionId }).sort({ name: 1, lastname: 1 });
+    
+    if (students.length === 0) {
+      return res.status(400).json({ error: 'No se encontraron estudiantes en esta promoción' });
+    }
+
+    // Get all attendance records for the entire promotion period
+    const attendance = await Attendance.find({
+      promotionId: req.params.promotionId,
+      date: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    }).sort({ date: 1 });
+
+    console.log(`Found ${students.length} students and ${attendance.length} attendance records`);
+
+    // Generate all dates between start and end date
+    const allDates = [];
+    const currentDate = new Date(startDate);
+    const endDateTime = new Date(endDate);
+    
+    while (currentDate <= endDateTime) {
+      // Only include weekdays (Monday to Friday)
+      const dayOfWeek = currentDate.getDay();
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        allDates.push(currentDate.toISOString().split('T')[0]);
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    console.log(`Generated ${allDates.length} school days between ${startDate} and ${endDate}`);
+
+    // Group dates by month
+    const datesByMonth = {};
+    allDates.forEach(date => {
+      const monthKey = date.substring(0, 7); // YYYY-MM format
+      if (!datesByMonth[monthKey]) {
+        datesByMonth[monthKey] = [];
+      }
+      datesByMonth[monthKey].push(date);
+    });
+
+    // Create workbook
+    const workbook = xlsx.utils.book_new();
+
+    // Create a worksheet for each month
+    Object.keys(datesByMonth).sort().forEach(monthKey => {
+      const monthDates = datesByMonth[monthKey];
+      const monthName = new Date(monthKey + '-01').toLocaleDateString('es-ES', { 
+        year: 'numeric', 
+        month: 'long' 
+      });
+      const shortMonthName = new Date(monthKey + '-01').toLocaleDateString('es-ES', { 
+        year: '2-digit', 
+        month: 'short' 
+      }).replace('.', '');
+
+      // Create worksheet data for this month
+      const worksheetData = [];
+      
+      // Header row with dates
+      const headerRow = ['Estudiante', ...monthDates.map(date => {
+        const d = new Date(date);
+        return d.getDate().toString().padStart(2, '0');
+      })];
+      worksheetData.push(headerRow);
+
+      // Data rows for each student
+      students.forEach(student => {
+        const studentName = `${student.name || ''} ${student.lastname || ''}`.trim();
+        const row = [studentName];
+        
+        monthDates.forEach(date => {
+          const attendanceRecord = attendance.find(a => 
+            a.studentId === student.id && a.date === date
+          );
+          
+          let status = '';
+          if (attendanceRecord) {
+            switch (attendanceRecord.status) {
+              case 'Presente': status = 'P'; break;
+              case 'Ausente': status = 'A'; break;
+              case 'Con retraso': status = 'T'; break;
+              case 'Justificado': status = 'J'; break;
+              default: status = '';
+            }
+          }
+          row.push(status);
+        });
+        
+        worksheetData.push(row);
+      });
+
+      // Add empty row before legend
+      worksheetData.push([]);
+      
+      // Add legend at the bottom of each month
+      worksheetData.push(['Leyenda:']);
+      worksheetData.push(['P = Presente']);
+      worksheetData.push(['A = Ausente']);
+      worksheetData.push(['T = Con retraso']);
+      worksheetData.push(['J = Justificado']);
+
+      // Create worksheet
+      const worksheet = xlsx.utils.aoa_to_sheet(worksheetData);
+      
+      // Set column widths
+      const colWidths = [{ width: 25 }]; // Student name column
+      monthDates.forEach(() => colWidths.push({ width: 6 })); // Date columns (smaller for day numbers)
+      worksheet['!cols'] = colWidths;
+
+      // Add worksheet to workbook with month name as tab
+      xlsx.utils.book_append_sheet(workbook, worksheet, shortMonthName);
+    });
+
+    // If no months found, create a summary sheet
+    if (Object.keys(datesByMonth).length === 0) {
+      const summaryData = [
+        ['No hay registros de asistencia para exportar'],
+        [''],
+        ['Período consultado:'],
+        [`Desde: ${startDate}`],
+        [`Hasta: ${endDate}`],
+        [`Estudiantes: ${students.length}`]
+      ];
+      
+      const summarySheet = xlsx.utils.aoa_to_sheet(summaryData);
+      xlsx.utils.book_append_sheet(workbook, summarySheet, 'Resumen');
+    }
+
+    // Generate Excel file
+    const excelBuffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    // Create safe filename using promotion name
+    const safeName = promotion.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+    const filename = `${safeName}_asistencia.xlsx`;
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    
+    console.log(`Sending Excel file: ${filename}`);
+    res.send(excelBuffer);
+  } catch (error) {
+    console.error('Error exporting attendance:', error);
+    res.status(500).json({ error: `Error al exportar asistencia: ${error.message}` });
+  }
+});
+
 // Add student manually (teacher adds student for tracking)
 app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) => {
   try {
