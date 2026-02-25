@@ -77,7 +77,9 @@ body {
     font-size: 1rem;  
     margin: 1rem 0;
     text-align: center;
-    ;
+     font-family: "Homemade Apple";
+    font-weight: 600;
+  font-style:normal
 }
 
 .logotype{
