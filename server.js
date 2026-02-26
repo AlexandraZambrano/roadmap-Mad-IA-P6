@@ -2453,19 +2453,22 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
     const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
     const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
     const normalizedCompetences = Array.isArray(competences) ? competences : [];
+    console.log('[extended-info POST] competences to save:', JSON.stringify(normalizedCompetences.map(c => ({ name: c.name, startModule: c.startModule }))));
     const newInfo = await ExtendedInfo.findOneAndUpdate(
       { promotionId: req.params.promotionId },
       {
-        schedule: schedule || {},
-        team: team || [],
-        resources: resources || [],
-        evaluation: evaluation || '',
-        pildoras: normalizedPildoras,
-        modulesPildoras: normalizedModulesPildoras,
-        pildorasAssignmentOpen: !!pildorasAssignmentOpen,
-        competences: normalizedCompetences
+        $set: {
+          schedule: schedule || {},
+          team: team || [],
+          resources: resources || [],
+          evaluation: evaluation || '',
+          pildoras: normalizedPildoras,
+          modulesPildoras: normalizedModulesPildoras,
+          pildorasAssignmentOpen: !!pildorasAssignmentOpen,
+          competences: normalizedCompetences
+        }
       },
-      { upsert: true, returnDocument: 'after' }
+      { upsert: true, returnDocument: 'after', strict: false }
     );
     res.json(newInfo);
   } catch (error) {

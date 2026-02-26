@@ -642,6 +642,19 @@ function updateSidebarWithExtendedInfo(info) {
             nav.appendChild(li);
         }
     }
+
+    if (Array.isArray(info.competences) && info.competences.length > 0) {
+        console.log('Adding competences section to sidebar');
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        li.innerHTML = '<a class="nav-link" href="#competences-section"><i class="bi bi-award me-2"></i>Competencias</a>';
+
+        if (quickLinksItem) {
+            nav.insertBefore(li, quickLinksItem);
+        } else {
+            nav.appendChild(li);
+        }
+    }
 }
 
 async function loadCalendar() {
@@ -776,47 +789,83 @@ function _renderPublicCompetences(filterArea) {
     }
 
     const areaColorMap = {
-        'Frontend': 'primary', 'Backend': 'success', 'DevOps': 'warning',
-        'Testing': 'danger', 'Soft Skills': 'info', 'UX/UI': 'secondary', 'IA': 'dark'
+        'web': 'primary', 'ai': 'dark', 'accessibility': 'info',
+        'green': 'success', 'inmersivo': 'warning'
     };
     const levelColorMap = { 1: 'secondary', 2: 'warning', 3: 'primary', 4: 'success' };
 
-    container.innerHTML = filtered.map(comp => {
+    const items = filtered.map((comp, i) => {
         const areaColor = areaColorMap[comp.area] || 'secondary';
+        const selectedCount = (comp.selectedTools || []).length;
+        const allCount = (comp.allTools || comp.selectedTools || []).length;
+        const levelsCount = (comp.levels || []).length;
+
+        const startModuleBadge = comp.startModule
+            ? `<span class="badge bg-light text-dark border ms-2 small"><i class="bi bi-play-circle me-1 text-primary"></i>${escapeHtml(comp.startModule.name)}</span>`
+            : '';
+
         const toolBadges = (comp.selectedTools || []).map(t =>
-            `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1"></i>${escapeHtml(t)}</span>`
+            `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1 opacity-50"></i>${escapeHtml(t)}</span>`
         ).join('');
+
         const levelRows = (comp.levels || []).map(l => `
             <div class="d-flex align-items-start gap-2 mb-2">
                 <span class="badge bg-${levelColorMap[l.level] || 'secondary'} flex-shrink-0" style="min-width:2rem;text-align:center;">${l.level}</span>
                 <div>
                     <strong class="small">${escapeHtml(l.description)}</strong>
                     <ul class="mb-0 ps-3 small text-muted">
-                        ${(l.indicators || []).map(i => `<li>${escapeHtml(i)}</li>`).join('')}
+                        ${(l.indicators || []).map(ind => `<li>${escapeHtml(ind)}</li>`).join('')}
                     </ul>
                 </div>
             </div>`).join('');
+
         return `
-        <div class="card mb-3 border-start border-4 border-${areaColor}">
-            <div class="card-header bg-light py-2 d-flex align-items-center gap-2">
-                <span class="badge bg-${areaColor}">${escapeHtml(comp.area)}</span>
-                <strong>${escapeHtml(comp.name)}</strong>
-                ${comp.description ? `<small class="text-muted ms-1 d-none d-md-inline">${escapeHtml(comp.description)}</small>` : ''}
-            </div>
-            <div class="card-body py-3 px-3">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="small text-uppercase text-muted mb-2"><i class="bi bi-bar-chart-steps me-1"></i>Niveles</h6>
-                        ${levelRows}
+        <div class="accordion-item border-start border-4 border-${areaColor}">
+            <h2 class="accordion-header" id="pub-comp-header-${i}">
+                <button class="accordion-button collapsed py-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#pub-comp-body-${i}"
+                    aria-expanded="false" aria-controls="pub-comp-body-${i}">
+                    <div class="d-flex align-items-center flex-wrap gap-2 w-100 me-3">
+                        <span class="badge bg-${areaColor}">${escapeHtml(comp.area)}</span>
+                        <strong>${escapeHtml(comp.name)}</strong>
+                        ${startModuleBadge}
+                        <span class="ms-auto d-flex gap-2 small text-muted">
+                            <span title="Herramientas"><i class="bi bi-tools me-1"></i>${selectedCount}</span>
+                            <span title="Niveles"><i class="bi bi-bar-chart-steps me-1"></i>${levelsCount}</span>
+                        </span>
                     </div>
-                    <div class="col-md-6 border-start">
-                        <h6 class="small text-uppercase text-muted mb-2"><i class="bi bi-tools me-1"></i>Herramientas del programa</h6>
-                        ${toolBadges || '<span class="text-muted small fst-italic">No especificadas</span>'}
+                </button>
+            </h2>
+            <div id="pub-comp-body-${i}" class="accordion-collapse collapse"
+                aria-labelledby="pub-comp-header-${i}" data-bs-parent="#public-competences-accordion">
+                <div class="accordion-body pt-2 pb-3">
+                    ${comp.description ? `<p class="text-muted small mb-3">${escapeHtml(comp.description)}</p>` : ''}
+                    ${comp.startModule ? `
+                    <div class="mb-3 p-2 bg-light rounded border d-inline-flex align-items-center gap-2">
+                        <i class="bi bi-play-circle text-primary"></i>
+                        <span class="small fw-semibold">Empieza a evaluarse en:</span>
+                        <span class="badge bg-primary">${escapeHtml(comp.startModule.name)}</span>
+                    </div>` : ''}
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="small text-uppercase text-muted mb-2">
+                                <i class="bi bi-bar-chart-steps me-1"></i>Niveles e indicadores
+                            </h6>
+                            ${levelRows || '<span class="text-muted small fst-italic">Sin niveles definidos.</span>'}
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="small text-uppercase text-muted mb-2">
+                                <i class="bi bi-tools me-1"></i>Herramientas
+                            </h6>
+                            ${toolBadges || '<span class="text-muted small fst-italic">No especificadas.</span>'}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>`;
     }).join('');
+
+    container.innerHTML = `<div class="accordion" id="public-competences-accordion">${items}</div>`;
 }
 
 

@@ -71,7 +71,11 @@ const ExtendedInfoSchema = new mongoose.Schema({
             indicators: [String]
         }],
         allTools: [String],
-        selectedTools: [String]
+        selectedTools: [String],
+        startModule: {
+            id: String,
+            name: String
+        }
     }]
 }, { timestamps: true });
 
