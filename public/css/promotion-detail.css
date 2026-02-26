@@ -1,3 +1,25 @@
+:root{
+    --principal-1: #FF4700;
+    --principal-2: #020100;
+    --principal-3: #FFFFFF;
+    --complementario-1: #9c9c9c;
+    --complementario-2: #FFA37F;
+    ;
+
+
+    /* colores fuera de la paleta oficial */
+    --complementario-1-light: #f9dccd;
+    --complementario-1-extra-light: #f5f2f2;
+    --green-f5: #9af6c2;
+    --purple-f5: #6f42c1;
+    --purple-light-f5: #d1c4e9;
+    --blue-light-f5: #c0f6f8;
+
+
+    --grey-f5: #897d7c;
+    --grey-light-f5: #e2d2cd;
+    --bs-nav-link-hover-color: #FFFFFF;
+}
 * {
     margin: 0;
     padding: 0;
@@ -195,6 +217,30 @@ main {
     font-weight: 600;
 }
 
+
+/* Preview Button Green Style */
+.btn-preview-green {
+  background-color: var(--green-f5);
+  border-color: var(--green-f5);
+  color: #000;
+  font-weight: 500;
+}
+
+.btn-preview-green:hover {
+  background-color: #7ee5b4;
+  border-color: #7ee5b4;
+  color: #000;
+}
+
+.btn-preview-green:focus,
+.btn-preview-green:active {
+  background-color: #6dd9a8;
+  border-color: #6dd9a8;
+  color: #000;
+  box-shadow: 0 0 0 0.25rem rgba(154, 246, 194, 0.5);
+}
+
+
 /* Bootstrap color overrides for orange theme */
 .btn-warning {
     background-color: #ff4700 !important;
@@ -375,6 +421,35 @@ main {
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
+        .dropdown-item-custom {
+            padding: 0;
+        }
+
+        .dropdown-item-custom .form-check {
+            padding: 0.5rem 1rem;
+            margin: 0;
+            border-radius: 0;
+        }
+
+        .dropdown-item-custom .form-check:hover {
+            background-color: var(--bs-gray-100);
+        }
+
+        .dropdown-item-custom .form-check-label {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .pildora-students-dropdown .dropdown-menu {
+            width: 100% !important;
+        }
+
+
+        #module-pildoras-count{
+            background-color: var(--green-f5);
+
+        }
 
 /* ==================== MOBILE RESPONSIVE - SIDEBAR HAMBURGER MENU ==================== */
 
