@@ -1383,18 +1383,18 @@ function displayModules(modules) {
             return `${title} (${type})`;
         }).join(', ');
 
-        card.innerHTML = `
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Module ${index + 1}: ${escapeHtml(module.name)}</h5>
-                    <p><strong>Duration:</strong> ${module.duration} weeks</p>
-                    ${coursesText ? `<p><strong>Courses:</strong> ${escapeHtml(coursesText)}</p>` : ''}
-                    ${projectsText ? `<p><strong>Projects:</strong> ${escapeHtml(projectsText)}</p>` : ''}
-                    ${pildorasText ? `<p><strong>Píldoras:</strong> ${escapeHtml(pildorasText)}</p>` : ''}
-                </div>
-            </div>
-        `;
-        list.appendChild(card);
+        // card.innerHTML = `
+        //     <div class="card">
+        //         <div class="card-body">
+        //             <h5 class="card-title">Module ${index + 1}: ${escapeHtml(module.name)}</h5>
+        //             <p><strong>Duration:</strong> ${module.duration} weeks</p>
+        //             ${coursesText ? `<p><strong>Courses:</strong> ${escapeHtml(coursesText)}</p>` : ''}
+        //             ${projectsText ? `<p><strong>Projects:</strong> ${escapeHtml(projectsText)}</p>` : ''}
+        //             ${pildorasText ? `<p><strong>Píldoras:</strong> ${escapeHtml(pildorasText)}</p>` : ''}
+        //         </div>
+        //     </div>
+        // `;
+        // list.appendChild(card);
     });
 }
 
@@ -1942,7 +1942,7 @@ function displayQuickLinks(links) {
             </button>` : '';
 
         const card = document.createElement('div');
-        card.className = 'col-md-6 col-lg-4';
+        card.className = 'col-md-6 col-lg-3';
         card.innerHTML = `
             <div class="card">
                 <div class="card-body">
