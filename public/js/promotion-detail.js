@@ -138,6 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userRole === 'teacher') {
         setupForms();
     }
+
+    // Inicializar módulo de Fichas de Seguimiento (independiente)
+    if (typeof window.StudentTracking !== 'undefined') {
+        window.StudentTracking.init(promotionId);
+    }
 });
 
 async function loadExtendedInfo() {
@@ -2614,6 +2619,9 @@ function displayStudents(students) {
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-primary" onclick="editStudent('${student.id}')" title="Edit">
                         <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" onclick="window.StudentTracking?.openFicha('${student.id}')" title="Ficha de Seguimiento">
+                        <i class="bi bi-person-lines-fill"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-info" onclick="trackStudentProgress('${student.id}', '${student.name} ${student.lastname || ''}')" title="Track Progress">
                         <i class="bi bi-graph-up"></i>

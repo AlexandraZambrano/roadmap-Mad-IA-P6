@@ -26,6 +26,31 @@ const StudentSchema = new mongoose.Schema({
         done: { type: Boolean, default: false },
         assignedAt: { type: Date, default: Date.now }
     }],
+    // ── Ficha de Seguimiento: Datos adicionales ───────────────────────────────
+    phone: { type: String, default: '' },
+    administrativeSituation: { type: String, default: '' },
+    identificationDocument: { type: String, default: '' },
+    gender: { type: String, default: '' },
+    englishLevel: { type: String, default: '' },
+    educationLevel: { type: String, default: '' },
+    community: { type: String, default: '' },
+
+    // ── Seguimiento Técnico ───────────────────────────────────────────────────
+    technicalTracking: {
+        teacherNotes: { type: Array, default: [] },
+        teams: { type: Array, default: [] },
+        competences: { type: Array, default: [] },
+        completedModules: { type: Array, default: [] },
+        completedPildoras: { type: Array, default: [] }
+    },
+
+    // ── Seguimiento Transversal ───────────────────────────────────────────────
+    transversalTracking: {
+        employabilitySessions: { type: Array, default: [] },
+        individualSessions: { type: Array, default: [] },
+        incidents: { type: Array, default: [] }
+    },
+
     isManuallyAdded: { type: Boolean, default: true }, // Changed default to true since we removed auto-tracking
     accessLog: [{
         accessedAt: { type: Date, default: Date.now },

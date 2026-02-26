@@ -1784,6 +1784,124 @@ app.get('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
   }
 });
 
+// ─── Fichas de Seguimiento del Coder ──────────────────────────────────────────
+
+// Helper: buscar estudiante por id custom o _id
+async function findStudentByIdOrObjectId(studentId, promotionId) {
+  let student = await Student.findOne({ id: studentId, promotionId });
+  if (!student) {
+    try { student = await Student.findOne({ _id: studentId, promotionId }); } catch (_) {}
+  }
+  return student;
+}
+
+// PUT /api/promotions/:promotionId/students/:studentId/ficha/personal
+app.put('/api/promotions/:promotionId/students/:studentId/ficha/personal', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const student = await findStudentByIdOrObjectId(req.params.studentId, req.params.promotionId);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const {
+      name, lastname, email, phone, age, administrativeSituation,
+      nationality, identificationDocument, gender, englishLevel,
+      educationLevel, profession, community
+    } = req.body;
+
+    // Validar obligatorios
+    if (!name || !lastname || !email || !phone || !administrativeSituation || !age) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios: nombre, apellido, email, teléfono, situación administrativa y edad' });
+    }
+
+    const updated = await Student.findByIdAndUpdate(
+      student._id,
+      {
+        name, lastname, email, phone,
+        age: Number(age),
+        administrativeSituation,
+        nationality: nationality || '',
+        identificationDocument: identificationDocument || '',
+        gender: gender || '',
+        englishLevel: englishLevel || '',
+        educationLevel: educationLevel || '',
+        profession: profession || '',
+        community: community || ''
+      },
+      { new: true }
+    );
+
+    res.json({ message: 'Datos personales actualizados', student: updated });
+  } catch (error) {
+    console.error('Error PUT ficha/personal:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/promotions/:promotionId/students/:studentId/ficha/technical
+app.put('/api/promotions/:promotionId/students/:studentId/ficha/technical', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const student = await findStudentByIdOrObjectId(req.params.studentId, req.params.promotionId);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const { teacherNotes, teams, competences, completedModules, completedPildoras } = req.body;
+
+    const updated = await Student.findByIdAndUpdate(
+      student._id,
+      {
+        'technicalTracking.teacherNotes': Array.isArray(teacherNotes) ? teacherNotes : student.technicalTracking?.teacherNotes || [],
+        'technicalTracking.teams': Array.isArray(teams) ? teams : student.technicalTracking?.teams || [],
+        'technicalTracking.competences': Array.isArray(competences) ? competences : student.technicalTracking?.competences || [],
+        'technicalTracking.completedModules': Array.isArray(completedModules) ? completedModules : student.technicalTracking?.completedModules || [],
+        'technicalTracking.completedPildoras': Array.isArray(completedPildoras) ? completedPildoras : student.technicalTracking?.completedPildoras || [],
+      },
+      { new: true }
+    );
+
+    res.json({ message: 'Seguimiento técnico actualizado', student: updated });
+  } catch (error) {
+    console.error('Error PUT ficha/technical:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/promotions/:promotionId/students/:studentId/ficha/transversal
+app.put('/api/promotions/:promotionId/students/:studentId/ficha/transversal', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const student = await findStudentByIdOrObjectId(req.params.studentId, req.params.promotionId);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const { employabilitySessions, individualSessions, incidents } = req.body;
+
+    const updated = await Student.findByIdAndUpdate(
+      student._id,
+      {
+        'transversalTracking.employabilitySessions': Array.isArray(employabilitySessions) ? employabilitySessions : student.transversalTracking?.employabilitySessions || [],
+        'transversalTracking.individualSessions': Array.isArray(individualSessions) ? individualSessions : student.transversalTracking?.individualSessions || [],
+        'transversalTracking.incidents': Array.isArray(incidents) ? incidents : student.transversalTracking?.incidents || [],
+      },
+      { new: true }
+    );
+
+    res.json({ message: 'Seguimiento transversal actualizado', student: updated });
+  } catch (error) {
+    console.error('Error PUT ficha/transversal:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 // Update student detailed information
 app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken, async (req, res) => {
   try {
