@@ -3740,11 +3740,11 @@ function openStudentSummary(studentId) {
             const tr = document.createElement('tr');
 
             let statusBadge = '';
-            if (r.status === 'Presente') statusBadge = '<span class="badge bg-success">Presente</span>';
-            else if (r.status === 'Ausente') statusBadge = '<span class="badge bg-danger">Ausente</span>';
-            else if (r.status === 'Con retraso') statusBadge = '<span class="badge bg-warning text-dark">Con retraso</span>';
-            else if (r.status === 'Justificado') statusBadge = '<span class="badge bg-info text-dark">Justificado</span>';
-            else statusBadge = '<span class="badge bg-light text-dark">No marcado</span>';
+            if (r.status === 'Presente') statusBadge = '<span class="badge" style="background-color: var(--green-f5); color: var(--principal-2);">Presente</span>';
+            else if (r.status === 'Ausente') statusBadge = '<span class="badge" style="background-color: var(--principal-1); color: var(--principal-3);">Ausente</span>';
+            else if (r.status === 'Con retraso') statusBadge = '<span class="badge" style="background-color: var(--complementario-2); color: var(--principal-2);">Con retraso</span>';
+            else if (r.status === 'Justificado') statusBadge = '<span class="badge" style="background-color: var(--blue-light-f5); color: var(--principal-2);">Justificado</span>';
+            else statusBadge = '<span class="badge" style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--complementario-1);">No marcado</span>';
 
             tr.innerHTML = `
                 <td class="fw-bold">${r.date.split('-')[2]}</td>
