@@ -619,36 +619,64 @@
             container.innerHTML = _emptyState('people', 'Sin proyectos/equipos registrados');
             return;
         }
-        container.innerHTML = _teams.map((t, i) => `
+        container.innerHTML = _teams.map((t, i) => {
+            const typeBadge = t.projectType === 'individual'
+                ? `<span class="badge bg-info text-dark me-1"><i class="bi bi-person me-1"></i>Individual</span>`
+                : `<span class="badge bg-success me-1"><i class="bi bi-people-fill me-1"></i>Grupal</span>`;
+            const membersList = (t.members && t.members.length)
+                ? `<div class="small text-muted mt-1"><i class="bi bi-people me-1"></i>Compañeros: ${t.members.map(m => _esc(m.name)).join(', ')}</div>`
+                : '';
+            return `
             <div class="card mb-2 border-start border-4 border-success">
                 <div class="card-body py-2 px-3">
                     <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold"><i class="bi bi-people-fill text-success me-1"></i>${_esc(t.teamName || 'Proyecto')}</div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold mb-1">
+                                <i class="bi bi-folder-fill text-success me-1"></i>${_esc(t.teamName || 'Proyecto')}
+                                ${typeBadge}
+                            </div>
                             <small class="text-muted">
-                                Rol: <strong>${_esc(t.role || '—')}</strong>
-                                &nbsp;|&nbsp; Módulo: <strong>${_esc(t.moduleName || '—')}</strong>
+                                Módulo: <strong>${_esc(t.moduleName || '—')}</strong>
                                 ${t.assignedDate ? `&nbsp;|&nbsp;<i class="bi bi-calendar3 me-1"></i>${_fmtDate(t.assignedDate)}` : ''}
                             </small>
+                            ${membersList}
                         </div>
-                        <button class="btn btn-sm btn-link text-danger p-0" onclick="window.StudentTracking._removeTeam(${i})">
+                        <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="window.StudentTracking._removeTeam(${i})">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     }
 
     function _openTeamForm() {
+        // Project options — only project name, no module prefix
         const projectOptions = _promotionProjects.length
-            ? _promotionProjects.map((p, i) => `<option value="${i}">${_esc(p.moduleName)} → ${_esc(p.name)}</option>`).join('')
+            ? _promotionProjects.map((p, i) => `<option value="${i}">${_esc(p.name)}</option>`).join('')
             : '';
         const projectField = _promotionProjects.length
             ? `<select class="form-select form-select-sm" id="team-project-select">
-                <option value="">Seleccionar proyecto del roadmap...</option>
+                <option value="">Seleccionar proyecto...</option>
                 ${projectOptions}
               </select>`
-            : `<input type="text" class="form-control form-control-sm" id="team-project-select" placeholder="Nombre del proyecto (no hay proyectos en el roadmap)">`;
+            : `<input type="text" class="form-control form-control-sm" id="team-project-select" placeholder="Nombre del proyecto">`;
+
+        // Teammates — searchable dropdown with checkboxes
+        const allStudents = (window.currentStudents || []).filter(s => s.id !== _currentStudentId);
+        const studentItems = allStudents.length
+            ? allStudents.map(s => {
+                const fullName = _esc(s.name + (s.lastname ? ' ' + s.lastname : ''));
+                return `<li class="team-member-option px-3 py-1" style="cursor:pointer;"
+                    data-id="${_esc(s.id)}" data-name="${fullName}">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input team-member-check" type="checkbox"
+                            value="${_esc(s.id)}" data-name="${fullName}" id="tm-${_esc(s.id)}">
+                        <label class="form-check-label small w-100" style="cursor:pointer;" for="tm-${_esc(s.id)}">${fullName}</label>
+                    </div>
+                </li>`;
+            }).join('')
+            : `<li class="px-3 py-2 text-muted small">No hay más estudiantes en la promoción.</li>`;
 
         _showInlineForm('ficha-teams-list', `
             <div class="card border-success mb-2">
@@ -658,49 +686,154 @@
                             <label class="form-label small fw-semibold">Proyecto del roadmap</label>
                             ${projectField}
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Rol en el equipo</label>
-                            <select class="form-select form-select-sm" id="team-role">
-                                <option value="Dev">Dev</option>
-                                <option value="QA">QA / Tester</option>
-                                <option value="Scrum Master">Scrum Master</option>
-                                <option value="Product Owner">Product Owner</option>
-                                <option value="Diseño">Diseño / UX</option>
-                                <option value="Otro">Otro</option>
+                        <div class="col-md-7">
+                            <label class="form-label small fw-semibold">Tipo</label>
+                            <select class="form-select form-select-sm" id="team-project-type"
+                                onchange="window.StudentTracking._toggleTeamMembersSection(this.value)">
+                                <option value="grupal">Grupal</option>
+                                <option value="individual">Individual</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-semibold">Fecha inicio</label>
-                            <input type="date" class="form-control form-control-sm" id="team-date" value="${_todayISO()}">
+                        <div class="col-12" id="team-members-section">
+                            <label class="form-label small fw-semibold">
+                                <i class="bi bi-people me-1"></i>Compañeros de equipo
+                                <span class="text-muted fw-normal">(se actualizará su ficha automáticamente)</span>
+                            </label>
+                            <!-- Search input -->
+                            <div class="form-control form-control-sm d-flex flex-wrap gap-1 align-items-center"
+                                id="team-members-display" style="min-height:34px; cursor:text;"
+                                onclick="document.getElementById('team-member-search').focus()">
+                                <input type="text" id="team-member-search" class="border-0 flex-grow-1"
+                                    placeholder="Buscar estudiante..." autocomplete="off"
+                                    style="min-width:120px; outline:none;"
+                                    oninput="window.StudentTracking._filterTeamMemberDropdown(this.value)"
+                                    onfocus="document.getElementById('team-member-list').classList.remove('d-none')"
+                                    onblur="setTimeout(()=>document.getElementById('team-member-list')?.classList.add('d-none'),200)">
+                            </div>
+                            <!-- Dropdown list — not absolute, flows in document -->
+                            <ul id="team-member-list" class="list-unstyled border rounded bg-white w-100 d-none mt-0"
+                                style="max-height:160px; overflow-y:auto;">
+                                ${studentItems}
+                            </ul>
+                            <!-- Selected pills -->
+                            <div id="team-members-selected-pills" class="d-flex flex-wrap gap-1 mt-1"></div>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end gap-2 mt-2">
                         <button class="btn btn-sm btn-secondary" onclick="window.StudentTracking._cancelInlineForm('ficha-teams-list')">Cancelar</button>
-                        <button class="btn btn-sm btn-success" onclick="window.StudentTracking._saveTeam()">Añadir</button>
+                        <button class="btn btn-sm btn-success" onclick="window.StudentTracking._saveTeam()">
+                            <i class="bi bi-people-fill me-1"></i>Añadir y propagar
+                        </button>
                     </div>
                 </div>
             </div>`, true);
+
+        // Wire up click on each list item to toggle checkbox + pill
+        document.querySelectorAll('.team-member-option').forEach(li => {
+            li.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const cb = li.querySelector('.team-member-check');
+                cb.checked = !cb.checked;
+                window.StudentTracking._updateTeamMemberPills();
+            });
+        });
     }
 
-    function _saveTeam() {
+    // Filter the dropdown list by search text
+    function _filterTeamMemberDropdown(query) {
+        const q = query.toLowerCase();
+        document.querySelectorAll('.team-member-option').forEach(li => {
+            const name = li.dataset.name?.toLowerCase() || '';
+            li.style.display = name.includes(q) ? '' : 'none';
+        });
+        document.getElementById('team-member-list')?.classList.remove('d-none');
+    }
+
+    // Show/hide the teammates section based on project type
+    function _toggleTeamMembersSection(type) {
+        const section = document.getElementById('team-members-section');
+        if (!section) return;
+        if (type === 'individual') {
+            section.classList.add('d-none');
+        } else {
+            section.classList.remove('d-none');
+        }
+    }
+
+    // Rebuild the pills below the input from checked checkboxes
+    function _updateTeamMemberPills() {
+        const pills = document.getElementById('team-members-selected-pills');
+        if (!pills) return;
+        const checked = Array.from(document.querySelectorAll('.team-member-check:checked'));
+        pills.innerHTML = checked.map(cb => `
+            <span class="badge bg-success d-flex align-items-center gap-1" style="font-size:.8rem;">
+                <i class="bi bi-person-fill"></i>${_esc(cb.dataset.name)}
+                <button type="button" class="btn-close btn-close-white" style="font-size:.6rem;"
+                    onmousedown="event.preventDefault(); document.getElementById('tm-${_esc(cb.value)}').checked=false; window.StudentTracking._updateTeamMemberPills();">
+                </button>
+            </span>`).join('');
+    }
+
+    async function _saveTeam() {
         const selectEl = document.getElementById('team-project-select');
-        let teamName = '';
-        let moduleName = '';
+        let teamName = '', moduleName = '', moduleId = '';
+
         if (selectEl.tagName === 'SELECT') {
             const idx = parseInt(selectEl.value);
-            if (isNaN(idx) || !_promotionProjects[idx]) { _showToast('Selecciona un proyecto del roadmap', 'warning'); return; }
+            if (isNaN(idx) || !_promotionProjects[idx]) {
+                _showToast('Selecciona un proyecto del roadmap', 'warning');
+                return;
+            }
             teamName = _promotionProjects[idx].name;
             moduleName = _promotionProjects[idx].moduleName;
+            moduleId = _promotionProjects[idx].moduleId || '';
         } else {
             teamName = selectEl.value.trim();
             if (!teamName) { _showToast('El nombre del proyecto es obligatorio', 'warning'); return; }
         }
-        const role = document.getElementById('team-role')?.value?.trim() || '';
-        const assignedDate = document.getElementById('team-date')?.value || _todayISO();
-        _teams.push({ teamName, role, moduleName, assignedDate });
-        _markUnsaved('technical');
-        _renderTeams();
-        _cancelInlineForm('ficha-teams-list');
+
+        const projectType = document.getElementById('team-project-type')?.value || 'grupal';
+
+        // Gather selected members
+        const checkedBoxes = Array.from(document.querySelectorAll('.team-member-check:checked'));
+        const members = checkedBoxes.map(cb => ({ id: cb.value, name: cb.dataset.name }));
+
+        // Build the full member list (selected teammates + current student)
+        const currentStudentObj = (window.currentStudents || []).find(s => s.id === _currentStudentId);
+        const currentStudentName = currentStudentObj
+            ? (currentStudentObj.name + (currentStudentObj.lastname ? ' ' + currentStudentObj.lastname : ''))
+            : _currentStudentId;
+        const allMembers = [{ id: _currentStudentId, name: currentStudentName }, ...members];
+
+        const teamEntry = { teamName, projectType, moduleName, moduleId, assignedDate: _todayISO(), members: allMembers };
+
+        // All student IDs to propagate to
+        const memberStudentIds = allMembers.map(m => m.id);
+
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`${API_URL}/api/promotions/${_promotionId}/teams`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ teamEntry, memberStudentIds })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                _showToast(err.error || 'Error al guardar el equipo', 'danger');
+                return;
+            }
+            const result = await res.json();
+            // Update local state for current student (members = teammates, not themselves)
+            _teams.push({ ...teamEntry, members: members });
+            _markUnsaved('technical');
+            _renderTeams();
+            _cancelInlineForm('ficha-teams-list');
+            const propagated = result.results?.filter(r => r.status === 'updated' && r.studentId !== _currentStudentId).length || 0;
+            _showToast(`Equipo guardado${propagated > 0 ? ` y propagado a ${propagated} compañero(s)` : ''}`, 'success');
+        } catch (e) {
+            console.error('[StudentTracking] Error guardando equipo:', e);
+            _showToast('Error de conexión al guardar el equipo', 'danger');
+        }
     }
 
     function _removeTeam(i) {
@@ -1418,6 +1551,7 @@
         // Exponer internos necesarios por onclick en HTML generado dinámicamente
         _openNoteForm, _saveNote, _removeNote,
         _openTeamForm, _saveTeam, _removeTeam,
+        _filterTeamMemberDropdown, _updateTeamMemberPills, _toggleTeamMembersSection,
         _openCompetenceForm, _saveCompetence, _removeCompetence,
         _openModuleForm, _saveModule, _removeModule,
         _openEmpSessionForm, _saveEmpSession, _removeEmpSession,

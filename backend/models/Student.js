@@ -26,38 +26,73 @@ const StudentSchema = new mongoose.Schema({
         done: { type: Boolean, default: false },
         assignedAt: { type: Date, default: Date.now }
     }],
-    // ── Ficha de Seguimiento: Datos adicionales ───────────────────────────────
-    phone: { type: String, default: '' },
-    administrativeSituation: { type: String, default: '' },
-    identificationDocument: { type: String, default: '' },
-    gender: { type: String, default: '' },
-    englishLevel: { type: String, default: '' },
-    educationLevel: { type: String, default: '' },
-    community: { type: String, default: '' },
-
-    // ── Seguimiento Técnico ───────────────────────────────────────────────────
-    technicalTracking: {
-        teacherNotes: { type: Array, default: [] },
-        teams: { type: Array, default: [] },
-        competences: { type: Array, default: [] },
-        completedModules: { type: Array, default: [] },
-        completedPildoras: { type: Array, default: [] }
-    },
-
-    // ── Seguimiento Transversal ───────────────────────────────────────────────
-    transversalTracking: {
-        employabilitySessions: { type: Array, default: [] },
-        individualSessions: { type: Array, default: [] },
-        incidents: { type: Array, default: [] }
-    },
-
     isManuallyAdded: { type: Boolean, default: true }, // Changed default to true since we removed auto-tracking
     accessLog: [{
         accessedAt: { type: Date, default: Date.now },
         ipAddress: { type: String },
         userAgent: { type: String }
     }],
-    createdAt: { type: Date, default: Date.now }
-});
+    createdAt: { type: Date, default: Date.now },
+
+    // ── Ficha de Seguimiento Técnico ──────────────────────────────────────────
+    technicalTracking: {
+        teacherNotes: [{
+            date: String,
+            text: String,
+            author: String
+        }],
+        teams: [{
+            teamName: String,       // project name
+            projectType: { type: String, enum: ['individual', 'grupal'], default: 'grupal' },
+            role: String,
+            moduleName: String,
+            moduleId: String,
+            assignedDate: String,
+            members: [{ id: String, name: String }]  // other students in the team
+        }],
+        competences: [{
+            competenceId: mongoose.Schema.Types.Mixed,
+            competenceName: String,
+            level: Number,
+            toolsUsed: [String],
+            evaluatedDate: String,
+            notes: String
+        }],
+        completedModules: [{
+            moduleId: String,
+            moduleName: String,
+            completionDate: String,
+            grade: String,
+            notes: String
+        }],
+        completedPildoras: [{
+            pildoraTitle: String,
+            moduleId: String,
+            moduleName: String,
+            date: String
+        }]
+    },
+
+    // ── Ficha de Seguimiento Transversal ──────────────────────────────────────
+    transversalTracking: {
+        employabilitySessions: [{
+            date: String,
+            topic: String,
+            notes: String
+        }],
+        individualSessions: [{
+            date: String,
+            topic: String,
+            notes: String
+        }],
+        incidents: [{
+            date: String,
+            type: String,
+            description: String,
+            resolved: { type: Boolean, default: false }
+        }]
+    },
+    extendedInfo: { type: mongoose.Schema.Types.Mixed, default: {} }
+}, { timestamps: true });
 
 export default mongoose.model('Student', StudentSchema);

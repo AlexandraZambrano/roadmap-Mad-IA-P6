@@ -2004,6 +2004,55 @@ app.put('/api/promotions/:promotionId/students/:studentId/ficha/technical', veri
   }
 });
 
+// POST /api/promotions/:promotionId/teams — Adds a team entry and propagates to all member students
+app.post('/api/promotions/:promotionId/teams', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { teamEntry, memberStudentIds } = req.body;
+    // teamEntry: { teamName, projectType, role, moduleName, moduleId, assignedDate, members:[{id,name}] }
+    // memberStudentIds: [studentId, ...] — all students to receive this entry (includes the current one)
+
+    if (!teamEntry || !Array.isArray(memberStudentIds) || memberStudentIds.length === 0) {
+      return res.status(400).json({ error: 'teamEntry and memberStudentIds are required' });
+    }
+
+    const results = [];
+    for (const studentId of memberStudentIds) {
+      const student = await findStudentByIdOrObjectId(studentId, req.params.promotionId);
+      if (!student) continue;
+
+      // Build the entry for this student: members = all teammates except themselves
+      const entryForThisStudent = {
+        ...teamEntry,
+        members: (teamEntry.members || []).filter(m => m.id !== studentId)
+      };
+
+      // Avoid duplicate: same project in same module
+      const existingTeams = student.technicalTracking?.teams || [];
+      const alreadyExists = existingTeams.some(
+        t => t.teamName === teamEntry.teamName && t.moduleId === teamEntry.moduleId
+      );
+      if (!alreadyExists) {
+        existingTeams.push(entryForThisStudent);
+        await Student.findByIdAndUpdate(student._id, {
+          'technicalTracking.teams': existingTeams
+        });
+        results.push({ studentId, status: 'updated' });
+      } else {
+        results.push({ studentId, status: 'already_exists' });
+      }
+    }
+
+    res.json({ message: 'Equipo propagado', results });
+  } catch (error) {
+    console.error('Error POST /teams:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // PUT /api/promotions/:promotionId/students/:studentId/ficha/transversal
 app.put('/api/promotions/:promotionId/students/:studentId/ficha/transversal', verifyToken, async (req, res) => {
   try {
