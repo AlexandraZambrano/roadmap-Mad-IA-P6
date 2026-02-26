@@ -17,8 +17,9 @@
     let _currentStudent = null;
     let _promotionModules = [];
     let _promotionPildoras = [];
-    let _promotionProjects = [];   // [{name, moduleId, moduleName}]
+    let _promotionProjects = [];      // [{name, moduleId, moduleName}]
     let _promotionEmployability = []; // [{name, url}]
+    let _modulesPildarasExtended = []; // ExtendedInfo modulesPildoras con status/fecha
     let _hasUnsavedTechnical = false;
     let _hasUnsavedTransversal = false;
 
@@ -71,13 +72,18 @@
     async function _loadPromotionModules() {
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/api/promotions/${_promotionId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const promo = await res.json();
+            // Fetch promotion data (modules, projects, employability)
+            const [promoRes, pildarasRes] = await Promise.all([
+                fetch(`${API_URL}/api/promotions/${_promotionId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${API_URL}/api/promotions/${_promotionId}/modules-pildoras`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+            ]);
+            if (promoRes.ok) {
+                const promo = await promoRes.json();
                 _promotionModules = promo.modules || [];
-                // Aplanar píldoras de todos los módulos
                 _promotionPildoras = [];
                 _promotionProjects = [];
                 _promotionModules.forEach(m => {
@@ -89,6 +95,10 @@
                     });
                 });
                 _promotionEmployability = promo.employability || [];
+            }
+            if (pildarasRes.ok) {
+                const pildarasData = await pildarasRes.json();
+                _modulesPildarasExtended = pildarasData.modulesPildoras || [];
             }
         } catch (e) {
             console.error('[StudentTracking] Error cargando módulos:', e);
@@ -355,10 +365,8 @@
                                     <!-- Píldoras completadas -->
                                     <div class="tracking-section mb-4">
                                         <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-lightning-charge me-1"></i> Píldoras Realizadas</h6>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openPildoraForm()">
-                                                <i class="bi bi-plus-lg me-1"></i>Registrar Píldora
-                                            </button>
+                                            <h6 class="text-primary mb-0"><i class="bi bi-lightning-charge me-1"></i> Píldoras Presentadas</h6>
+                                            <span class="badge bg-secondary rounded-pill" id="ficha-pildoras-count">Automático</span>
                                         </div>
                                         <div id="ficha-pildoras-list"></div>
                                     </div>
@@ -537,20 +545,14 @@
                 <div class="card-body py-2 px-3">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
-                            <div class="fw-semibold">${_esc(n.name || 'Nota')}</div>
-                            <p class="mb-1 text-muted small">${_esc(n.note || '')}</p>
+                            <p class="mb-1">${_esc(n.note || '')}</p>
                             <small class="text-muted">
-                                <i class="bi bi-tag me-1"></i>${_esc(n.type || '—')}
-                                &nbsp;|&nbsp;
                                 <i class="bi bi-calendar3 me-1"></i>${_fmtDate(n.createdAt)}
                             </small>
                         </div>
-                        <div class="d-flex align-items-center gap-2 ms-2">
-                            <span class="badge bg-${LEVEL_COLORS[n.level] || 'secondary'}">${LEVEL_LABELS[n.level] || 'N/A'}</span>
-                            <button class="btn btn-sm btn-link text-danger p-0" onclick="window.StudentTracking._removeNote(${i})" title="Eliminar">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
+                        <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="window.StudentTracking._removeNote(${i})" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </div>
                 </div>
             </div>`).join('');
@@ -561,31 +563,9 @@
             <div class="card border-primary mb-2">
                 <div class="card-body py-2 px-3">
                     <div class="row g-2">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Actividad / recurso</label>
-                            <input type="text" class="form-control form-control-sm" id="note-activity" placeholder="Proyecto, curso, actividad...">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-semibold">Tipo</label>
-                            <select class="form-select form-select-sm" id="note-type">
-                                <option value="activity">Actividad</option>
-                                <option value="project">Proyecto</option>
-                                <option value="course">Curso</option>
-                                <option value="observation">Observación</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-semibold">Nivel</label>
-                            <select class="form-select form-select-sm" id="note-level">
-                                <option value="1">1 - Insuficiente</option>
-                                <option value="2">2 - Básico</option>
-                                <option value="3" selected>3 - Competente</option>
-                                <option value="4">4 - Excelente</option>
-                            </select>
-                        </div>
                         <div class="col-12">
                             <label class="form-label small fw-semibold">Nota / Observación</label>
-                            <textarea class="form-control form-control-sm" id="note-content" rows="2" placeholder="Escribe aquí la nota..."></textarea>
+                            <textarea class="form-control form-control-sm" id="note-content" rows="3" placeholder="Escribe aquí la nota del profesor..."></textarea>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end gap-2 mt-2">
@@ -597,12 +577,9 @@
     }
 
     function _saveNote() {
-        const activity = document.getElementById('note-activity')?.value?.trim() || '';
-        const type = document.getElementById('note-type')?.value || 'activity';
-        const level = parseInt(document.getElementById('note-level')?.value) || 3;
         const note = document.getElementById('note-content')?.value?.trim() || '';
         if (!note) { _showToast('La nota no puede estar vacía', 'warning'); return; }
-        _teacherNotes.push({ name: activity || 'Nota del profesor', type, level, note, createdAt: new Date().toISOString() });
+        _teacherNotes.push({ note, createdAt: new Date().toISOString() });
         _markUnsaved('technical');
         _renderTeacherNotes();
         _cancelInlineForm('ficha-teacher-notes-list');
@@ -885,95 +862,62 @@
         _renderModules();
     }
 
-    // ─── Renderizado: Píldoras completadas ───────────────────────────────────
+    // ─── Renderizado: Píldoras completadas (automático desde BD) ─────────────
 
     function _renderPildoras() {
         const container = document.getElementById('ficha-pildoras-list');
         if (!container) return;
-        if (!_completedPildoras.length) {
-            container.innerHTML = _emptyState('lightning-charge', 'Sin píldoras registradas');
+
+        // Construir lista de píldoras presentadas vinculadas a este estudiante
+        const presented = [];
+        _modulesPildarasExtended.forEach(mp => {
+            (mp.pildoras || []).forEach(p => {
+                const assignedIds = _getAssignedIdsForPildora(p.id || p.pildoraId, mp.moduleId);
+                const isAssigned = assignedIds.includes(_currentStudentId) ||
+                                   assignedIds.includes(String(_currentStudentId));
+                if (isAssigned && p.status === 'Presentada') {
+                    presented.push({
+                        pildoraName: p.title || '—',
+                        moduleName: mp.moduleName || '—',
+                        moduleId: mp.moduleId,
+                        date: p.date || null,
+                        mode: p.mode || null
+                    });
+                }
+            });
+        });
+
+        if (!presented.length) {
+            container.innerHTML = _emptyState('lightning-charge', 'No hay píldoras presentadas vinculadas a este coder');
             return;
         }
-        container.innerHTML = _completedPildoras.map((p, i) => `
+
+        container.innerHTML = presented.map(p => `
             <div class="card mb-2 border-start border-4 border-info">
                 <div class="card-body py-2 px-3">
-                    <div class="d-flex justify-content-between align-items-start">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="fw-semibold"><i class="bi bi-lightning-charge-fill text-info me-1"></i>${_esc(p.pildoraName || '—')}</div>
+                            <div class="fw-semibold">
+                                <i class="bi bi-lightning-charge-fill text-info me-1"></i>${_esc(p.pildoraName)}
+                            </div>
                             <small class="text-muted">
-                                Módulo: <strong>${_esc(p.moduleName || '—')}</strong>
-                                &nbsp;|&nbsp; Estado: <span class="badge bg-${p.status === 'completada' ? 'success' : 'secondary'}">${_esc(p.status || '—')}</span>
-                                ${p.completionDate ? `&nbsp;|&nbsp;<i class="bi bi-calendar3 me-1"></i>${_fmtDate(p.completionDate)}` : ''}
+                                Módulo: <strong>${_esc(p.moduleName)}</strong>
+                                ${p.date ? `&nbsp;|&nbsp;<i class="bi bi-calendar3 me-1"></i>${_fmtDate(p.date)}` : ''}
+                                ${p.mode ? `&nbsp;|&nbsp;<i class="bi bi-display me-1"></i>${_esc(p.mode)}` : ''}
                             </small>
                         </div>
-                        <button class="btn btn-sm btn-link text-danger p-0" onclick="window.StudentTracking._removePildora(${i})">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Presentada</span>
                     </div>
                 </div>
             </div>`).join('');
     }
 
-    function _openPildoraForm() {
-        const pildoraOptions = _promotionPildoras.length
-            ? _promotionPildoras.map((p, i) => `<option value="${i}">${_esc(p.moduleName)} → ${_esc(p.title || p.name || `Píldora ${i+1}`)}</option>`).join('')
-            : '<option value="">No hay píldoras en el roadmap</option>';
-        _showInlineForm('ficha-pildoras-list', `
-            <div class="card border-info mb-2">
-                <div class="card-body py-2 px-3">
-                    <div class="row g-2">
-                        <div class="col-md-5">
-                            <label class="form-label small fw-semibold">Píldora</label>
-                            <select class="form-select form-select-sm" id="pil-select">
-                                <option value="">Seleccionar píldora...</option>
-                                ${pildoraOptions}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-semibold">Estado</label>
-                            <select class="form-select form-select-sm" id="pil-status">
-                                <option value="completada">Completada</option>
-                                <option value="en_progreso">En progreso</option>
-                                <option value="pendiente">Pendiente</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Fecha realización</label>
-                            <input type="date" class="form-control form-control-sm" id="pil-date" value="${_todayISO()}">
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-end gap-2 mt-2">
-                        <button class="btn btn-sm btn-secondary" onclick="window.StudentTracking._cancelInlineForm('ficha-pildoras-list')">Cancelar</button>
-                        <button class="btn btn-sm btn-info" onclick="window.StudentTracking._savePildora()">Añadir</button>
-                    </div>
-                </div>
-            </div>`, true);
-    }
-
-    function _savePildora() {
-        const select = document.getElementById('pil-select');
-        const idx = parseInt(select?.value);
-        const status = document.getElementById('pil-status')?.value || 'completada';
-        const completionDate = document.getElementById('pil-date')?.value || _todayISO();
-        if (isNaN(idx) || !_promotionPildoras[idx]) { _showToast('Selecciona una píldora', 'warning'); return; }
-        const pil = _promotionPildoras[idx];
-        _completedPildoras.push({
-            pildoraId: pil.id,
-            pildoraName: pil.title || pil.name || `Píldora ${idx + 1}`,
-            moduleId: pil.moduleId,
-            moduleName: pil.moduleName,
-            status,
-            completionDate
-        });
-        _markUnsaved('technical');
-        _renderPildoras();
-        _cancelInlineForm('ficha-pildoras-list');
-    }
-
-    function _removePildora(i) {
-        _completedPildoras.splice(i, 1);
-        _markUnsaved('technical');
-        _renderPildoras();
+    // Helper: obtiene los assignedStudentIds de una píldora desde _promotionPildoras (Promotion model)
+    function _getAssignedIdsForPildora(pildoraId, moduleId) {
+        const found = _promotionPildoras.find(p =>
+            (p.id === pildoraId || p._id === pildoraId) && p.moduleId === moduleId
+        );
+        return found?.assignedStudentIds || [];
     }
 
     // ─── Renderizado: Sesiones de empleabilidad ───────────────────────────────
@@ -1346,8 +1290,8 @@
             teacherNotes: _teacherNotes,
             teams: _teams,
             competences: _competences,
-            completedModules: _completedModules,
-            completedPildoras: _completedPildoras
+            completedModules: _completedModules
+            // completedPildoras se deriva automáticamente de ExtendedInfo, no se persiste aquí
         };
         try {
             const res = await fetch(`${API_URL}/api/promotions/${_promotionId}/students/${_currentStudentId}/ficha/technical`, {
@@ -1424,7 +1368,6 @@
         _openTeamForm, _saveTeam, _removeTeam,
         _openCompetenceForm, _saveCompetence, _removeCompetence,
         _openModuleForm, _saveModule, _removeModule,
-        _openPildoraForm, _savePildora, _removePildora,
         _openEmpSessionForm, _saveEmpSession, _removeEmpSession,
         _openIndSessionForm, _saveIndSession, _removeIndSession,
         _openIncidentForm, _saveIncident, _resolveIncident, _removeIncident,
