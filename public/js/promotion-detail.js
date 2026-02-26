@@ -4,6 +4,7 @@ let moduleModal, quickLinkModal, sectionModal, studentModal, studentProgressModa
 const userRole = localStorage.getItem('role') || 'student';
 let currentUser = {};
 let promotionModules = []; // Store promotion modules
+window.promotionModules = promotionModules; // Expose for program-competences.js
 let currentModuleIndex = 0; // Track current module for píldoras navigation
 try {
     const userJson = localStorage.getItem('user');
@@ -174,8 +175,8 @@ async function loadExtendedInfo() {
             displayTeam();
             displayResources();
 
-            // Load modules and display píldoras
-            loadModulesPildoras();
+            // Load modules and display píldoras (await so promotionModules is populated before ProgramCompetences.init)
+            await loadModulesPildoras();
 
             // Populate Evaluation
             const defaultEvaluation = `Evaluación del Proyecto
@@ -268,6 +269,7 @@ async function loadModulesPildoras() {
         if (response.ok) {
             const data = await response.json();
             promotionModules = data.modules || [];
+            window.promotionModules = promotionModules; // Keep window reference in sync
 
             // Always sync modulesPildoras from this specialized endpoint if it has data
             if (data.modulesPildoras) {

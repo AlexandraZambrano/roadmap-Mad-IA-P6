@@ -109,7 +109,7 @@
 
     }
 
-    // ─── Renderiza el panel de competencias ───────────────────────────────────
+    // ─── Renderiza el panel de competencias como acordeón ────────────────────
     function _render() {
         const container = document.getElementById('competences-list-container');
         if (!container) return;
@@ -134,20 +134,40 @@
             return;
         }
 
-        container.innerHTML = filtered.map((comp, globalIdx) => {
+        const items = filtered.map((comp) => {
             const realIdx = _programCompetences.indexOf(comp);
-            return _renderCompetenceCard(comp, realIdx);
+            return _renderAccordionItem(comp, realIdx);
         }).join('');
+
+        container.innerHTML = `<div class="accordion" id="competences-accordion">${items}</div>`;
     }
 
-    function _renderCompetenceCard(comp, idx) {
+    function _renderAccordionItem(comp, idx) {
         const areaColor = _areaColor(comp.area);
+        const selectedToolsCount = (comp.selectedTools || []).length;
+        const allToolsCount = (comp.allTools || []).length;
+        const levelsCount = (comp.levels || []).length;
+
+        // Module selector options
+        const modules = (window.promotionModules && window.promotionModules.length)
+            ? window.promotionModules
+            : [];
+        const moduleOptions = modules.map(m => {
+            const sel = comp.startModule && comp.startModule.id === m.id ? 'selected' : '';
+            return `<option value="${m.id}" ${sel}>${_esc(m.name || m.title || `Módulo ${m.id}`)}</option>`;
+        }).join('');
+        const startModuleLabel = comp.startModule
+            ? `<span class="badge bg-light text-dark border ms-2 small"><i class="bi bi-play-circle me-1"></i>${_esc(comp.startModule.name)}</span>`
+            : '';
+
+        // Tools badges
         const toolBadges = (comp.selectedTools || []).map(t =>
-            `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1"></i>${_esc(t)}</span>`
+            `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1 opacity-50"></i>${_esc(t)}</span>`
         ).join('');
 
+        // Level rows
         const levelRows = (comp.levels || []).map(l => `
-            <div class="d-flex align-items-start gap-2 mb-1">
+            <div class="d-flex align-items-start gap-2 mb-2">
                 <span class="badge bg-${_levelColor(l.level)} flex-shrink-0" style="min-width:2rem; text-align:center;">${l.level}</span>
                 <div>
                     <strong class="small">${_esc(l.description)}</strong>
@@ -158,33 +178,66 @@
             </div>`).join('');
 
         return `
-        <div class="card mb-3 border-start border-4 border-${areaColor}" data-competence-idx="${idx}">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
-                <div>
-                    <span class="badge bg-${areaColor} me-2">${_esc(comp.area)}</span>
-                    <strong>${_esc(comp.name)}</strong>
-                    ${comp.description ? `<small class="text-muted ms-2 d-none d-md-inline">${_esc(comp.description)}</small>` : ''}
-                </div>
-                <div class="d-flex gap-1">
-                    <button class="btn btn-sm btn-outline-primary" title="Editar herramientas seleccionadas"
-                        onclick="window.ProgramCompetences._openToolsEditor(${idx})">
-                        <i class="bi bi-tools"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" title="Quitar competencia"
-                        onclick="window.ProgramCompetences._removeCompetence(${idx})">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-body py-2 px-3">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="small text-uppercase text-muted mb-2"><i class="bi bi-bar-chart-steps me-1"></i>Niveles</h6>
-                        ${levelRows}
+        <div class="accordion-item border-start border-4 border-${areaColor}" data-competence-idx="${idx}">
+            <h2 class="accordion-header" id="comp-header-${idx}">
+                <button class="accordion-button collapsed py-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#comp-body-${idx}"
+                    aria-expanded="false" aria-controls="comp-body-${idx}">
+                    <div class="d-flex align-items-center flex-wrap gap-2 w-100 me-3">
+                        <span class="badge bg-${areaColor}">${_esc(comp.area)}</span>
+                        <strong>${_esc(comp.name)}</strong>
+                        ${startModuleLabel}
+                        <span class="ms-auto d-flex gap-2 small text-muted">
+                            <span title="Herramientas seleccionadas"><i class="bi bi-tools me-1"></i>${selectedToolsCount}/${allToolsCount}</span>
+                            <span title="Niveles"><i class="bi bi-bar-chart-steps me-1"></i>${levelsCount}</span>
+                        </span>
                     </div>
-                    <div class="col-md-6 border-start">
-                        <h6 class="small text-uppercase text-muted mb-2"><i class="bi bi-tools me-1"></i>Herramientas del programa</h6>
-                        ${toolBadges || '<span class="text-muted small fst-italic">Sin herramientas seleccionadas</span>'}
+                </button>
+            </h2>
+            <div id="comp-body-${idx}" class="accordion-collapse collapse"
+                aria-labelledby="comp-header-${idx}" data-bs-parent="#competences-accordion">
+                <div class="accordion-body pt-2 pb-3">
+                    ${comp.description ? `<p class="text-muted small mb-3">${_esc(comp.description)}</p>` : ''}
+
+                    <!-- Módulo de inicio -->
+                    <div class="mb-3 p-2 bg-light rounded border">
+                        <label class="form-label small fw-semibold mb-1">
+                            <i class="bi bi-play-circle me-1 text-primary"></i>Módulo en el que empieza a evaluarse
+                        </label>
+                        <select class="form-select form-select-sm"
+                            onchange="window.ProgramCompetences._setStartModule(${idx}, this.value, this.options[this.selectedIndex].text)">
+                            <option value="">— Sin asignar —</option>
+                            ${moduleOptions}
+                        </select>
+                        ${modules.length === 0 ? '<small class="text-muted">Crea módulos en la sección de Secciones para asignarlos aquí.</small>' : ''}
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <h6 class="small text-uppercase text-muted mb-2">
+                                <i class="bi bi-bar-chart-steps me-1"></i>Niveles e indicadores
+                            </h6>
+                            ${levelRows || '<span class="text-muted small fst-italic">Sin niveles definidos.</span>'}
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="small text-uppercase text-muted mb-2">
+                                <i class="bi bi-tools me-1"></i>Herramientas seleccionadas
+                            </h6>
+                            <div class="mb-2">
+                                ${toolBadges || '<span class="text-muted small fst-italic">Sin herramientas seleccionadas.</span>'}
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary mt-1"
+                                onclick="window.ProgramCompetences._openToolsEditor(${idx})">
+                                <i class="bi bi-pencil me-1"></i>Editar herramientas
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3 pt-2 border-top">
+                        <button class="btn btn-sm btn-outline-danger"
+                            onclick="window.ProgramCompetences._removeCompetence(${idx})">
+                            <i class="bi bi-trash me-1"></i>Quitar competencia
+                        </button>
                     </div>
                 </div>
             </div>
@@ -283,7 +336,8 @@
             description: source.description,
             levels: JSON.parse(JSON.stringify(source.levels)),
             allTools: [...(source.allTools || [])],
-            selectedTools: []
+            selectedTools: [],
+            startModule: null
         });
 
         // Rebuild modal content to update "Añadida" buttons, keep it open
@@ -296,6 +350,33 @@
         }
 
         _render();
+        _markUnsaved();
+    }
+
+    // ─── Asigna el módulo de inicio a una competencia ────────────────────────
+    function _setStartModule(idx, moduleId, moduleName) {
+        if (!_programCompetences[idx]) return;
+        if (!moduleId) {
+            _programCompetences[idx].startModule = null;
+        } else {
+            _programCompetences[idx].startModule = { id: moduleId, name: moduleName };
+        }
+        // Update accordion header badge without full re-render
+        const header = document.getElementById(`comp-header-${idx}`);
+        if (header) {
+            const btn = header.querySelector('.accordion-button');
+            if (btn) {
+                // Remove existing startModule badge if present
+                const existing = btn.querySelector('.start-module-badge');
+                if (existing) existing.remove();
+                if (moduleId) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-light text-dark border ms-2 small start-module-badge';
+                    badge.innerHTML = `<i class="bi bi-play-circle me-1"></i>${_esc(moduleName)}`;
+                    btn.querySelector('strong').insertAdjacentElement('afterend', badge);
+                }
+            }
+        }
         _markUnsaved();
     }
 
@@ -390,13 +471,11 @@
 
     function _areaColor(area) {
         const map = {
-            'Frontend': 'primary',
-            'Backend': 'success',
-            'DevOps': 'warning',
-            'Testing': 'danger',
-            'Soft Skills': 'info',
-            'UX/UI': 'secondary',
-            'IA': 'dark'
+            'web': 'primary',
+            'ai': 'dark',
+            'accessibility': 'info',
+            'green': 'success',
+            'inmersivo': 'warning'
         };
         return map[area] || 'secondary';
     }
@@ -415,7 +494,8 @@
         _filterCatalog,
         _removeCompetence,
         _openToolsEditor,
-        _saveToolsSelection
+        _saveToolsSelection,
+        _setStartModule
     };
 
 }(window));
