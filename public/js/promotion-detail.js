@@ -2638,6 +2638,12 @@ function displayStudents(students) {
                     <button class="btn btn-sm btn-outline-success" onclick="window.StudentTracking?.openFicha('${student.id}')" title="Ficha de Seguimiento">
                         <i class="bi bi-person-lines-fill"></i>
                     </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.Reports?.printTechnical('${student.id}', promotionId)" title="PDF Seguimiento Técnico">
+                        <i class="bi bi-file-earmark-bar-graph"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.Reports?.printTransversal('${student.id}', promotionId)" title="PDF Seguimiento Transversal">
+                        <i class="bi bi-file-earmark-person"></i>
+                    </button>
                     <button class="btn btn-sm btn-outline-info" onclick="trackStudentProgress('${student.id}', '${student.name} ${student.lastname || ''}')" title="Track Progress">
                         <i class="bi bi-graph-up"></i>
                     </button>

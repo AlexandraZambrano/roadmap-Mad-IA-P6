@@ -379,7 +379,10 @@
                                         <div id="ficha-pildoras-list"></div>
                                     </div>
 
-                                    <div class="d-flex justify-content-end mt-3">
+                                    <div class="d-flex justify-content-end gap-2 mt-3">
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="window.Reports?.printTechnical(window.StudentTracking._getCurrentStudentId(), window.StudentTracking._getPromotionId())" title="Descargar PDF">
+                                            <i class="bi bi-file-earmark-bar-graph me-1"></i>PDF Técnico
+                                        </button>
                                         <button class="btn btn-primary" onclick="window.StudentTracking._saveTechnical()">
                                             <i class="bi bi-floppy me-1"></i> Guardar Seguimiento Técnico
                                         </button>
@@ -422,7 +425,10 @@
                                         <div id="ficha-incidents-list"></div>
                                     </div>
 
-                                    <div class="d-flex justify-content-end mt-3">
+                                    <div class="d-flex justify-content-end gap-2 mt-3">
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="window.Reports?.printTransversal(window.StudentTracking._getCurrentStudentId(), window.StudentTracking._getPromotionId())" title="Descargar PDF">
+                                            <i class="bi bi-file-earmark-person me-1"></i>PDF Transversal
+                                        </button>
                                         <button class="btn btn-primary" onclick="window.StudentTracking._saveTransversal()">
                                             <i class="bi bi-floppy me-1"></i> Guardar Seguimiento Transversal
                                         </button>
@@ -1693,6 +1699,8 @@
     window.StudentTracking = {
         init,
         openFicha,
+        _getCurrentStudentId: () => _currentStudentId,
+        _getPromotionId: () => _promotionId,
         // Exponer internos necesarios por onclick en HTML generado dinámicamente
         _openNoteForm, _saveNote, _removeNote,
         _openTeamForm, _saveTeam, _removeTeam,
