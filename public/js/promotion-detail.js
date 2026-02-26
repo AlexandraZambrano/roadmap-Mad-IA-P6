@@ -211,6 +211,11 @@ Evaluación Global al Final del Bootcamp
             if (assignmentToggle) {
                 assignmentToggle.checked = !!extendedInfoData.pildorasAssignmentOpen;
             }
+
+            // Init Competencias module
+            if (window.ProgramCompetences) {
+                window.ProgramCompetences.init(extendedInfoData.competences || []);
+            }
         }
     } catch (error) {
         console.error('Error loading extended info:', error);
@@ -1159,6 +1164,14 @@ async function saveExtendedInfo() {
     // Update global object
     extendedInfoData.schedule = schedule;
     extendedInfoData.evaluation = evaluation;
+
+    // Gather Competencias from ProgramCompetences module
+    if (window.ProgramCompetences) {
+        extendedInfoData.competences = window.ProgramCompetences.getCompetences();
+        // Clear unsaved badge
+        const badge = document.getElementById('competences-unsaved-badge');
+        if (badge) badge.classList.add('d-none');
+    }
 
     // Keep legacy pildoras for backward compatibility (flatten all module pildoras)
     const allPildoras = [];

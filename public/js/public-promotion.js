@@ -704,6 +704,7 @@ async function loadExtendedInfo() {
             }
 
             displayExtendedInfo(info);
+            displayPublicCompetences(info.competences || []);
         } else {
             console.log('No extended info found or error loading:', response.status);
         }
@@ -723,6 +724,101 @@ async function loadPublicStudents() {
         console.error('Error loading public students:', error);
     }
 }
+
+// ─── Competencias públicas ────────────────────────────────────────────────────
+let _publicCompetencesAll = [];
+
+function displayPublicCompetences(competences) {
+    _publicCompetencesAll = Array.isArray(competences) ? competences : [];
+    const section = document.getElementById('competences-section');
+    if (!section) return;
+
+    if (!_publicCompetencesAll.length) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = '';
+
+    // Build area filter options
+    const areaFilter = document.getElementById('public-competences-area-filter');
+    if (areaFilter) {
+        const areas = [...new Set(_publicCompetencesAll.map(c => c.area).filter(Boolean))];
+        const existingOptions = areaFilter.querySelectorAll('option:not([value=""])');
+        existingOptions.forEach(o => o.remove());
+        areas.forEach(area => {
+            const opt = document.createElement('option');
+            opt.value = area;
+            opt.textContent = area;
+            areaFilter.appendChild(opt);
+        });
+    }
+
+    _renderPublicCompetences('');
+}
+
+function filterPublicCompetences() {
+    const filterVal = document.getElementById('public-competences-area-filter')?.value || '';
+    _renderPublicCompetences(filterVal);
+}
+
+function _renderPublicCompetences(filterArea) {
+    const container = document.getElementById('public-competences-list');
+    if (!container) return;
+
+    const filtered = filterArea
+        ? _publicCompetencesAll.filter(c => c.area === filterArea)
+        : _publicCompetencesAll;
+
+    if (!filtered.length) {
+        container.innerHTML = '<p class="text-muted">No hay competencias en esta área.</p>';
+        return;
+    }
+
+    const areaColorMap = {
+        'Frontend': 'primary', 'Backend': 'success', 'DevOps': 'warning',
+        'Testing': 'danger', 'Soft Skills': 'info', 'UX/UI': 'secondary', 'IA': 'dark'
+    };
+    const levelColorMap = { 1: 'secondary', 2: 'warning', 3: 'primary', 4: 'success' };
+
+    container.innerHTML = filtered.map(comp => {
+        const areaColor = areaColorMap[comp.area] || 'secondary';
+        const toolBadges = (comp.selectedTools || []).map(t =>
+            `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1"></i>${escapeHtml(t)}</span>`
+        ).join('');
+        const levelRows = (comp.levels || []).map(l => `
+            <div class="d-flex align-items-start gap-2 mb-2">
+                <span class="badge bg-${levelColorMap[l.level] || 'secondary'} flex-shrink-0" style="min-width:2rem;text-align:center;">${l.level}</span>
+                <div>
+                    <strong class="small">${escapeHtml(l.description)}</strong>
+                    <ul class="mb-0 ps-3 small text-muted">
+                        ${(l.indicators || []).map(i => `<li>${escapeHtml(i)}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>`).join('');
+        return `
+        <div class="card mb-3 border-start border-4 border-${areaColor}">
+            <div class="card-header bg-light py-2 d-flex align-items-center gap-2">
+                <span class="badge bg-${areaColor}">${escapeHtml(comp.area)}</span>
+                <strong>${escapeHtml(comp.name)}</strong>
+                ${comp.description ? `<small class="text-muted ms-1 d-none d-md-inline">${escapeHtml(comp.description)}</small>` : ''}
+            </div>
+            <div class="card-body py-3 px-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="small text-uppercase text-muted mb-2"><i class="bi bi-bar-chart-steps me-1"></i>Niveles</h6>
+                        ${levelRows}
+                    </div>
+                    <div class="col-md-6 border-start">
+                        <h6 class="small text-uppercase text-muted mb-2"><i class="bi bi-tools me-1"></i>Herramientas del programa</h6>
+                        ${toolBadges || '<span class="text-muted small fst-italic">No especificadas</span>'}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
 
 // Display Program Info sections
 function displayExtendedInfo(info) {

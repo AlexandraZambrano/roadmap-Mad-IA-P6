@@ -22,6 +22,18 @@ import ExtendedInfo from './backend/models/ExtendedInfo.js';
 import Calendar from './backend/models/Calendar.js';
 import Attendance from './backend/models/Attendance.js';
 import BootcampTemplate from './backend/models/BootcampTemplate.js';
+import Competence from './backend/models/Competence.js';
+import Indicator from './backend/models/Indicator.js';
+import Tool from './backend/models/Tool.js';
+import Area from './backend/models/Area.js';
+import Level from './backend/models/Level.js';
+import Resource from './backend/models/Resource.js';
+import Referent from './backend/models/Referent.js';
+import ResourceType from './backend/models/ResourceType.js';
+import CompetenceIndicator from './backend/models/CompetenceIndicator.js';
+import CompetenceTool from './backend/models/CompetenceTool.js';
+import CompetenceArea from './backend/models/CompetenceArea.js';
+import CompetenceResource from './backend/models/CompetenceResource.js';
 import { sendPasswordEmail } from './backend/utils/email.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -178,6 +190,106 @@ const canEditPromotion = (promotion, userId) => {
   if (!promotion) return false;
   return promotion.teacherId === userId || (promotion.collaborators && promotion.collaborators.includes(userId));
 };
+
+// ==================== COMPETENCES CATALOG ====================
+
+// Get all competences enriched with areas, indicators (grouped by level) and tools
+app.get('/api/competences', verifyToken, async (req, res) => {
+  try {
+    // Fetch all reference data in parallel
+    const [
+      competences,
+      indicators,
+      tools,
+      areas,
+      levels,
+      compIndicators,
+      compTools,
+      compAreas
+    ] = await Promise.all([
+      Competence.find({}).sort({ id: 1 }).lean(),
+      Indicator.find({}).lean(),
+      Tool.find({}).lean(),
+      Area.find({}).lean(),
+      Level.find({}).lean(),
+      CompetenceIndicator.find({}).lean(),
+      CompetenceTool.find({}).lean(),
+      CompetenceArea.find({}).lean()
+    ]);
+
+    // Build lookup maps
+    const indicatorMap = Object.fromEntries(indicators.map(i => [i.id, i]));
+    const toolMap     = Object.fromEntries(tools.map(t => [t.id, t]));
+    const areaMap     = Object.fromEntries(areas.map(a => [a.id, a]));
+    const levelMap    = Object.fromEntries(levels.map(l => [l.id, l]));
+
+    // Group relations by id_competence (DB field names use snake_case)
+    const indsByComp  = {};
+    compIndicators.forEach(ci => {
+      if (!indsByComp[ci.id_competence]) indsByComp[ci.id_competence] = [];
+      indsByComp[ci.id_competence].push(ci.id_indicator);
+    });
+    const toolsByComp = {};
+    compTools.forEach(ct => {
+      if (!toolsByComp[ct.id_competence]) toolsByComp[ct.id_competence] = [];
+      toolsByComp[ct.id_competence].push(ct.id_tool);
+    });
+    const areasByComp = {};
+    compAreas.forEach(ca => {
+      if (!areasByComp[ca.id_competence]) areasByComp[ca.id_competence] = [];
+      areasByComp[ca.id_competence].push(ca.id_area);
+    });
+
+    // Build enriched competences
+    const enriched = competences.map(comp => {
+      // Areas
+      const compAreasList = (areasByComp[comp.id] || [])
+        .map(aId => areaMap[aId])
+        .filter(Boolean)
+        .map(a => ({ id: a.id, name: a.name, icon: a.icon }));
+
+      // Indicators grouped by level
+      const rawIndicators = (indsByComp[comp.id] || [])
+        .map(iId => indicatorMap[iId])
+        .filter(Boolean);
+
+      const indicatorsByLevel = {};
+      rawIndicators.forEach(ind => {
+        const lvl = ind.levelId || 0;
+        if (!indicatorsByLevel[lvl]) {
+          indicatorsByLevel[lvl] = {
+            levelId: lvl,
+            levelName: levelMap[lvl]?.name || `Nivel ${lvl}`,
+            levelDescription: levelMap[lvl]?.description || '',
+            indicators: []
+          };
+        }
+        indicatorsByLevel[lvl].indicators.push({ id: ind.id, name: ind.name, description: ind.description });
+      });
+      const levels_grouped = Object.values(indicatorsByLevel).sort((a, b) => a.levelId - b.levelId);
+
+      // Tools
+      const compToolsList = (toolsByComp[comp.id] || [])
+        .map(tId => toolMap[tId])
+        .filter(Boolean)
+        .map(t => ({ id: t.id, name: t.name, description: t.description }));
+
+      return {
+        id: comp.id,
+        name: comp.name,
+        description: comp.description,
+        areas: compAreasList,
+        levels: levels_grouped,
+        tools: compToolsList
+      };
+    });
+
+    res.json(enriched);
+  } catch (error) {
+    console.error('[GET /api/competences] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // ==================== PROMOTION PASSWORD ACCESS ====================
 
@@ -2316,9 +2428,10 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
       console.log('ModulesPildoras count:', req.body.modulesPildoras.length);
     }
 
-    const { schedule, team, resources, evaluation, pildoras, modulesPildoras, pildorasAssignmentOpen } = req.body;
+    const { schedule, team, resources, evaluation, pildoras, modulesPildoras, pildorasAssignmentOpen, competences } = req.body;
     const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
     const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
+    const normalizedCompetences = Array.isArray(competences) ? competences : [];
     const newInfo = await ExtendedInfo.findOneAndUpdate(
       { promotionId: req.params.promotionId },
       {
@@ -2328,7 +2441,8 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
         evaluation: evaluation || '',
         pildoras: normalizedPildoras,
         modulesPildoras: normalizedModulesPildoras,
-        pildorasAssignmentOpen: !!pildorasAssignmentOpen
+        pildorasAssignmentOpen: !!pildorasAssignmentOpen,
+        competences: normalizedCompetences
       },
       { upsert: true, returnDocument: 'after' }
     );

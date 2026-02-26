@@ -20,6 +20,7 @@
     let _promotionProjects = [];      // [{name, moduleId, moduleName}]
     let _promotionEmployability = []; // [{name, url}]
     let _modulesPildarasExtended = []; // ExtendedInfo modulesPildoras con status/fecha
+    let _catalogCompetences = [];      // [{id, name, description}] from DB competences collection
     let _hasUnsavedTechnical = false;
     let _hasUnsavedTransversal = false;
 
@@ -72,12 +73,15 @@
     async function _loadPromotionModules() {
         try {
             const token = localStorage.getItem('token');
-            // Fetch promotion data (modules, projects, employability)
-            const [promoRes, pildarasRes] = await Promise.all([
+            // Fetch promotion data (modules, projects, employability) + competences catalog
+            const [promoRes, pildarasRes, competencesRes] = await Promise.all([
                 fetch(`${API_URL}/api/promotions/${_promotionId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
                 fetch(`${API_URL}/api/promotions/${_promotionId}/modules-pildoras`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${API_URL}/api/competences`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
@@ -99,6 +103,9 @@
             if (pildarasRes.ok) {
                 const pildarasData = await pildarasRes.json();
                 _modulesPildarasExtended = pildarasData.modulesPildoras || [];
+            }
+            if (competencesRes.ok) {
+                _catalogCompetences = await competencesRes.json();
             }
         } catch (e) {
             console.error('[StudentTracking] Error cargando módulos:', e);
@@ -732,20 +739,42 @@
     }
 
     function _openCompetenceForm() {
+        let competenceField;
+        if (_catalogCompetences.length) {
+            // Group competences by area for optgroup display
+            const byArea = {};
+            _catalogCompetences.forEach(c => {
+                const areaName = (c.areas && c.areas[0]?.name) ? c.areas[0].name : 'Sin área';
+                if (!byArea[areaName]) byArea[areaName] = [];
+                byArea[areaName].push(c);
+            });
+            const optgroups = Object.entries(byArea).map(([area, comps]) => `
+                <optgroup label="${_esc(area)}">
+                    ${comps.map(c => `<option value="${_esc(c.name)}" data-id="${c.id}">${_esc(c.name)}</option>`).join('')}
+                </optgroup>`).join('');
+            competenceField = `<select class="form-select form-select-sm" id="comp-name-select">
+                <option value="">Seleccionar competencia...</option>
+                ${optgroups}
+              </select>`;
+        } else {
+            competenceField = `<input type="text" class="form-control form-control-sm" id="comp-name-select" placeholder="Nombre de la competencia">`;
+        }
+
         _showInlineForm('ficha-competences-list', `
             <div class="card border-warning mb-2">
                 <div class="card-body py-2 px-3">
                     <div class="row g-2">
                         <div class="col-md-5">
                             <label class="form-label small fw-semibold">Competencia</label>
-                            <input type="text" class="form-control form-control-sm" id="comp-name" placeholder="Nombre de la competencia">
+                            ${competenceField}
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold">Nivel</label>
                             <select class="form-select form-select-sm" id="comp-level">
-                                <option value="1">1 - Bajo</option>
-                                <option value="2" selected>2 - Medio</option>
-                                <option value="3">3 - Alto</option>
+                                <option value="1">1 - Insuficiente</option>
+                                <option value="2" selected>2 - Básico</option>
+                                <option value="3">3 - Competente</option>
+                                <option value="4">4 - Excelente</option>
                             </select>
                         </div>
                         <div class="col-md-4">
@@ -766,13 +795,22 @@
     }
 
     function _saveCompetence() {
-        const name = document.getElementById('comp-name')?.value?.trim() || '';
+        const selectEl = document.getElementById('comp-name-select');
+        let name = '';
+        let competenceId = null;
+        if (selectEl.tagName === 'SELECT') {
+            const opt = selectEl.options[selectEl.selectedIndex];
+            name = opt?.value?.trim() || '';
+            competenceId = opt?.dataset?.id ? parseInt(opt.dataset.id) : null;
+        } else {
+            name = selectEl?.value?.trim() || '';
+        }
         const level = parseInt(document.getElementById('comp-level')?.value) || 2;
         const evaluatedDate = document.getElementById('comp-date')?.value || _todayISO();
         const toolsRaw = document.getElementById('comp-tools')?.value || '';
         const toolsUsed = toolsRaw.split(',').map(t => t.trim()).filter(Boolean);
         if (!name) { _showToast('El nombre de la competencia es obligatorio', 'warning'); return; }
-        _competences.push({ competenceName: name, level, evaluatedDate, toolsUsed });
+        _competences.push({ competenceId, competenceName: name, level, evaluatedDate, toolsUsed });
         _markUnsaved('technical');
         _renderCompetences();
         _cancelInlineForm('ficha-competences-list');

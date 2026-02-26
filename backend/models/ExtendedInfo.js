@@ -59,7 +59,20 @@ const ExtendedInfoSchema = new mongoose.Schema({
             status: String
         }]
     }],
-    pildorasAssignmentOpen: { type: Boolean, default: false }
+    pildorasAssignmentOpen: { type: Boolean, default: false },
+    competences: [{
+        id: String,
+        area: String,
+        name: String,
+        description: String,
+        levels: [{
+            level: Number,
+            description: String,
+            indicators: [String]
+        }],
+        allTools: [String],
+        selectedTools: [String]
+    }]
 }, { timestamps: true });
 
 export default mongoose.model('ExtendedInfo', ExtendedInfoSchema);
