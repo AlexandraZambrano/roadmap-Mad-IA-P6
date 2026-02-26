@@ -1588,7 +1588,7 @@ function generateGanttChart(promotion) {
         const deleteBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-danger" onclick="deleteModule('${escapeHtml(module.id)}')"><i class="bi bi-trash"></i></button>` : '';
         moduleCell.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: space-between;">
-                <strong style="color: ${moduleColor};">📚 Module ${index + 1}: ${escapeHtml(module.name)}</strong>
+                <strong style="color: ${moduleColor};"> Module ${index + 1}: ${escapeHtml(module.name)}</strong>
                 <div>${editBtn} ${deleteBtn}</div>
             </div>
         `;
@@ -1627,7 +1627,7 @@ function generateGanttChart(promotion) {
 
                 const courseRow = document.createElement('tr');
                 const courseCell = document.createElement('td');
-                const courseLink = courseUrl ? `<a href="${escapeHtml(courseUrl)}" target="_blank" class="text-decoration-none">📖 ${escapeHtml(courseName)} <i class="bi bi-box-arrow-up-right"></i></a>` : `📖 ${escapeHtml(courseName)}`;
+                const courseLink = courseUrl ? `<a href="${escapeHtml(courseUrl)}" target="_blank" class="text-decoration-none"> ${escapeHtml(courseName)} <i class="bi bi-box-arrow-up-right"></i></a>` : `📖 ${escapeHtml(courseName)}`;
                 const deleteCourseBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-danger ms-2" onclick="deleteCourseFromModule('${escapeHtml(module.id)}', ${courseIndex})"><i class="bi bi-trash"></i></button>` : '';
 
                 courseCell.innerHTML = `
@@ -1677,7 +1677,7 @@ function generateGanttChart(promotion) {
 
                 const projectRow = document.createElement('tr');
                 const projectCell = document.createElement('td');
-                const projectLink = projectUrl ? `<a href="${escapeHtml(projectUrl)}" target="_blank" class="text-decoration-none">🎯 ${escapeHtml(projectName)} <i class="bi bi-box-arrow-up-right"></i></a>` : `🎯 ${escapeHtml(projectName)}`;
+                const projectLink = projectUrl ? `<a href="${escapeHtml(projectUrl)}" target="_blank" class="text-decoration-none">📙 ${escapeHtml(projectName)} <i class="bi bi-box-arrow-up-right"></i></a>` : `📙 ${escapeHtml(projectName)}`;
                 const deleteProjectBtn = userRole === 'teacher' ? `<button class="btn btn-xs btn-sm btn-outline-danger ms-2" onclick="deleteProjectFromModule('${escapeHtml(module.id)}', ${projectIndex})"><i class="bi bi-trash"></i></button>` : '';
 
                 projectCell.innerHTML = `
