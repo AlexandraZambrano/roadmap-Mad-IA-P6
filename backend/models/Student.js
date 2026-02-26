@@ -48,7 +48,13 @@ const StudentSchema = new mongoose.Schema({
             moduleName: String,
             moduleId: String,
             assignedDate: String,
-            members: [{ id: String, name: String }]  // other students in the team
+            members: [{ id: String, name: String }],  // other students in the team
+            competences: [{
+                competenceId: mongoose.Schema.Types.Mixed,
+                competenceName: String,
+                level: Number,
+                toolsUsed: [String]
+            }]
         }],
         competences: [{
             competenceId: mongoose.Schema.Types.Mixed,

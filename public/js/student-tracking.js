@@ -348,26 +348,15 @@
                                         <div id="ficha-teacher-notes-list" class="notes-list"></div>
                                     </div>
 
-                                    <!-- Equipos -->
+                                    <!-- Proyectos realizados -->
                                     <div class="tracking-section mb-4">
                                         <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-people-fill me-1"></i> Equipos</h6>
+                                            <h6 class="text-primary mb-0"><i class="bi bi-folder2-open me-1"></i> Proyectos realizados</h6>
                                             <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openTeamForm()">
-                                                <i class="bi bi-plus-lg me-1"></i>Añadir Equipo
+                                                <i class="bi bi-plus-lg me-1"></i>Añadir Proyecto
                                             </button>
                                         </div>
                                         <div id="ficha-teams-list"></div>
-                                    </div>
-
-                                    <!-- Competencias -->
-                                    <div class="tracking-section mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-award me-1"></i> Competencias</h6>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openCompetenceForm()">
-                                                <i class="bi bi-plus-lg me-1"></i>Añadir Competencia
-                                            </button>
-                                        </div>
-                                        <div id="ficha-competences-list"></div>
                                     </div>
 
                                     <!-- Módulos completados -->
@@ -481,7 +470,6 @@
         // ── Tracking técnico ──
         _renderTeacherNotes();
         _renderTeams();
-        _renderCompetences();
         _renderModules();
         _renderPildoras();
 
@@ -616,15 +604,36 @@
         const container = document.getElementById('ficha-teams-list');
         if (!container) return;
         if (!_teams.length) {
-            container.innerHTML = _emptyState('people', 'Sin proyectos/equipos registrados');
+            container.innerHTML = _emptyState('folder2-open', 'Sin proyectos registrados');
             return;
         }
+        const PROJ_LEVEL_COLORS = { 0: 'secondary', 1: 'danger', 2: 'warning', 3: 'success' };
+        const PROJ_LEVEL_LABELS = { 0: 'Sin nivel', 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
         container.innerHTML = _teams.map((t, i) => {
             const typeBadge = t.projectType === 'individual'
-                ? `<span class="badge bg-info text-dark me-1"><i class="bi bi-person me-1"></i>Individual</span>`
-                : `<span class="badge bg-success me-1"><i class="bi bi-people-fill me-1"></i>Grupal</span>`;
+                ? `<span class="badge bg-info text-dark"><i class="bi bi-person me-1"></i>Individual</span>`
+                : `<span class="badge bg-success"><i class="bi bi-people-fill me-1"></i>Grupal</span>`;
             const membersList = (t.members && t.members.length)
-                ? `<div class="small text-muted mt-1"><i class="bi bi-people me-1"></i>Compañeros: ${t.members.map(m => _esc(m.name)).join(', ')}</div>`
+                ? `<div class="small text-muted mt-1"><i class="bi bi-people me-1"></i>${t.members.map(m => _esc(m.name)).join(', ')}</div>`
+                : '';
+            const competencesList = (t.competences && t.competences.length)
+                ? `<div class="mt-2 pt-2 border-top">
+                    <div class="small fw-semibold text-muted mb-1"><i class="bi bi-award me-1"></i>Competencias trabajadas:</div>
+                    <div class="d-flex flex-wrap gap-1">
+                      ${t.competences.map(c => {
+                          const lvlColor = PROJ_LEVEL_COLORS[c.level] ?? 'secondary';
+                          const lvlLabel = PROJ_LEVEL_LABELS[c.level] ?? c.level;
+                          const toolTags = (c.toolsUsed || []).map(tool =>
+                              `<span class="badge bg-light text-dark border">${_esc(tool)}</span>`
+                          ).join(' ');
+                          return `<div class="w-100 small">
+                              <span class="badge bg-${lvlColor} me-1">Nv.${c.level ?? '—'} ${lvlLabel}</span>
+                              <strong>${_esc(c.competenceName)}</strong>
+                              ${toolTags ? `<span class="ms-1">${toolTags}</span>` : ''}
+                          </div>`;
+                      }).join('')}
+                    </div>
+                  </div>`
                 : '';
             return `
             <div class="card mb-2 border-start border-4 border-success">
@@ -633,13 +642,11 @@
                         <div class="flex-grow-1">
                             <div class="fw-semibold mb-1">
                                 <i class="bi bi-folder-fill text-success me-1"></i>${_esc(t.teamName || 'Proyecto')}
-                                ${typeBadge}
+                                &nbsp;${typeBadge}
                             </div>
-                            <small class="text-muted">
-                                Módulo: <strong>${_esc(t.moduleName || '—')}</strong>
-                                ${t.assignedDate ? `&nbsp;|&nbsp;<i class="bi bi-calendar3 me-1"></i>${_fmtDate(t.assignedDate)}` : ''}
-                            </small>
+                            <small class="text-muted">Módulo: <strong>${_esc(t.moduleName || '—')}</strong></small>
                             ${membersList}
+                            ${competencesList}
                         </div>
                         <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="window.StudentTracking._removeTeam(${i})">
                             <i class="bi bi-trash"></i>
@@ -651,7 +658,7 @@
     }
 
     function _openTeamForm() {
-        // Project options — only project name, no module prefix
+        // Project dropdown
         const projectOptions = _promotionProjects.length
             ? _promotionProjects.map((p, i) => `<option value="${i}">${_esc(p.name)}</option>`).join('')
             : '';
@@ -662,7 +669,7 @@
               </select>`
             : `<input type="text" class="form-control form-control-sm" id="team-project-select" placeholder="Nombre del proyecto">`;
 
-        // Teammates — searchable dropdown with checkboxes
+        // Teammates searchable dropdown
         const allStudents = (window.currentStudents || []).filter(s => s.id !== _currentStudentId);
         const studentItems = allStudents.length
             ? allStudents.map(s => {
@@ -677,6 +684,11 @@
                 </li>`;
             }).join('')
             : `<li class="px-3 py-2 text-muted small">No hay más estudiantes en la promoción.</li>`;
+
+        // Competences dropdown options
+        const compOptions = _catalogCompetences.length
+            ? _catalogCompetences.map(c => `<option value="${_esc(c.name)}" data-id="${c.id}" data-tools='${_esc(JSON.stringify((c.tools||[]).map(t=>t.name)))}'>${_esc(c.name)}</option>`).join('')
+            : '<option value="">Sin competencias en catálogo</option>';
 
         _showInlineForm('ficha-teams-list', `
             <div class="card border-success mb-2">
@@ -694,12 +706,13 @@
                                 <option value="individual">Individual</option>
                             </select>
                         </div>
+
+                        <!-- Teammates -->
                         <div class="col-12" id="team-members-section">
                             <label class="form-label small fw-semibold">
                                 <i class="bi bi-people me-1"></i>Compañeros de equipo
                                 <span class="text-muted fw-normal">(se actualizará su ficha automáticamente)</span>
                             </label>
-                            <!-- Search input -->
                             <div class="form-control form-control-sm d-flex flex-wrap gap-1 align-items-center"
                                 id="team-members-display" style="min-height:34px; cursor:text;"
                                 onclick="document.getElementById('team-member-search').focus()">
@@ -710,25 +723,65 @@
                                     onfocus="document.getElementById('team-member-list').classList.remove('d-none')"
                                     onblur="setTimeout(()=>document.getElementById('team-member-list')?.classList.add('d-none'),200)">
                             </div>
-                            <!-- Dropdown list — not absolute, flows in document -->
                             <ul id="team-member-list" class="list-unstyled border rounded bg-white w-100 d-none mt-0"
                                 style="max-height:160px; overflow-y:auto;">
                                 ${studentItems}
                             </ul>
-                            <!-- Selected pills -->
                             <div id="team-members-selected-pills" class="d-flex flex-wrap gap-1 mt-1"></div>
                         </div>
+
+                        <!-- Competences sub-section -->
+                        <div class="col-12 mt-1">
+                            <div class="border rounded p-2 bg-light">
+                                <div class="small fw-semibold text-primary mb-2">
+                                    <i class="bi bi-award me-1"></i>Competencias trabajadas en este proyecto
+                                </div>
+                                <!-- Add competence row -->
+                                <div class="row g-2 align-items-end mb-2" id="comp-add-row">
+                                    <div class="col-md-5">
+                                        <label class="form-label small mb-1">Competencia</label>
+                                        <select class="form-select form-select-sm" id="proj-comp-select"
+                                            onchange="window.StudentTracking._onProjectCompetenceChange()">
+                                            <option value="">Seleccionar...</option>
+                                            ${compOptions}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-1">Nivel (0–3)</label>
+                                        <select class="form-select form-select-sm" id="proj-comp-level">
+                                            <option value="0">0 – Sin nivel</option>
+                                            <option value="1">1 – Básico</option>
+                                            <option value="2" selected>2 – Medio</option>
+                                            <option value="3">3 – Avanzado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button class="btn btn-sm btn-outline-primary w-100"
+                                            onclick="window.StudentTracking._addProjectCompetence()">
+                                            <i class="bi bi-plus-lg me-1"></i>Añadir
+                                        </button>
+                                    </div>
+                                    <!-- Tools pills for selected competence -->
+                                    <div class="col-12">
+                                        <div id="proj-comp-tools-preview" class="d-flex flex-wrap gap-1 mt-1"></div>
+                                    </div>
+                                </div>
+                                <!-- List of added competences -->
+                                <div id="proj-comp-list"></div>
+                            </div>
+                        </div>
                     </div>
+
                     <div class="d-flex justify-content-end gap-2 mt-2">
                         <button class="btn btn-sm btn-secondary" onclick="window.StudentTracking._cancelInlineForm('ficha-teams-list')">Cancelar</button>
                         <button class="btn btn-sm btn-success" onclick="window.StudentTracking._saveTeam()">
-                            <i class="bi bi-people-fill me-1"></i>Añadir y propagar
+                            <i class="bi bi-folder-plus me-1"></i>Guardar proyecto
                         </button>
                     </div>
                 </div>
             </div>`, true);
 
-        // Wire up click on each list item to toggle checkbox + pill
+        // Wire teammate checkbox clicks
         document.querySelectorAll('.team-member-option').forEach(li => {
             li.addEventListener('mousedown', (e) => {
                 e.preventDefault();
@@ -737,6 +790,96 @@
                 window.StudentTracking._updateTeamMemberPills();
             });
         });
+
+        // Internal state for competences being added to this project
+        window._pendingProjectCompetences = [];
+        _renderPendingProjectCompetences();
+    }
+
+    // Called when user selects a competence from the dropdown — load its tools as removable pills
+    function _onProjectCompetenceChange() {
+        const sel = document.getElementById('proj-comp-select');
+        const opt = sel?.options[sel.selectedIndex];
+        if (!opt || !opt.value) {
+            document.getElementById('proj-comp-tools-preview').innerHTML = '';
+            return;
+        }
+        let tools = [];
+        try { tools = JSON.parse(opt.dataset.tools || '[]'); } catch(e) {}
+        _renderProjectCompToolPills(tools);
+    }
+
+    // Render removable tool pills in the preview area
+    function _renderProjectCompToolPills(tools) {
+        const container = document.getElementById('proj-comp-tools-preview');
+        if (!container) return;
+        if (!tools.length) { container.innerHTML = '<span class="small text-muted">Sin herramientas asociadas</span>'; return; }
+        container.innerHTML = tools.map((t, i) => `
+            <span class="badge bg-secondary d-inline-flex align-items-center gap-1 proj-tool-pill" data-tool="${_esc(t)}" style="font-size:.78rem;">
+                ${_esc(t)}
+                <button type="button" class="btn-close btn-close-white" style="font-size:.55rem;"
+                    onmousedown="event.preventDefault(); this.closest('.proj-tool-pill').remove();">
+                </button>
+            </span>`).join('');
+    }
+
+    // Add the currently selected competence + level + remaining tools to the pending list
+    function _addProjectCompetence() {
+        const sel = document.getElementById('proj-comp-select');
+        const opt = sel?.options[sel.selectedIndex];
+        if (!opt || !opt.value) { _showToast('Selecciona una competencia', 'warning'); return; }
+
+        const name = opt.value;
+        const compId = opt.dataset.id || null;
+        const level = parseInt(document.getElementById('proj-comp-level')?.value) || 0;
+
+        // Collect remaining (not removed) tools from pills
+        const toolsUsed = Array.from(document.querySelectorAll('#proj-comp-tools-preview .proj-tool-pill'))
+            .map(el => el.dataset.tool).filter(Boolean);
+
+        // Avoid duplicate competence in the same project
+        if (window._pendingProjectCompetences.some(c => c.competenceName === name)) {
+            _showToast('Esta competencia ya fue añadida', 'warning'); return;
+        }
+
+        window._pendingProjectCompetences.push({ competenceId: compId, competenceName: name, level, toolsUsed });
+        // Reset selector + tools preview
+        sel.value = '';
+        document.getElementById('proj-comp-tools-preview').innerHTML = '';
+        document.getElementById('proj-comp-level').value = '2';
+        _renderPendingProjectCompetences();
+    }
+
+    function _renderPendingProjectCompetences() {
+        const container = document.getElementById('proj-comp-list');
+        if (!container) return;
+        const PROJ_LEVEL_COLORS = { 0: 'secondary', 1: 'danger', 2: 'warning', 3: 'success' };
+        const PROJ_LEVEL_LABELS = { 0: 'Sin nivel', 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+        if (!(window._pendingProjectCompetences || []).length) {
+            container.innerHTML = '<p class="small text-muted mb-0">Ninguna añadida aún.</p>';
+            return;
+        }
+        container.innerHTML = (window._pendingProjectCompetences || []).map((c, i) => {
+            const lvlColor = PROJ_LEVEL_COLORS[c.level] ?? 'secondary';
+            const lvlLabel = PROJ_LEVEL_LABELS[c.level] ?? c.level;
+            const toolTags = (c.toolsUsed || []).map(t => `<span class="badge bg-light text-dark border">${_esc(t)}</span>`).join(' ');
+            return `<div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                <span class="badge bg-${lvlColor}">Nv.${c.level} ${lvlLabel}</span>
+                <span class="small fw-semibold">${_esc(c.competenceName)}</span>
+                ${toolTags}
+                <button class="btn btn-sm btn-link text-danger p-0 ms-auto" style="font-size:.8rem;"
+                    onmousedown="event.preventDefault(); window.StudentTracking._removePendingCompetence(${i})">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>`;
+        }).join('');
+    }
+
+    function _removePendingCompetence(i) {
+        if (window._pendingProjectCompetences) {
+            window._pendingProjectCompetences.splice(i, 1);
+            _renderPendingProjectCompetences();
+        }
     }
 
     // Filter the dropdown list by search text
@@ -805,7 +948,8 @@
             : _currentStudentId;
         const allMembers = [{ id: _currentStudentId, name: currentStudentName }, ...members];
 
-        const teamEntry = { teamName, projectType, moduleName, moduleId, assignedDate: _todayISO(), members: allMembers };
+        const competences = window._pendingProjectCompetences || [];
+        const teamEntry = { teamName, projectType, moduleName, moduleId, assignedDate: _todayISO(), members: allMembers, competences };
 
         // All student IDs to propagate to
         const memberStudentIds = allMembers.map(m => m.id);
@@ -825,6 +969,7 @@
             const result = await res.json();
             // Update local state for current student (members = teammates, not themselves)
             _teams.push({ ...teamEntry, members: members });
+            window._pendingProjectCompetences = [];
             _markUnsaved('technical');
             _renderTeams();
             _cancelInlineForm('ficha-teams-list');
@@ -1552,6 +1697,7 @@
         _openNoteForm, _saveNote, _removeNote,
         _openTeamForm, _saveTeam, _removeTeam,
         _filterTeamMemberDropdown, _updateTeamMemberPills, _toggleTeamMembersSection,
+        _onProjectCompetenceChange, _addProjectCompetence, _removePendingCompetence,
         _openCompetenceForm, _saveCompetence, _removeCompetence,
         _openModuleForm, _saveModule, _removeModule,
         _openEmpSessionForm, _saveEmpSession, _removeEmpSession,
