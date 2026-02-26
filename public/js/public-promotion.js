@@ -1175,7 +1175,7 @@ function createProgramInfoSections(info) {
                                         </button>
                                     `).join('')}
                                 </div>
-                                <div class="badge bg-info text-dark" style="font-size: 0.9rem;">
+                                <div class="badge text-dark" style="font-size: 0.9rem;">
                                     <i class="bi bi-lightbulb-fill me-1"></i>
                                     <span class="module-pildoras-count">0</span> píldoras
                                 </div>
