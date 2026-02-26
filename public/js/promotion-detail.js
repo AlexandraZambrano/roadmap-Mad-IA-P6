@@ -57,6 +57,41 @@ if (userRole === 'student') {
     document.body.classList.add('student-view');
 }
 
+// Initialize Mobile Hamburger Menu
+function initMobileMenu() {
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('show');
+            if (sidebarOverlay) {
+                sidebarOverlay.classList.toggle('show');
+            }
+        });
+        
+        // Close sidebar when clicking overlay
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+            });
+        }
+        
+        // Close sidebar when clicking on a nav link
+        const navLinks = sidebar.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                sidebar.classList.remove('show');
+                if (sidebarOverlay) {
+                    sidebarOverlay.classList.remove('show');
+                }
+            });
+        });
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -66,6 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = 'dashboard.html';
         return;
     }
+
+    // Initialize mobile menu
+    initMobileMenu();
 
     // Set up student dashboard preview iframe in Overview
     const previewIframe = document.getElementById('student-preview-iframe');
@@ -138,6 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userRole === 'teacher') {
         setupForms();
     }
+
+    // Set overview as active tab on initial load
+    window.location.hash = 'overview';
+    switchTab('overview');
 });
 
 async function loadExtendedInfo() {
