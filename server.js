@@ -193,6 +193,18 @@ const canEditPromotion = (promotion, userId) => {
 
 // ==================== COMPETENCES CATALOG ====================
 
+// Get all areas from DB
+app.get('/api/areas', verifyToken, async (req, res) => {
+  try {
+    const areas = await Area.find({}).sort({ id: 1 }).lean();
+    console.log(`[GET /api/areas] Found ${areas.length} areas:`, areas.map(a => `${a.id}:${a.name}`));
+    res.json(areas);
+  } catch (error) {
+    console.error('[GET /api/areas] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all competences enriched with areas, indicators (grouped by level) and tools
 app.get('/api/competences', verifyToken, async (req, res) => {
   try {
@@ -217,6 +229,12 @@ app.get('/api/competences', verifyToken, async (req, res) => {
       CompetenceArea.find({}).lean()
     ]);
 
+    console.log(`[GET /api/competences] Raw counts — competences:${competences.length} indicators:${indicators.length} tools:${tools.length} areas:${areas.length} levels:${levels.length} compIndicators:${compIndicators.length} compTools:${compTools.length} compAreas:${compAreas.length}`);
+    console.log('[GET /api/competences] Areas in DB:', areas.map(a => `${a.id}:${a.name}`));
+    console.log('[GET /api/competences] First 5 compAreas docs:', compAreas.slice(0, 5));
+    console.log('[GET /api/competences] First 5 compIndicators docs:', compIndicators.slice(0, 5));
+    console.log('[GET /api/competences] First 5 compTools docs:', compTools.slice(0, 5));
+
     // Build lookup maps
     const indicatorMap = Object.fromEntries(indicators.map(i => [i.id, i]));
     const toolMap     = Object.fromEntries(tools.map(t => [t.id, t]));
@@ -239,6 +257,9 @@ app.get('/api/competences', verifyToken, async (req, res) => {
       if (!areasByComp[ca.id_competence]) areasByComp[ca.id_competence] = [];
       areasByComp[ca.id_competence].push(ca.id_area);
     });
+
+    console.log('[GET /api/competences] areasByComp (competenceId → areaIds):', JSON.stringify(areasByComp));
+    console.log('[GET /api/competences] areaMap keys:', Object.keys(areaMap));
 
     // Build enriched competences
     const enriched = competences.map(comp => {

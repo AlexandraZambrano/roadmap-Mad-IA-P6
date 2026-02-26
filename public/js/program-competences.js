@@ -23,22 +23,31 @@
     async function _loadCatalog() {
         if (_catalogLoaded) return;
         const token = localStorage.getItem('token');
-        console.log('[ProgramCompetences] Cargando catálogo desde /api/competences...');
+        console.log('[ProgramCompetences] Cargando desde /api/competences y /api/areas...');
         try {
-            const res = await fetch(`${API_URL}/api/competences`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!res.ok) {
-                console.error('[ProgramCompetences] Error HTTP al cargar catálogo:', res.status, res.statusText);
-                return;
+            // Fetch competences AND all areas in parallel
+            const [resComp, resAreas] = await Promise.all([
+                fetch(`${API_URL}/api/competences`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/areas`,       { headers: { 'Authorization': `Bearer ${token}` } })
+            ]);
+
+            if (!resComp.ok) {
+                console.error('[ProgramCompetences] Error HTTP /api/competences:', resComp.status, resComp.statusText);
             }
-            const data = await res.json();
-            console.log('[ProgramCompetences] Competencias recibidas de la API:', data.length, data);
+            if (!resAreas.ok) {
+                console.error('[ProgramCompetences] Error HTTP /api/areas:', resAreas.status, resAreas.statusText);
+            }
+
+            const [data, allAreasFromDB] = await Promise.all([resComp.json(), resAreas.json()]);
+
+            console.log('[ProgramCompetences] /api/competences → recibidas:', data.length, 'competencias');
+            console.log('[ProgramCompetences] /api/areas → recibidas:', allAreasFromDB.length, 'áreas:', allAreasFromDB.map(a => `${a.id}:${a.name}`));
+            console.log('[ProgramCompetences] Detalle primera competencia:', data[0]);
 
             // Normalize DB shape → internal shape
-            // DB shape: { id, name, description, areas:[{id,name,icon}], levels:[{levelId,levelName,levelDescription,indicators:[{id,name,description}]}], tools:[{id,name}] }
             COMPETENCES_CATALOG = data.map(comp => {
                 const areaName = (comp.areas && comp.areas[0]) ? comp.areas[0].name : 'Sin área';
+                const areaNames = (comp.areas || []).map(a => a.name);
                 const levels = (comp.levels || []).map(l => ({
                     level: l.levelId,
                     description: l.levelName || `Nivel ${l.levelId}`,
@@ -47,7 +56,8 @@
                 const allTools = (comp.tools || []).map(t => t.name);
                 return {
                     id: comp.id,
-                    area: areaName,
+                    area: areaName,       // primary area (first)
+                    areas: areaNames,     // ALL areas for this competence
                     name: comp.name,
                     description: comp.description || '',
                     levels,
@@ -55,8 +65,15 @@
                 };
             });
 
-            AREAS = [...new Set(COMPETENCES_CATALOG.map(c => c.area))];
-            console.log('[ProgramCompetences] Áreas encontradas:', AREAS);
+            console.log('[ProgramCompetences] Catálogo normalizado:', COMPETENCES_CATALOG.length, 'competencias');
+            console.log('[ProgramCompetences] Áreas únicas en competencias:', [...new Set(COMPETENCES_CATALOG.map(c => c.area))]);
+
+            // Use ALL areas from DB for the filter (not just ones assigned to competences)
+            AREAS = allAreasFromDB.length > 0
+                ? allAreasFromDB.map(a => a.name)
+                : [...new Set(COMPETENCES_CATALOG.map(c => c.area))];
+
+            console.log('[ProgramCompetences] Filtro de área rellenado con:', AREAS);
             _catalogLoaded = true;
         } catch (e) {
             console.error('[ProgramCompetences] Excepción al cargar catálogo:', e);
