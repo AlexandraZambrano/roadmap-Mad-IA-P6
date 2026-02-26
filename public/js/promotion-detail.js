@@ -2825,31 +2825,45 @@ async function deleteSection(sectionId) {
     }
 }
 
-function previewPromotion() {
-    const isPreview = document.body.classList.toggle('preview-mode');
-    const btn = document.querySelector('button[onclick="previewPromotion()"]');
+async function previewPromotion() {
+    // Generate the same link as Access Settings
+    const baseUrl = window.location.origin;
+    const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
+    const isGitHubPages = window.location.hostname.includes('github.io');
 
-    if (isPreview) {
-        btn.innerHTML = '<i class="bi bi-eye-slash me-2"></i>Exit Preview';
-        btn.classList.replace('btn-info', 'btn-warning');
-
-        // Hide teacher-only elements
-        document.querySelectorAll('.btn-primary, .btn-danger, .btn-outline-danger').forEach(el => el.classList.add('d-none'));
-        // Also hide the students tab link
-        const studentsLink = document.querySelector('a[href="#students"]');
-        if (studentsLink) studentsLink.parentElement.classList.add('d-none');
-
-        alert('You are now viewing this page as a student.');
-
+    let path;
+    if (isLiveServer) {
+        path = '/public/public-promotion.html';
+    } else if (isGitHubPages) {
+        const pathParts = window.location.pathname.split('/');
+        const repoName = pathParts[1];
+        path = `/${repoName}/public-promotion.html`;
     } else {
-        btn.innerHTML = '<i class="bi bi-eye me-2"></i>Preview';
-        btn.classList.replace('btn-warning', 'btn-info');
-
-        // Show teacher-only elements
-        document.querySelectorAll('.btn-primary, .btn-danger, .btn-outline-danger').forEach(el => el.classList.remove('d-none'));
-        const studentsLink = document.querySelector('a[href="#students"]');
-        if (studentsLink) studentsLink.parentElement.classList.remove('d-none');
+        path = '/public-promotion.html';
     }
+
+    let previewLink = `${baseUrl}${path}?id=${promotionId}&preview=1`;
+
+    // Try to get the password to auto-verify access
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const promotion = await response.json();
+            if (promotion.accessPassword) {
+                // Include password in URL for auto-verification
+                previewLink += `&pwd=${encodeURIComponent(promotion.accessPassword)}`;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading promotion for preview:', error);
+    }
+
+    // Open in a new window
+    window.open(previewLink, '_blank');
 }
 
 // Check role on load to hide elements if actual student
