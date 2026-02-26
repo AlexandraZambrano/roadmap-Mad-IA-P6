@@ -118,11 +118,23 @@
 
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/api/promotions/${_promotionId}/students/${studentId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error('No se pudo cargar el estudiante');
-            _currentStudent = await res.json();
+            // Fetch student + fresh pildoras status in parallel
+            const [studentRes, pildarasRes] = await Promise.all([
+                fetch(`${API_URL}/api/promotions/${_promotionId}/students/${studentId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${API_URL}/api/promotions/${_promotionId}/modules-pildoras`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+            ]);
+
+            if (!studentRes.ok) throw new Error('No se pudo cargar el estudiante');
+            _currentStudent = await studentRes.json();
+
+            if (pildarasRes.ok) {
+                const pildarasData = await pildarasRes.json();
+                _modulesPildarasExtended = pildarasData.modulesPildoras || [];
+            }
         } catch (e) {
             console.error('[StudentTracking] Error cargando estudiante:', e);
             _setFichaLoading(false);
@@ -868,18 +880,21 @@
         const container = document.getElementById('ficha-pildoras-list');
         if (!container) return;
 
-        // Construir lista de píldoras presentadas vinculadas a este estudiante
+        // Debug: log raw data to console so we can inspect in DevTools
+        console.log('[StudentTracking] _modulesPildarasExtended:', JSON.stringify(_modulesPildarasExtended));
+        console.log('[StudentTracking] _currentStudentId:', _currentStudentId);
+
+        // Las píldoras de ExtendedInfo tienen: students[{id, name, lastname}], status, title, date, mode
+        // Una píldora aparece si: status === 'Presentada' Y students[].id incluye el studentId actual
         const presented = [];
         _modulesPildarasExtended.forEach(mp => {
             (mp.pildoras || []).forEach(p => {
-                const assignedIds = _getAssignedIdsForPildora(p.id || p.pildoraId, mp.moduleId);
-                const isAssigned = assignedIds.includes(_currentStudentId) ||
-                                   assignedIds.includes(String(_currentStudentId));
-                if (isAssigned && p.status === 'Presentada') {
+                if (p.status !== 'Presentada') return;
+                const studentIds = (p.students || []).map(s => String(s.id));
+                if (studentIds.includes(String(_currentStudentId))) {
                     presented.push({
                         pildoraName: p.title || '—',
                         moduleName: mp.moduleName || '—',
-                        moduleId: mp.moduleId,
                         date: p.date || null,
                         mode: p.mode || null
                     });
@@ -887,8 +902,12 @@
             });
         });
 
+        // Update count badge
+        const countBadge = document.getElementById('ficha-pildoras-count');
+        if (countBadge) countBadge.textContent = presented.length ? `${presented.length} presentada${presented.length !== 1 ? 's' : ''}` : 'Automático';
+
         if (!presented.length) {
-            container.innerHTML = _emptyState('lightning-charge', 'No hay píldoras presentadas vinculadas a este coder');
+            container.innerHTML = _emptyState('lightning-charge', 'No hay píldoras con estado "Presentada" vinculadas a este coder');
             return;
         }
 
@@ -912,13 +931,8 @@
             </div>`).join('');
     }
 
-    // Helper: obtiene los assignedStudentIds de una píldora desde _promotionPildoras (Promotion model)
-    function _getAssignedIdsForPildora(pildoraId, moduleId) {
-        const found = _promotionPildoras.find(p =>
-            (p.id === pildoraId || p._id === pildoraId) && p.moduleId === moduleId
-        );
-        return found?.assignedStudentIds || [];
-    }
+    // (helper no longer needed — kept as no-op to avoid errors if called)
+    function _getAssignedIdsForPildora() { return []; }
 
     // ─── Renderizado: Sesiones de empleabilidad ───────────────────────────────
 
