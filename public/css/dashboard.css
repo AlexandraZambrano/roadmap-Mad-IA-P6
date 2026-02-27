@@ -334,6 +334,11 @@ main {
     main {
         margin-top: 0;
     }
+    .page-title{
+        font-size: 30px;
+    }
+
+
 
     .navbar {
         position: relative;
