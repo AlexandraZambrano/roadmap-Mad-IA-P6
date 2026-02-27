@@ -1362,3 +1362,16 @@ border-color: #c1aee6;
         padding-left: 0.25rem !important;
     }
 }
+
+/* ===== Fix for Program Details Tab Display ===== */
+#program-details-content .tab-pane {
+    display: none !important;
+}
+
+#program-details-content .tab-pane.active {
+    display: block !important;
+}
+
+#program-details-content .tab-pane.show {
+    display: block !important;
+}

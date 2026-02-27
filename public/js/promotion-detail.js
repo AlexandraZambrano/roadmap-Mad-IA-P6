@@ -4076,6 +4076,58 @@ function updateProgramDetailsSubtitle(sectionName) {
     }
 }
 
+/**
+ * Switch Program Details Tabs with reliable behavior
+ * @param {string} tabName - Name of the tab to activate (schedule, team, resources, pildoras, evaluation, quicklinks, sections)
+ */
+function switchProgramDetailsTab(tabName) {
+    const tabNameMap = {
+        'schedule': { tabId: 'program-details-schedule', buttonId: 'program-details-schedule-tab', label: 'Schedule' },
+        'team': { tabId: 'program-details-team', buttonId: 'program-details-team-tab', label: 'Team' },
+        'resources': { tabId: 'program-details-resources', buttonId: 'program-details-resources-tab', label: 'Resources' },
+        'pildoras': { tabId: 'program-details-pildoras', buttonId: 'program-details-pildoras-tab', label: 'Píldoras' },
+        'evaluation': { tabId: 'program-details-evaluation', buttonId: 'program-details-evaluation-tab', label: 'Evaluation' },
+        'quicklinks': { tabId: 'program-details-quicklinks', buttonId: 'program-details-quicklinks-tab', label: 'Quick Links' },
+        'sections': { tabId: 'program-details-sections', buttonId: 'program-details-sections-tab', label: 'Sections' }
+    };
+
+    const tab = tabNameMap[tabName];
+    if (!tab) return;
+
+    // Hide all tabs
+    const allTabs = document.querySelectorAll('#program-details-content .tab-pane');
+    allTabs.forEach(t => {
+        t.style.display = 'none';
+        t.classList.remove('show', 'active');
+    });
+
+    // Remove active class from all buttons
+    const allButtons = document.querySelectorAll('#program-details-tabs .nav-link');
+    allButtons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+    });
+
+    // Show selected tab with animation
+    const selectedTab = document.getElementById(tab.tabId);
+    if (selectedTab) {
+        selectedTab.style.display = 'block';
+        // Trigger reflow to enable animation
+        void selectedTab.offsetHeight;
+        selectedTab.classList.add('show', 'active');
+    }
+
+    // Activate selected button
+    const selectedButton = document.getElementById(tab.buttonId);
+    if (selectedButton) {
+        selectedButton.classList.add('active');
+        selectedButton.setAttribute('aria-selected', 'true');
+    }
+
+    // Update subtitle
+    updateProgramDetailsSubtitle(tab.label);
+}
+
 // Selection state management
 function updateSelectionState(checkbox) {
     // This function is called when checkboxes are clicked

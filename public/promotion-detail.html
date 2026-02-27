@@ -497,39 +497,32 @@
 
                     <!-- Program Details Navigation Tabs -->
                     <nav class="nav nav-tabs mb-4" id="program-details-tabs" role="tablist">
-                        <button class="nav-link active" id="program-details-schedule-tab" data-bs-toggle="tab" 
-                            data-bs-target="#program-details-schedule" type="button" role="tab" 
-                            onclick="updateProgramDetailsSubtitle('Schedule')">
+                        <button class="nav-link active" id="program-details-schedule-tab" type="button" role="tab" aria-selected="true"
+                            onclick="switchProgramDetailsTab('schedule')">
                             <i class="bi bi-clock me-2"></i>Horario
                         </button>
-                        <button class="nav-link" id="program-details-team-tab" data-bs-toggle="tab" 
-                            data-bs-target="#program-details-team" type="button" role="tab"
-                            onclick="updateProgramDetailsSubtitle('Team')">
+                        <button class="nav-link" id="program-details-team-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('team')">
                             <i class="bi bi-people me-2"></i>Team
                         </button>
-                        <button class="nav-link" id="program-details-resources-tab" data-bs-toggle="tab" 
-                            data-bs-target="#program-details-resources" type="button" role="tab"
-                            onclick="updateProgramDetailsSubtitle('Resources')">
+                        <button class="nav-link" id="program-details-resources-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('resources')">
                             <i class="bi bi-tools me-2"></i>Resources
                         </button>
-                        <button class="nav-link" id="program-details-pildoras-tab" data-bs-toggle="tab" 
-                            data-bs-target="#program-details-pildoras" type="button" role="tab"
-                            onclick="updateProgramDetailsSubtitle('Píldoras')">
+                        <button class="nav-link" id="program-details-pildoras-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('pildoras')">
                             <i class="bi bi-lightbulb me-2"></i>Píldoras
                         </button>
-                        <button class="nav-link" id="program-details-evaluation-tab" data-bs-toggle="tab" 
-                            data-bs-target="#program-details-evaluation" type="button" role="tab"
-                            onclick="updateProgramDetailsSubtitle('Evaluation')">
+                        <button class="nav-link" id="program-details-evaluation-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('evaluation')">
                             <i class="bi bi-clipboard-check me-2"></i>Evaluation
                         </button>
-                        <button class="nav-link" id="program-details-quicklinks-tab" data-bs-toggle="tab" 
-                            data-bs-target="#program-details-quicklinks" type="button" role="tab"
-                            onclick="updateProgramDetailsSubtitle('Quick Links')">
+                        <button class="nav-link" id="program-details-quicklinks-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('quicklinks')">
                             <i class="bi bi-lightning me-2"></i>Quick Links
                         </button>
-                        <button class="nav-link" id="program-details-sections-tab" data-bs-toggle="tab" 
-                            data-bs-target="#program-details-sections" type="button" role="tab"
-                            onclick="updateProgramDetailsSubtitle('Sections')">
+                        <button class="nav-link" id="program-details-sections-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('sections')">
                             <i class="bi bi-file-text me-2"></i>Sections
                         </button>
                     </nav>
@@ -537,7 +530,7 @@
                     <!-- Tab Content -->
                     <div class="tab-content" id="program-details-content">
                         <!-- Schedule Tab -->
-                        <div class="tab-pane fade show active" id="program-details-schedule" role="tabpanel">
+                        <div class="tab-pane fade show active" id="program-details-schedule" role="tabpanel" aria-labelledby="program-details-schedule-tab">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="row">
@@ -597,7 +590,7 @@
                         </div>
 
                         <!-- Team Tab -->
-                        <div class="tab-pane fade" id="program-details-team" role="tabpanel">
+                        <div class="tab-pane fade" id="program-details-team" role="tabpanel" aria-labelledby="program-details-team-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0"><i class="bi bi-people me-2"></i>Team Members</h6>
@@ -627,7 +620,7 @@
                         </div>
 
                         <!-- Resources Tab -->
-                        <div class="tab-pane fade" id="program-details-resources" role="tabpanel">
+                        <div class="tab-pane fade" id="program-details-resources" role="tabpanel" aria-labelledby="program-details-resources-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0"><i class="bi bi-tools me-2"></i>Resources</h6>
@@ -656,7 +649,7 @@
                         </div>
 
                         <!-- Píldoras Tab -->
-                        <div class="tab-pane fade" id="program-details-pildoras" role="tabpanel">
+                        <div class="tab-pane fade" id="program-details-pildoras" role="tabpanel" aria-labelledby="program-details-pildoras-tab">
                             <div class="card">
                                 <div class="card-header bg-light">
                                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -731,7 +724,7 @@
                         </div>
 
                         <!-- Evaluation Tab -->
-                        <div class="tab-pane fade" id="program-details-evaluation" role="tabpanel">
+                        <div class="tab-pane fade" id="program-details-evaluation" role="tabpanel" aria-labelledby="program-details-evaluation-tab">
                             <div class="card">
                                 <div class="card-header bg-light">
                                     <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Evaluation Criteria</h6>
@@ -744,7 +737,7 @@
                         </div>
 
                         <!-- Quick Links Tab -->
-                        <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel">
+                        <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel" aria-labelledby="program-details-quicklinks-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h6>
@@ -761,7 +754,7 @@
                         </div>
 
                         <!-- Sections Tab -->
-                        <div class="tab-pane fade" id="program-details-sections" role="tabpanel">
+                        <div class="tab-pane fade" id="program-details-sections" role="tabpanel" aria-labelledby="program-details-sections-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Sections</h6>
@@ -1511,6 +1504,32 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="js/config.js"></script>
     <script src="js/promotion-detail.js"></script>
+
+    <script>
+        /**
+         * Initialize Program Details Tabs properly on load
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Bootstrap tabs for Program Details
+            const tabButtons = document.querySelectorAll('#program-details-tabs button[data-bs-toggle="tab"]');
+            tabButtons.forEach(button => {
+                button.addEventListener('shown.bs.tab', function(e) {
+                    // Ensure proper display of active tab
+                    const tabId = this.getAttribute('data-bs-target');
+                    const tabPane = document.querySelector(tabId);
+                    if (tabPane) {
+                        tabPane.classList.add('show');
+                    }
+                });
+            });
+
+            // Set initial active tab
+            const scheduleTab = document.getElementById('program-details-schedule');
+            if (scheduleTab) {
+                scheduleTab.classList.add('active', 'show');
+            }
+        });
+    </script>
 </body>
 
 </html>
