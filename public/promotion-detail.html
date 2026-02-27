@@ -10,31 +10,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
     <link href="css/promotion-detail.css" rel="stylesheet" />
     <link rel="icon" type="image/png" href="./img/favicon_bootcamp_manager.png">
+    <!-- <link rel="stylesheet" href="./css/style.css"> -->
 
-    <style>
-        .dropdown-item-custom {
-            padding: 0;
-        }
 
-        .dropdown-item-custom .form-check {
-            padding: 0.5rem 1rem;
-            margin: 0;
-            border-radius: 0;
-        }
-
-        .dropdown-item-custom .form-check:hover {
-            background-color: var(--bs-gray-100);
-        }
-
-        .dropdown-item-custom .form-check-label {
-            width: 100%;
-            cursor: pointer;
-        }
-
-        .pildora-students-dropdown .dropdown-menu {
-            width: 100% !important;
-        }
-    </style>
 </head>
 
 <body>
@@ -62,8 +40,8 @@
                 <div class="sidebar-sticky">
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link" href="dashboard.html">
-                                <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                            <a class="nav-link nav-link-promotions" href="dashboard.html">
+                                <i class="bi bi-arrow-left me-2"></i>Promotions
                             </a>
                         </li>
                         <li class="nav-item">
@@ -119,7 +97,7 @@
                             <h1 id="promotion-title">Loading...</h1>
                             <p id="promotion-desc" class="text-muted"></p>
                         </div>
-                        <button class="btn btn-info" onclick="previewPromotion()"
+                        <button class="btn btn-preview-green" onclick="previewPromotion()"
                             title="Preview how students will see this page">
                             <i class="bi bi-eye me-2"></i>Preview
                         </button>
@@ -333,18 +311,18 @@
 
                 <!-- Attendance Tab -->
                 <div id="attendance-tab" class="section-content hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Attendance Control</h2>
-                        <div class="d-flex align-items-center gap-3">
-                            <button class="btn btn-outline-success" onclick="exportAttendanceToExcel()">
+                    <div class="d-flex justify-content-between align-items-center my-4 flex-wrap gap-3">
+                        <h2 class="mb-0">Attendance Control</h2>
+                        <div class="d-flex align-items-center gap-3 flex-wrap w-100 justify-content-end">
+                            <button class="btn" onclick="exportAttendanceToExcel()" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 500;">
                                 <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel
                             </button>
-                            <div class="d-flex align-items-center gap-2 ms-3">
-                                <button class="btn btn-outline-primary" onclick="prevAttendanceMonth()">
+                            <div class="d-flex align-items-center gap-2" id="month-selector">
+                                <button class="btn" onclick="prevAttendanceMonth()" style="color: var(--principal-1); border: 1px solid var(--principal-1);">
                                     <i class="bi bi-chevron-left"></i>
                                 </button>
-                                <h4 class="mb-0 mx-2" id="current-attendance-month-display">February 2026</h4>
-                                <button class="btn btn-outline-primary" onclick="nextAttendanceMonth()">
+                                <h4 class="mb-0" id="current-attendance-month-display" style="color: var(--principal-1); font-weight: 600; min-width: 140px; text-align: center;">February 2026</h4>
+                                <button class="btn" onclick="nextAttendanceMonth()" style="color: var(--principal-1); border: 1px solid var(--principal-1);">
                                     <i class="bi bi-chevron-right"></i>
                                 </button>
                             </div>
@@ -353,40 +331,40 @@
 
                     <!-- Attendance Stats Row -->
                     <div class="row mb-4" id="attendance-stats-container">
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white">
+                        <div class="col-lg-2 col-md-3 mb-2">
+                            <div class="card" style="background-color: var(--green-f5); color: var(--principal-2); border: none;">
                                 <div class="card-body text-center py-2">
                                     <h6 class="mb-0">Presente</h6>
                                     <h3 class="mb-0" id="stat-present-total">0</h3>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <div class="card bg-danger text-white">
+                        <div class="col-lg-2 col-md-3 mb-2">
+                            <div class="card" style="background-color: var(--principal-1); color: var(--principal-3); border: none;">
                                 <div class="card-body text-center py-2">
                                     <h6 class="mb-0">Ausente</h6>
                                     <h3 class="mb-0" id="stat-absent-total">0</h3>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <div class="card bg-warning text-dark">
+                        <div class="col-lg-2 col-md-3 mb-2">
+                            <div class="card" style="background-color: var(--complementario-2); color: var(--principal-2); border: none;">
                                 <div class="card-body text-center py-2">
                                     <h6 class="mb-0">Retraso</h6>
                                     <h3 class="mb-0" id="stat-late-total">0</h3>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <div class="card bg-info text-dark">
+                        <div class="col-lg-2 col-md-3 mb-2">
+                            <div class="card" style="background-color: var(--blue-light-f5); color: var(--principal-2); border: none;">
                                 <div class="card-body text-center py-2">
                                     <h6 class="mb-0">Justificado</h6>
                                     <h3 class="mb-0" id="stat-justified-total">0</h3>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card bg-light">
+                        <div class="col-lg-4 col-md-12 mb-2">
+                            <div class="card" style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--grey-light-f5);">
                                 <div class="card-body text-center py-2">
                                     <h6 class="mb-0">Attendance Avg.</h6>
                                     <h3 class="mb-0" id="stat-attendance-avg">0%</h3>
@@ -399,9 +377,9 @@
                         <div class="card-body p-0">
                             <div class="table-responsive attendance-table-wrapper">
                                 <table class="table table-bordered mb-0" id="attendance-table">
-                                    <thead class="table-light">
+                                    <thead style="background-color: var(--complementario-1-extra-light);">
                                         <tr id="attendance-header-row">
-                                            <th class="sticky-column bg-light" style="min-width: 250px; z-index: 10;">
+                                            <th class="sticky-column" style="min-width: 250px; z-index: 10; background-color: var(--complementario-1-extra-light); color: var(--principal-1); font-weight: 600;">
                                                 Student</th>
                                             <!-- Dates will be loaded here -->
                                         </tr>
@@ -412,18 +390,15 @@
                                 </table>
                             </div>
                         </div>
-                        <div class="card-footer bg-light">
-                            <div class="d-flex flex-wrap gap-4 small text-muted">
-                                <div class="d-flex align-items-center"><span
-                                        class="attendance-dot bg-success me-2"></span> Presente</div>
-                                <div class="d-flex align-items-center"><span
-                                        class="attendance-dot bg-danger me-2"></span> Ausente</div>
-                                <div class="d-flex align-items-center"><span
-                                        class="attendance-dot bg-warning me-2"></span> Con retraso</div>
-                                <div class="d-flex align-items-center"><span class="attendance-dot bg-info me-2"></span>
+                        <div class="card-footer" style="background-color: var(--complementario-1-extra-light);">
+                            <div class="d-flex flex-wrap gap-4 small" style="color: var(--principal-2);">
+                                <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color: var(--green-f5);"></span> Presente</div>
+                                <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color: var(--principal-1);"></span> Ausente</div>
+                                <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color: var(--complementario-2);"></span> Con retraso</div>
+                                <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color: var(--blue-light-f5);"></span>
                                     Justificado</div>
                                 <div class="d-flex align-items-center"><span
-                                        class="attendance-dot border bg-white me-2"></span> No marcado</div>
+                                        class="attendance-dot border bg-white me-2" style="border-color: var(--complementario-1) !important;"></span> No marcado</div>
                                 <div class="ms-auto"><i class="bi bi-info-circle me-1"></i> <strong>Click</strong> to
                                     cycle | <strong>Right-click</strong> for comment | <strong>Name</strong> for summary
                                 </div>
@@ -674,7 +649,7 @@
                                                 <i class="bi bi-chevron-right"></i>
                                             </button>
                                         </div>
-                                        <div class="badge bg-info text-dark" id="current-module-stats">
+                                        <div class="badge text-dark" id="current-module-stats">
                                             <span id="module-pildoras-count">0</span> píldoras
                                         </div>
                                         <div class="form-check form-switch ms-3 border-start ps-4"
@@ -1509,21 +1484,21 @@
     <div class="modal fade" id="studentSummaryModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title"><i class="bi bi-person me-2"></i>Month Summary: <span
+                <div class="modal-header" style="background-color: var(--complementario-1-extra-light); border-bottom: 2px solid var(--principal-1);">
+                    <h5 class="modal-title" style="color: var(--principal-1); font-weight: 600;"><i class="bi bi-person me-2"></i>Month Summary: <span
                             id="summary-student-name">-</span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <h6 id="summary-month-title" class="text-muted mb-4">-</h6>
+                    <h6 id="summary-month-title" class="mb-4" style="color: var(--principal-1); font-weight: 600;">-</h6>
 
                     <div class="table-responsive">
                         <table class="table table-sm table-hover">
-                            <thead class="table-light">
+                            <thead style="background-color: var(--complementario-1-extra-light);">
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                    <th>Comment / Note</th>
+                                    <th style="color: var(--principal-1); font-weight: 600;">Date</th>
+                                    <th style="color: var(--principal-1); font-weight: 600;">Status</th>
+                                    <th style="color: var(--principal-1); font-weight: 600;">Comment / Note</th>
                                 </tr>
                             </thead>
                             <tbody id="student-summary-body">
@@ -1532,8 +1507,8 @@
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <div class="modal-footer" style="background-color: var(--complementario-1-extra-light);">
+                    <button type="button" class="btn" onclick="document.getElementById('studentSummaryModal').closest('.modal').getElementsByClassName('btn-close')[0].click()" style="background-color: var(--principal-1); color: white; border: none;">Close</button>
                 </div>
             </div>
         </div>

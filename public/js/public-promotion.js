@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     promotionId = params.get('id');
     isPreviewMode = params.get('preview') === '1';
+    const passwordFromUrl = params.get('pwd');
 
     if (!promotionId) {
         document.body.innerHTML = '<div class="alert alert-danger m-5">Promotion not found</div>';
@@ -25,11 +26,55 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isPreviewMode) {
         // In preview mode (from teacher overview), bypass password and tracking
         loadPromotionContent();
+    } else if (passwordFromUrl) {
+        // Auto-verify with password from URL
+        autoVerifyPassword(passwordFromUrl);
     } else {
         // Check if promotion requires password
         checkPasswordRequirement();
     }
 });
+
+async function autoVerifyPassword(password) {
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/verify-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+
+        const contentType = response.headers.get('content-type');
+        let data;
+        try {
+            data = contentType && contentType.includes('application/json')
+                ? await response.json()
+                : {};
+        } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            // Fall back to checking password requirement
+            checkPasswordRequirement();
+            return;
+        }
+
+        if (response.ok) {
+            // Store access token in session storage for security
+            sessionStorage.setItem('promotionAccessToken', data.accessToken);
+            sessionStorage.setItem('promotionId', promotionId);
+            isAccessVerified = true;
+
+            // Load content directly without showing modal
+            loadPromotionContent();
+        } else {
+            // Invalid password from URL, check requirements normally
+            console.error('Auto-verification failed:', response.status, data);
+            checkPasswordRequirement();
+        }
+    } catch (error) {
+        console.error('Auto-verification error:', error);
+        // Fall back to checking password requirement
+        checkPasswordRequirement();
+    }
+}
 
 //visibility password
 function togglePasswordVisibility() {
@@ -1275,7 +1320,7 @@ function createProgramInfoSections(info) {
                                         </button>
                                     `).join('')}
                                 </div>
-                                <div class="badge bg-info text-dark" style="font-size: 0.9rem;">
+                                <div class="badge text-dark" style="font-size: 0.9rem;">
                                     <i class="bi bi-lightbulb-fill me-1"></i>
                                     <span class="module-pildoras-count">0</span> píldoras
                                 </div>
