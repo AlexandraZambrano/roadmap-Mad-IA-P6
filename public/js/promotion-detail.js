@@ -971,6 +971,7 @@ function importPildorasFromExcel(input) {
 
 async function openTeamModal() {
     document.getElementById('team-form').reset();
+    document.getElementById('team-collab-preview').classList.add('d-none');
 
     // Populate module dropdown
     const moduleSelect = document.getElementById('team-module');
@@ -982,9 +983,9 @@ async function openTeamModal() {
         moduleSelect.appendChild(opt);
     });
 
-    // Populate collaborators dropdown for quick-fill
+    // Populate collaborators dropdown (required — only collaborators can be added)
     const collabSelect = document.getElementById('team-from-collaborator');
-    collabSelect.innerHTML = '<option value="">— Fill manually —</option>';
+    collabSelect.innerHTML = '<option value="">— Select a collaborator —</option>';
     collabSelect._collabData = {};
 
     try {
@@ -994,12 +995,18 @@ async function openTeamModal() {
         });
         if (res.ok) {
             const collaborators = await res.json();
+            // Filter out collaborators already in the team
+            const existingIds = new Set((extendedInfoData.team || []).map(m => m.collaboratorId).filter(Boolean));
             collaborators.forEach(c => {
                 collabSelect._collabData[c.id] = c;
                 const opt = document.createElement('option');
                 opt.value = c.id;
                 const role = c.userRole || 'Formador/a';
                 opt.textContent = `${c.name} — ${role}`;
+                if (existingIds.has(c.id)) {
+                    opt.disabled = true;
+                    opt.textContent += ' (already added)';
+                }
                 collabSelect.appendChild(opt);
             });
         }
@@ -1011,24 +1018,69 @@ async function openTeamModal() {
 function fillTeamFromCollaborator() {
     const select = document.getElementById('team-from-collaborator');
     const collab = select._collabData && select._collabData[select.value];
-    if (!collab) return;
-    document.getElementById('team-name').value = collab.name || '';
-    document.getElementById('team-email').value = collab.email || '';
-    document.getElementById('team-role').value = collab.userRole || '';
+    const preview = document.getElementById('team-collab-preview');
+
+    if (!collab) {
+        preview.classList.add('d-none');
+        return;
+    }
+
+    // Show info preview card
+    document.getElementById('team-preview-name').textContent = collab.name || '';
+    document.getElementById('team-preview-email').textContent = collab.email || '';
+    const roleBadge = document.getElementById('team-preview-role-badge');
+    const roleColors = { 'Formador/a': 'bg-primary', 'CoFormador/a': 'bg-success', 'Coordinador/a': 'bg-warning text-dark' };
+    const role = collab.userRole || 'Formador/a';
+    roleBadge.className = `badge ${roleColors[role] || 'bg-secondary'}`;
+    roleBadge.textContent = role;
+    preview.classList.remove('d-none');
+
+    // Pre-select the collaborator's first assigned module if any
+    const moduleSelect = document.getElementById('team-module');
+    const assignedModules = collab.moduleIds || [];
+    if (assignedModules.length > 0) {
+        // Select the first assigned module that exists in the dropdown
+        for (const opt of moduleSelect.options) {
+            if (assignedModules.includes(opt.value)) {
+                moduleSelect.value = opt.value;
+                break;
+            }
+        }
+    } else {
+        moduleSelect.value = '';
+    }
 }
 
 function addTeamMember() {
-    const name = document.getElementById('team-name').value;
-    const role = document.getElementById('team-role').value;
-    const email = document.getElementById('team-email').value;
+    const collabSelect = document.getElementById('team-from-collaborator');
+    const collab = collabSelect._collabData && collabSelect._collabData[collabSelect.value];
+
+    if (!collab) {
+        alert('Please select a collaborator.');
+        return;
+    }
+
+    // Check if already added
+    const alreadyAdded = (extendedInfoData.team || []).some(m => m.collaboratorId === collab.id);
+    if (alreadyAdded) {
+        alert(`${collab.name} is already in the team.`);
+        return;
+    }
+
     const linkedin = document.getElementById('team-linkedin').value;
     const moduleEl = document.getElementById('team-module');
     const moduleId = moduleEl.value;
     const moduleName = moduleId ? moduleEl.options[moduleEl.selectedIndex].text : '';
 
-    if (!name) return;
-
-    extendedInfoData.team.push({ name, role, email, linkedin, moduleId, moduleName });
+    extendedInfoData.team.push({
+        collaboratorId: collab.id,
+        name: collab.name,
+        role: collab.userRole || 'Formador/a',
+        email: collab.email || '',
+        linkedin,
+        moduleId,
+        moduleName
+    });
     displayTeam();
     teamModal.hide();
 }
