@@ -742,7 +742,7 @@
                                     style="min-width:120px; outline:none;"
                                     oninput="window.StudentTracking._filterTeamMemberDropdown(this.value)"
                                     onfocus="document.getElementById('team-member-list').classList.remove('d-none')"
-                                    onblur="setTimeout(()=>document.getElementById('team-member-list')?.classList.add('d-none'),200)">
+                                    onblur="setTimeout(()=>document.getElementById('team-member-list')?.classList.add('d-none'),300)">
                             </div>
                             <ul id="team-member-list" class="list-unstyled border rounded bg-white w-100 d-none mt-0"
                                 style="max-height:160px; overflow-y:auto;">
@@ -812,12 +812,39 @@
                 </div>
             </div>`, true);
 
-        // Wire teammate checkbox clicks
+        // Wire teammate checkbox clicks — use a stable Set so selections survive list filtering/re-renders
+        window._selectedTeamMembers = window._selectedTeamMembers || new Map();
+        window._selectedTeamMembers.clear();
+
         document.querySelectorAll('.team-member-option').forEach(li => {
+            const cb = li.querySelector('.team-member-check');
+
+            // Clicking anywhere on the row toggles the checkbox
             li.addEventListener('mousedown', (e) => {
+                // Prevent the search input from losing focus (which would close the list)
                 e.preventDefault();
-                const cb = li.querySelector('.team-member-check');
-                cb.checked = !cb.checked;
+            });
+
+            li.addEventListener('click', (e) => {
+                // If click landed directly on the checkbox, the browser already toggled it;
+                // otherwise toggle it manually.
+                if (e.target !== cb) {
+                    cb.checked = !cb.checked;
+                }
+                if (cb.checked) {
+                    window._selectedTeamMembers.set(cb.value, cb.dataset.name);
+                } else {
+                    window._selectedTeamMembers.delete(cb.value);
+                }
+                window.StudentTracking._updateTeamMemberPills();
+            });
+
+            cb.addEventListener('change', () => {
+                if (cb.checked) {
+                    window._selectedTeamMembers.set(cb.value, cb.dataset.name);
+                } else {
+                    window._selectedTeamMembers.delete(cb.value);
+                }
                 window.StudentTracking._updateTeamMemberPills();
             });
         });
@@ -934,16 +961,22 @@
         }
     }
 
-    // Rebuild the pills below the input from checked checkboxes
+    // Rebuild the pills below the input from the stable _selectedTeamMembers Map
     function _updateTeamMemberPills() {
         const pills = document.getElementById('team-members-selected-pills');
         if (!pills) return;
-        const checked = Array.from(document.querySelectorAll('.team-member-check:checked'));
-        pills.innerHTML = checked.map(cb => `
+        const selected = window._selectedTeamMembers || new Map();
+
+        // Keep checkboxes in sync with the Map (some may be hidden by the filter)
+        document.querySelectorAll('.team-member-check').forEach(cb => {
+            cb.checked = selected.has(cb.value);
+        });
+
+        pills.innerHTML = [...selected.entries()].map(([id, name]) => `
             <span class="badge bg-success d-flex align-items-center gap-1" style="font-size:.8rem;">
-                <i class="bi bi-person-fill"></i>${_esc(cb.dataset.name)}
+                <i class="bi bi-person-fill"></i>${_esc(name)}
                 <button type="button" class="btn-close btn-close-white" style="font-size:.6rem;"
-                    onmousedown="event.preventDefault(); document.getElementById('tm-${_esc(cb.value)}').checked=false; window.StudentTracking._updateTeamMemberPills();">
+                    onmousedown="event.preventDefault(); window._selectedTeamMembers.delete('${_esc(id)}'); window.StudentTracking._updateTeamMemberPills();">
                 </button>
             </span>`).join('');
     }
@@ -968,9 +1001,9 @@
 
         const projectType = document.getElementById('team-project-type')?.value || 'grupal';
 
-        // Gather selected members
-        const checkedBoxes = Array.from(document.querySelectorAll('.team-member-check:checked'));
-        const members = checkedBoxes.map(cb => ({ id: cb.value, name: cb.dataset.name }));
+        // Gather selected members from the stable Map (not DOM checkboxes)
+        const selectedMap = window._selectedTeamMembers || new Map();
+        const members = [...selectedMap.entries()].map(([id, name]) => ({ id, name }));
 
         // Build the full member list (selected teammates + current student)
         const currentStudentObj = (window.currentStudents || []).find(s => s.id === _currentStudentId);

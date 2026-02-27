@@ -104,17 +104,65 @@
     }
 
     // ─── Open a print window ─────────────────────────────────────────────────
-    function _printWindow(htmlContent) {
-        const win = window.open('', '_blank', 'width=900,height=700');
+    function _printWindow(htmlContent, previewOnly = false) {
+        const win = window.open('', '_blank', 'width=960,height=780');
         if (!win) { alert('El navegador bloqueó la ventana emergente. Permite los popups para este sitio.'); return; }
+
+        const printBarCss = `
+            #print-bar {
+                position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+                background: #1A1A2E; color: #fff;
+                display: flex; align-items: center; justify-content: space-between;
+                padding: 10px 20px; gap: 12px;
+                font-family: 'Inter', sans-serif; font-size: 13px;
+                box-shadow: 0 2px 8px rgba(0,0,0,.4);
+            }
+            #print-bar .bar-left { display:flex; align-items:center; gap:10px; }
+            #print-bar .bar-logo { font-weight:700; color:#FF6B35; font-size:15px; letter-spacing:.5px; }
+            #print-bar .bar-hint { color:#ccc; font-size:12px; }
+            #print-bar .btn-print {
+                background: #FF6B35; color: #fff; border: none; border-radius: 6px;
+                padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+                display: flex; align-items: center; gap: 6px; transition: background .15s;
+            }
+            #print-bar .btn-print:hover { background: #e05520; }
+            #print-bar .btn-close {
+                background: transparent; color: #aaa; border: 1px solid #555; border-radius: 6px;
+                padding: 7px 14px; font-size: 12px; cursor: pointer; transition: color .15s;
+            }
+            #print-bar .btn-close:hover { color: #fff; border-color: #aaa; }
+            @media print { #print-bar { display: none !important; } }
+            body.preview-mode { padding-top: 56px; }
+        `;
+
+        const printBar = previewOnly ? `
+            <div id="print-bar">
+                <div class="bar-left">
+                    <span class="bar-logo">Bootcamp Manager</span>
+                    <span class="bar-hint">Vista previa — revisa el documento antes de guardar</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-print" onclick="window.print()">
+                        🖨️ Imprimir / Guardar PDF
+                    </button>
+                    <button class="btn-close" onclick="window.close()">Cerrar</button>
+                </div>
+            </div>` : '';
+
+        const bodyClass = previewOnly ? 'class="preview-mode"' : '';
+
         win.document.write(`<!DOCTYPE html><html lang="es"><head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>Informe – Bootcamp Manager</title>
-            <style>${_baseCss()}</style>
-        </head><body>${htmlContent}${_footer()}</body></html>`);
+            <style>${_baseCss()}${previewOnly ? printBarCss : ''}</style>
+        </head><body ${bodyClass}>${printBar}${htmlContent}${_footer()}</body></html>`);
         win.document.close();
-        win.onload = () => { win.focus(); win.print(); };
+        if (!previewOnly) {
+            win.onload = () => { win.focus(); win.print(); };
+        } else {
+            win.onload = () => win.focus();
+        }
     }
 
     // ─── Escape helper ───────────────────────────────────────────────────────
@@ -741,11 +789,19 @@
             <div>
                 <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
                 <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                ${(t.members && t.members.length)
-                    ? `<div class="kv"><strong>Compañeros:</strong> ${t.members.map(m => _esc(m.name)).join(', ')}</div>`
-                    : ''}
             </div>
-        </div>`;
+        </div>
+        ${(t.members && t.members.length && t.projectType === 'grupal')
+            ? `<div class="section-box" style="margin-top:8pt;">
+                <div style="font-size:10pt; font-weight:700; color:${DARK}; margin-bottom:8pt; border-bottom:1px solid #e0e0e0; padding-bottom:4pt;">
+                    Integrantes del equipo
+                </div>
+                <ul style="margin:0; padding-left:16pt; list-style:disc;">
+                    ${t.members.map(m => `<li style="padding:2pt 0; font-size:10pt;">${_esc(m.name)}</li>`).join('')}
+                </ul>
+            </div>`
+            : ''
+        }`;
 
         // ── Nota del profesor ──
         if (t.teacherNote) {
@@ -800,21 +856,16 @@
             html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
         }
 
-        // ── Firma ──
-        html += `<div style="margin-top:24pt; display:grid; grid-template-columns:1fr 1fr; gap:20pt;">
-            <div class="section-box no-break" style="min-height:55pt;">
-                <div style="font-size:9pt; color:${SECONDARY}; margin-bottom:4pt;">Firma del/la coder</div>
-                <div style="border-bottom:1px solid #999; height:30pt;"></div>
-                <div style="font-size:8pt; color:#aaa; margin-top:3pt;">${_esc(fullName)}</div>
-            </div>
-            <div class="section-box no-break" style="min-height:55pt;">
-                <div style="font-size:9pt; color:${SECONDARY}; margin-bottom:4pt;">Firma del/la docente</div>
-                <div style="border-bottom:1px solid #999; height:30pt;"></div>
-                <div style="font-size:8pt; color:#aaa; margin-top:3pt;">Docente responsable</div>
+        // ── Firmas ──
+        html += `<div style="margin-top:28pt;">
+            <div class="section-box no-break" style="max-width:260pt;">
+                <div style="font-size:9pt; color:${SECONDARY}; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
+                <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
+                <div style="font-size:8pt; color:#aaa; margin-top:4pt;">Docente responsable</div>
             </div>
         </div>`;
 
-        _printWindow(html);
+        _printWindow(html, true /* preview */);
     }
 
     // ─── Public API ──────────────────────────────────────────────────────────
