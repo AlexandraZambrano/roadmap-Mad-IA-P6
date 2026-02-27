@@ -622,6 +622,12 @@
             const membersList = (t.members && t.members.length)
                 ? `<div class="small text-muted mt-1"><i class="bi bi-people me-1"></i>${t.members.map(m => _esc(m.name)).join(', ')}</div>`
                 : '';
+            const noteBlock = t.teacherNote
+                ? `<div class="mt-2 pt-2 border-top small">
+                    <i class="bi bi-chat-left-quote text-info me-1"></i>
+                    <span class="text-muted fst-italic">${_esc(t.teacherNote)}</span>
+                   </div>`
+                : '';
             const competencesList = (t.competences && t.competences.length)
                 ? `<div class="mt-2 pt-2 border-top">
                     <div class="small fw-semibold text-muted mb-1"><i class="bi bi-award me-1"></i>Competencias trabajadas:</div>
@@ -652,11 +658,20 @@
                             </div>
                             <small class="text-muted">Módulo: <strong>${_esc(t.moduleName || '—')}</strong></small>
                             ${membersList}
+                            ${noteBlock}
                             ${competencesList}
                         </div>
-                        <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="window.StudentTracking._removeTeam(${i})">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        <div class="d-flex flex-column gap-1 ms-2">
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                title="Exportar PDF de este proyecto"
+                                onclick="window.Reports?.printProjectReport(${i}, window.StudentTracking._getCurrentStudentId(), window.StudentTracking._getPromotionId())">
+                                <i class="bi bi-file-earmark-pdf" style="font-size:.85rem;"></i>
+                            </button>
+                            <button class="btn btn-sm btn-link text-danger p-0"
+                                onclick="window.StudentTracking._removeTeam(${i})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -775,6 +790,16 @@
                                 <!-- List of added competences -->
                                 <div id="proj-comp-list"></div>
                             </div>
+                        </div>
+
+                        <!-- Teacher note -->
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">
+                                <i class="bi bi-chat-left-quote me-1 text-info"></i>Nota del profesor sobre este proyecto
+                                <span class="fw-normal text-muted">(opcional)</span>
+                            </label>
+                            <textarea class="form-control form-control-sm" id="team-teacher-note" rows="2"
+                                placeholder="Valoración, observaciones, feedback..."></textarea>
                         </div>
                     </div>
 
@@ -955,7 +980,8 @@
         const allMembers = [{ id: _currentStudentId, name: currentStudentName }, ...members];
 
         const competences = window._pendingProjectCompetences || [];
-        const teamEntry = { teamName, projectType, moduleName, moduleId, assignedDate: _todayISO(), members: allMembers, competences };
+        const teacherNote = document.getElementById('team-teacher-note')?.value?.trim() || '';
+        const teamEntry = { teamName, projectType, moduleName, moduleId, assignedDate: _todayISO(), members: allMembers, competences, teacherNote };
 
         // All student IDs to propagate to
         const memberStudentIds = allMembers.map(m => m.id);
@@ -1701,6 +1727,8 @@
         openFicha,
         _getCurrentStudentId: () => _currentStudentId,
         _getPromotionId: () => _promotionId,
+        _getTeam: (i) => _teams[i],
+        _getCurrentStudent: () => _currentStudent,
         // Exponer internos necesarios por onclick en HTML generado dinámicamente
         _openNoteForm, _saveNote, _removeNote,
         _openTeamForm, _saveTeam, _removeTeam,

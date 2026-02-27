@@ -42,13 +42,14 @@ const StudentSchema = new mongoose.Schema({
             author: String
         }],
         teams: [{
-            teamName: String,       // project name
+            teamName: String,
             projectType: { type: String, enum: ['individual', 'grupal'], default: 'grupal' },
             role: String,
             moduleName: String,
             moduleId: String,
             assignedDate: String,
-            members: [{ id: String, name: String }],  // other students in the team
+            teacherNote: String,
+            members: [{ id: String, name: String }],
             competences: [{
                 competenceId: mongoose.Schema.Types.Mixed,
                 competenceName: String,

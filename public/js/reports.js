@@ -685,12 +685,145 @@
         return { entry: 'Entrada', start: 'Inicio Píldoras', break: 'Descanso', lunch: 'Comida', finish: 'Salida' }[key] || key;
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // 5. INFORME DE PROYECTO INDIVIDUAL
+    // ════════════════════════════════════════════════════════════════════════
+    async function printProjectReport(teamIndex, studentId, promotionId) {
+        // Read data from the already-open ficha if available (no extra fetch needed)
+        const st = window.StudentTracking;
+        let t  = st?._getTeam(teamIndex);
+        let s  = st?._getCurrentStudent();
+        let promoName = window.currentPromotion?.name || '';
+
+        // If not available in memory, fetch fresh
+        if (!t || !s) {
+            const token = localStorage.getItem('token');
+            try {
+                const [stuRes, promoRes] = await Promise.all([
+                    fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(`${API_URL}/api/promotions/${promotionId}`,                       { headers: { 'Authorization': `Bearer ${token}` } })
+                ]);
+                if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
+                s = await stuRes.json();
+                const promo = promoRes.ok ? await promoRes.json() : {};
+                promoName = promo.name || '';
+                t = (s.technicalTracking?.teams || [])[teamIndex];
+            } catch (e) {
+                alert('Error cargando datos: ' + e.message);
+                return;
+            }
+        }
+
+        if (!t) { alert('Proyecto no encontrado.'); return; }
+
+        const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
+        const PROJ_LEVEL_COLORS = { 0: 'grey', 1: 'red', 2: 'yellow', 3: 'green' };
+        const PROJ_LEVEL_LABELS = { 0: 'Sin nivel', 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
+        let html = _header(
+            t.teamName || 'Proyecto',
+            fullName,
+            promoName,
+            _today()
+        );
+
+        // ── Datos del proyecto ──
+        const typeBadge = t.projectType === 'individual'
+            ? `<span class="badge badge-info">Individual</span>`
+            : `<span class="badge badge-green">Grupal</span>`;
+
+        html += `<div class="section-box accent row2">
+            <div>
+                <div class="kv"><strong>Proyecto:</strong> ${_esc(t.teamName || '—')}</div>
+                <div class="kv"><strong>Tipo:</strong> ${typeBadge}</div>
+                <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
+            </div>
+            <div>
+                <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
+                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+                ${(t.members && t.members.length)
+                    ? `<div class="kv"><strong>Compañeros:</strong> ${t.members.map(m => _esc(m.name)).join(', ')}</div>`
+                    : ''}
+            </div>
+        </div>`;
+
+        // ── Nota del profesor ──
+        if (t.teacherNote) {
+            html += `<h3>Nota del Profesor</h3>
+            <div class="section-box" style="border-left:4px solid #0dcaf0;">
+                <p style="white-space:pre-wrap; font-style:italic;">${_esc(t.teacherNote)}</p>
+            </div>`;
+        }
+
+        // ── Competencias trabajadas ──
+        html += `<h3>Competencias Trabajadas</h3>`;
+        const comps = t.competences || [];
+        if (comps.length) {
+            html += `<table>
+                <thead><tr><th>Competencia</th><th>Nivel alcanzado</th><th>Herramientas</th></tr></thead>
+                <tbody>`;
+            comps.forEach(c => {
+                const lvlColor = PROJ_LEVEL_COLORS[c.level] ?? 'grey';
+                const lvlLabel = PROJ_LEVEL_LABELS[c.level] ?? `Nv.${c.level}`;
+                const tools = (c.toolsUsed || [])
+                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
+                    .join(' ');
+                html += `<tr>
+                    <td><strong>${_esc(c.competenceName || '—')}</strong></td>
+                    <td>${_levelBadge(c.level)}</td>
+                    <td>${tools || '<span style="color:#aaa;">—</span>'}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+
+            // Visual summary: one big card per competence with level bar
+            html += `<div style="margin-top:10pt;">`;
+            comps.forEach(c => {
+                const pct = Math.round((c.level / 3) * 100);
+                const barColor = c.level === 3 ? '#198754' : c.level === 2 ? '#ffc107' : c.level === 1 ? '#dc3545' : '#aaa';
+                const tools = (c.toolsUsed || [])
+                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
+                    .join(' ');
+                html += `<div class="section-box no-break" style="margin-bottom:7pt;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4pt;">
+                        <strong>${_esc(c.competenceName)}</strong>
+                        <span style="font-size:9pt; color:#888;">${PROJ_LEVEL_LABELS[c.level] ?? ''}</span>
+                    </div>
+                    <div style="background:#eee; border-radius:4pt; height:8pt; overflow:hidden; margin-bottom:5pt;">
+                        <div style="width:${pct}%; height:100%; background:${barColor}; border-radius:4pt;"></div>
+                    </div>
+                    ${tools ? `<div class="pill-row">${tools}</div>` : ''}
+                </div>`;
+            });
+            html += `</div>`;
+        } else {
+            html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
+        }
+
+        // ── Firma ──
+        html += `<div style="margin-top:24pt; display:grid; grid-template-columns:1fr 1fr; gap:20pt;">
+            <div class="section-box no-break" style="min-height:55pt;">
+                <div style="font-size:9pt; color:${SECONDARY}; margin-bottom:4pt;">Firma del/la coder</div>
+                <div style="border-bottom:1px solid #999; height:30pt;"></div>
+                <div style="font-size:8pt; color:#aaa; margin-top:3pt;">${_esc(fullName)}</div>
+            </div>
+            <div class="section-box no-break" style="min-height:55pt;">
+                <div style="font-size:9pt; color:${SECONDARY}; margin-bottom:4pt;">Firma del/la docente</div>
+                <div style="border-bottom:1px solid #999; height:30pt;"></div>
+                <div style="font-size:8pt; color:#aaa; margin-top:3pt;">Docente responsable</div>
+            </div>
+        </div>`;
+
+        _printWindow(html);
+    }
+
     // ─── Public API ──────────────────────────────────────────────────────────
     window.Reports = {
         printTechnical,
         printTransversal,
         printActaInicio,
-        printDescripcionTecnica
+        printDescripcionTecnica,
+        printProjectReport
     };
 
 })(window);
