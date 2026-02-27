@@ -97,10 +97,16 @@
                             <h1 id="promotion-title">Loading...</h1>
                             <p id="promotion-desc" class="text-muted"></p>
                         </div>
-                        <button class="btn btn-preview-green" onclick="previewPromotion()"
-                            title="Preview how students will see this page">
-                            <i class="bi bi-eye me-2"></i>Preview
-                        </button>
+                        <div class="d-flex gap-2">
+                            <a id="teaching-content-btn" href="#" class="btn btn-outline-primary hidden" target="_blank"
+                                title="Access teaching content">
+                                <i class="bi bi-book me-2"></i>Contenido Docente
+                            </a>
+                            <button class="btn btn-preview-green" onclick="previewPromotion()"
+                                title="Preview how students will see this page">
+                                <i class="bi bi-eye me-2"></i>Preview
+                            </button>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -362,49 +368,75 @@
                         <h2>Access Settings</h2>
                     </div>
 
-                    <div class="card mb-4">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0"><i class="bi bi-key me-2"></i>Student Access Password</h5>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted mb-4">Set a password that students must enter to access this promotion.
-                                This allows you to control access without requiring student login credentials.</p>
+                    <div class="row g-4">
+                        <!-- Student Access Password Card -->
+                        <div class="col-lg-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, var(--principal-1) 0%, var(--complementario-2) 100%);">
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-key me-2"></i>Student Access</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="access-password-input" class="form-label small fw-bold">Password</label>
+                                        <div class="password-input-group">
+                                            <input type="password" class="form-control form-control-sm" id="access-password-input"
+                                                placeholder="Enter password">
+                                            <button type="button" class="password-toggle"
+                                                onclick="togglePasswordVisibility('access-password-input')">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm w-100" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;" onclick="updateAccessPassword()">
+                                        <i class="bi bi-save me-1"></i>Update
+                                    </button>
 
-                            <div class="row align-items-end g-3">
-                                <div class="col-md-6">
-                                    <label for="access-password-input" class="form-label">Access Password</label>
-                                    <div class="password-input-group">
-                                        <input type="text" class="form-control" id="access-password-input"
-                                            placeholder="Enter a password">
-                                        <button type="button" class="password-toggle"
-                                            onclick="togglePasswordVisibility('access-password-input')">
-                                            <i class="bi bi-eye"></i>
+                                    <div id="password-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style="font-size: 0.85rem;">
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light border-top p-2">
+                                    <small class="text-muted d-block mb-2">Share link:</small>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control form-control-sm" id="student-access-link" readonly>
+                                        <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyAccessLink()">
+                                            <i class="bi bi-clipboard"></i>
                                         </button>
                                     </div>
-                                    <small class="form-text text-muted">Leave empty to remove password
-                                        protection</small>
                                 </div>
-                                <div class="col-md-6">
-                                    <button class="btn btn-success w-100" onclick="updateAccessPassword()">
-                                        <i class="bi bi-save me-2"></i>Update Password
+                            </div>
+                        </div>
+
+                        <!-- Teaching Content Card -->
+                        <div class="col-lg-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, var(--blue-light-f5) 0%, var(--green-f5) 100%);">
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-book me-2"></i>Teaching Content</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="teaching-content-url" class="form-label small fw-bold">Content URL</label>
+                                        <input type="url" class="form-control form-control-sm" id="teaching-content-url"
+                                            placeholder="https://example.com" />
+                                    </div>
+                                    <button class="btn btn-sm w-100" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;" onclick="updateTeachingContent()">
+                                        <i class="bi bi-save me-1"></i>Save
                                     </button>
+
+                                    <div id="teaching-content-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style="font-size: 0.85rem;">
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div id="password-alert" class="alert alert-info mt-3 hidden" role="alert">
-                                <!-- Alert message will be displayed here -->
-                            </div>
-
-                            <hr class="my-4">
-
-                            <h6>Share with Students</h6>
-                            <p class="text-muted">Once a password is set, students can access the promotion using this
-                                link:</p>
-                            <div class="input-group mb-3">
-                                <input type="text" class="form-control" id="student-access-link" readonly>
-                                <button class="btn btn-outline-secondary" type="button" onclick="copyAccessLink()">
-                                    <i class="bi bi-clipboard me-2"></i>Copy Link
-                                </button>
+                                <div class="card-footer bg-light border-top p-2">
+                                    <small class="text-muted d-block mb-2">Preview:</small>
+                                    <div class="d-flex gap-1">
+                                        <a id="teaching-content-preview-btn" href="#" class="btn btn-sm btn-outline-primary hidden" target="_blank">
+                                            <i class="bi bi-book me-1"></i>View
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="removeTeachingContent()" id="remove-teaching-btn" style="display:none;">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        <small class="text-muted align-self-center ms-1" id="no-content-message">No content</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

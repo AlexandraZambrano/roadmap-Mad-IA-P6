@@ -38,6 +38,26 @@ function escapeHtml(text) {
     return text.toString().replace(/[&<>"']/g, function (m) { return map[m]; });
 }
 
+// Utility function to toggle password visibility
+function togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    const button = event.target.closest('.password-toggle');
+    
+    if (input) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            if (button) {
+                button.innerHTML = '<i class="bi bi-eye-slash"></i>';
+            }
+        } else {
+            input.type = 'password';
+            if (button) {
+                button.innerHTML = '<i class="bi bi-eye"></i>';
+            }
+        }
+    }
+}
+
 // Immediate CSS injection for student view (to prevent flicker)
 if (userRole === 'student') {
     const style = document.createElement('style');
@@ -1331,6 +1351,15 @@ async function loadPromotion() {
             document.getElementById('promotion-start').textContent = promotion.startDate || '-';
             document.getElementById('promotion-end').textContent = promotion.endDate || '-';
             document.getElementById('modules-count').textContent = (promotion.modules || []).length;
+
+            // Load teaching content button
+            if (promotion.teachingContentUrl) {
+                const teachingContentBtn = document.getElementById('teaching-content-btn');
+                if (teachingContentBtn) {
+                    teachingContentBtn.href = promotion.teachingContentUrl;
+                    teachingContentBtn.classList.remove('hidden');
+                }
+            }
 
             // Check if current user is owner (to enable/disable collaborator management)
             if (userRole === 'teacher') {
@@ -3208,6 +3237,9 @@ async function loadAccessPassword() {
     } catch (error) {
         console.error('Error loading access password:', error);
     }
+
+    // Load teaching content
+    loadTeachingContent();
 }
 
 async function updateAccessPassword() {
@@ -3321,6 +3353,162 @@ function copyAccessLink() {
                 alert('Could not copy link. Please copy manually.');
             }
         });
+    }
+}
+
+// ==================== TEACHING CONTENT FUNCTIONS ====================
+
+async function loadTeachingContent() {
+    if (userRole !== 'teacher') return;
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/teaching-content`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const urlInput = document.getElementById('teaching-content-url');
+            const previewBtn = document.getElementById('teaching-content-preview-btn');
+            const overviewBtn = document.getElementById('teaching-content-btn');
+            const noContentMsg = document.getElementById('no-content-message');
+            const removeBtn = document.getElementById('remove-teaching-btn');
+
+            if (data.teachingContentUrl) {
+                if (urlInput) {
+                    urlInput.value = data.teachingContentUrl;
+                }
+                if (previewBtn) {
+                    previewBtn.href = data.teachingContentUrl;
+                    previewBtn.classList.remove('hidden');
+                }
+                if (overviewBtn) {
+                    overviewBtn.href = data.teachingContentUrl;
+                    overviewBtn.classList.remove('hidden');
+                }
+                if (noContentMsg) {
+                    noContentMsg.style.display = 'none';
+                }
+                if (removeBtn) {
+                    removeBtn.style.display = 'inline-block';
+                }
+            } else {
+                if (previewBtn) {
+                    previewBtn.classList.add('hidden');
+                }
+                if (overviewBtn) {
+                    overviewBtn.classList.add('hidden');
+                }
+                if (noContentMsg) {
+                    noContentMsg.style.display = 'block';
+                }
+                if (removeBtn) {
+                    removeBtn.style.display = 'none';
+                }
+                if (urlInput) {
+                    urlInput.value = '';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading teaching content:', error);
+    }
+}
+
+async function updateTeachingContent() {
+    if (userRole !== 'teacher') return;
+
+    const token = localStorage.getItem('token');
+    const urlInput = document.getElementById('teaching-content-url');
+    const alertEl = document.getElementById('teaching-content-alert');
+    const url = urlInput ? urlInput.value.trim() : '';
+
+    if (!url) {
+        if (alertEl) {
+            alertEl.className = 'alert alert-warning';
+            alertEl.textContent = 'Please enter a URL for the teaching content';
+            alertEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/teaching-content`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ teachingContentUrl: url })
+        });
+
+        if (response.ok) {
+            if (alertEl) {
+                alertEl.className = 'alert alert-success';
+                alertEl.textContent = 'Teaching content link saved successfully! The button will now appear in the Overview section.';
+                alertEl.classList.remove('hidden');
+
+                setTimeout(() => {
+                    alertEl.classList.add('hidden');
+                }, 5000);
+            }
+
+            // Update the preview button
+            loadTeachingContent();
+        } else {
+            const data = await response.json();
+            if (alertEl) {
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = data.error || 'Error saving teaching content';
+                alertEl.classList.remove('hidden');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating teaching content:', error);
+        if (alertEl) {
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = 'Connection error. Please try again.';
+            alertEl.classList.remove('hidden');
+        }
+    }
+}
+
+async function removeTeachingContent() {
+    if (userRole !== 'teacher') return;
+
+    if (!confirm('Are you sure you want to remove the teaching content link?')) {
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/teaching-content`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const alertEl = document.getElementById('teaching-content-alert');
+            if (alertEl) {
+                alertEl.className = 'alert alert-success';
+                alertEl.textContent = 'Teaching content link removed successfully!';
+                alertEl.classList.remove('hidden');
+
+                setTimeout(() => {
+                    alertEl.classList.add('hidden');
+                }, 5000);
+            }
+
+            // Update the UI
+            loadTeachingContent();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Error removing teaching content');
+        }
+    } catch (error) {
+        console.error('Error removing teaching content:', error);
+        alert('Connection error. Please try again.');
     }
 }
 
