@@ -1318,14 +1318,6 @@ function switchTab(tabId) {
     if (tabId === 'collaborators') loadCollaborators();
     if (tabId === 'access-settings') loadAccessPassword();
 
-    // Show/hide floating save button
-    const floatingBtn = document.getElementById('floating-save-btn');
-    if (tabId === 'info') {
-        floatingBtn?.classList.remove('hidden');
-    } else {
-        floatingBtn?.classList.add('hidden');
-    }
-
     // Update active state in sidebar
     document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
