@@ -50,38 +50,38 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#roadmap" onclick="switchTab('roadmap')">
-                                <i class="bi bi-map me-2"></i>Roadmap
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#calendar" onclick="switchTab('calendar')">
-                                <i class="bi bi-calendar me-2"></i>Calendar
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link" href="#students" onclick="switchTab('students')">
-                                <i class="bi bi-people me-2"></i>Students
+                                <i class="bi bi-people me-2"></i>Lista de estudiantes
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#attendance" onclick="switchTab('attendance')">
-                                <i class="bi bi-calendar-check me-2"></i>Attendance
-                            </a>
-                        </li>
-                        <li class="nav-item teacher-only">
-                            <a class="nav-link" href="#access-settings" onclick="switchTab('access-settings')">
-                                <i class="bi bi-lock me-2"></i>Access Settings
-                            </a>
-                        </li>
-                        <li class="nav-item teacher-only">
-                            <a class="nav-link" href="#collaborators" onclick="switchTab('collaborators')">
-                                <i class="bi bi-person-plus me-2"></i>Collaborators
+                                <i class="bi bi-calendar-check me-2"></i>Asistencia
                             </a>
                         </li>
                         <li class="nav-item teacher-only">
                             <a class="nav-link" href="#info" onclick="switchTab('info')">
-                                <i class="bi bi-info-circle me-2"></i>Program Info
+                                <i class="bi bi-info-circle me-2"></i>Contenido del Programa
+                            </a>
+                        </li>
+                                           <li class="nav-item">
+                            <a class="nav-link" href="#roadmap" onclick="switchTab('roadmap')">
+                                <i class="bi bi-map me-2"></i>Roadmap
+                            </a>
+                        </li>
+                                                <li class="nav-item">
+                            <a class="nav-link" href="#calendar" onclick="switchTab('calendar')">
+                                <i class="bi bi-calendar me-2"></i>Calendario
+                            </a>
+                        </li>
+                                                <li class="nav-item teacher-only">
+                            <a class="nav-link" href="#access-settings" onclick="switchTab('access-settings')">
+                                <i class="bi bi-lock me-2"></i>Accesos
+                            </a>
+                        </li>
+                        <li class="nav-item teacher-only">
+                            <a class="nav-link" href="#collaborators" onclick="switchTab('collaborators')">
+                                <i class="bi bi-person-plus me-2"></i>Collaboradores
                             </a>
                         </li>
                     </ul>
@@ -97,42 +97,67 @@
                             <h1 id="promotion-title">Loading...</h1>
                             <p id="promotion-desc" class="text-muted"></p>
                         </div>
-                        <button class="btn btn-preview-green" onclick="previewPromotion()"
-                            title="Preview how students will see this page">
-                            <i class="bi bi-eye me-2"></i>Preview
-                        </button>
+                        <div class="d-flex gap-2">
+                            <a id="teaching-content-btn" href="#" class="btn btn-outline-primary hidden" target="_blank"
+                                title="Access teaching content">
+                                <i class="bi bi-book me-2"></i>Contenido Docente
+                            </a>
+                            <button class="btn btn-outline-secondary teacher-only" onclick="openActaModal()"
+                                title="Rellenar Acta de Inicio">
+                                <i class="bi bi-file-earmark-lock2 me-2"></i>Acta de Inicio
+                            </button>
+                            <button class="btn btn-preview-green" onclick="previewPromotion()"
+                                title="Preview how students will see this page">
+                                <i class="bi bi-eye me-2"></i>Preview
+                            </button>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+                                    
+                                    <!-- Título -->
+                                    <h5 class="card-title mb-0">
+                                        Program Information
+                                    </h5>
+
+                                    <!-- Contenedor de datos -->
+                                    <div class="d-flex flex-wrap  gap-3">
+                                        
+                                        <div class="d-flex align-items-center gap-1">
+                                            <strong>Duration:</strong>
+                                            <span id="promotion-weeks">-</span>
+                                            <span>weeks</span>
+                                        </div>
+
+                                        <div class="d-flex align-items-center gap-1">
+                                            <strong>Start Date:</strong>
+                                            <span id="promotion-start">-</span>
+                                        </div>
+
+                                        <div class="d-flex align-items-center gap-1">
+                                            <strong>End Date:</strong>
+                                            <span id="promotion-end">-</span>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                        <!-- <div class="col-md-6">
                             <div class="card">
                                 <div class="card-body">
-                                    <h5 class="card-title">Program Information</h5>
-                                    <p><strong>Duration:</strong> <span id="promotion-weeks">-</span> weeks</p>
-                                    <p><strong>Start Date:</strong> <span id="promotion-start">-</span></p>
-                                    <p><strong>End Date:</strong> <span id="promotion-end">-</span></p>
+                                    <h5 class="card-title">Statistics</h5>
+                                    <p><strong>Modules:</strong> <span id="modules-count">0</span></p>
+                                    <p><strong>Quick Links:</strong> <span id="quicklinks-count">0</span></p>
+                                    <p><strong>Sections:</strong> <span id="sections-count">0</span></p>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card h-100">
-                                <div class="card-body d-flex flex-column">
-                                    <h5 class="card-title d-flex align-items-center gap-2">
-                                        <i class="bi bi-file-earmark-lock2" style="color:#E85D26;"></i>
-                                        Acta de Inicio
-                                        <span class="badge bg-secondary ms-1" style="font-size:.65rem;">Confidencial</span>
-                                    </h5>
-                                    <p class="text-muted small flex-grow-1">Datos internos del proyecto formativo para financiadores. No visible para los estudiantes.</p>
-                                    <div class="d-flex gap-2 mt-2">
-                                        <button class="btn btn-outline-secondary btn-sm" onclick="openActaModal()">
-                                            <i class="bi bi-pencil me-1"></i>Editar datos
-                                        </button>
-                                        <button class="btn btn-sm" style="background:#E85D26;color:#fff;" onclick="Reports.printActaInicio(promotionId)">
-                                            <i class="bi bi-file-earmark-pdf me-1"></i>Generar PDF
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="mt-4">
                         <h5 class="mb-2">Student Dashboard Preview</h5>
@@ -414,49 +439,75 @@
                         <h2>Access Settings</h2>
                     </div>
 
-                    <div class="card mb-4">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0"><i class="bi bi-key me-2"></i>Student Access Password</h5>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted mb-4">Set a password that students must enter to access this promotion.
-                                This allows you to control access without requiring student login credentials.</p>
+                    <div class="row g-4">
+                        <!-- Student Access Password Card -->
+                        <div class="col-lg-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, var(--principal-1) 0%, var(--complementario-2) 100%);">
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-key me-2"></i>Student Access</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="access-password-input" class="form-label small fw-bold">Password</label>
+                                        <div class="password-input-group">
+                                            <input type="password" class="form-control form-control-sm" id="access-password-input"
+                                                placeholder="Enter password">
+                                            <button type="button" class="password-toggle"
+                                                onclick="togglePasswordVisibility('access-password-input')">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm w-100" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;" onclick="updateAccessPassword()">
+                                        <i class="bi bi-save me-1"></i>Update
+                                    </button>
 
-                            <div class="row align-items-end g-3">
-                                <div class="col-md-6">
-                                    <label for="access-password-input" class="form-label">Access Password</label>
-                                    <div class="password-input-group">
-                                        <input type="text" class="form-control" id="access-password-input"
-                                            placeholder="Enter a password">
-                                        <button type="button" class="password-toggle"
-                                            onclick="togglePasswordVisibility('access-password-input')">
-                                            <i class="bi bi-eye"></i>
+                                    <div id="password-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style="font-size: 0.85rem;">
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light border-top p-2">
+                                    <small class="text-muted d-block mb-2">Share link:</small>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control form-control-sm" id="student-access-link" readonly>
+                                        <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyAccessLink()">
+                                            <i class="bi bi-clipboard"></i>
                                         </button>
                                     </div>
-                                    <small class="form-text text-muted">Leave empty to remove password
-                                        protection</small>
                                 </div>
-                                <div class="col-md-6">
-                                    <button class="btn btn-success w-100" onclick="updateAccessPassword()">
-                                        <i class="bi bi-save me-2"></i>Update Password
+                            </div>
+                        </div>
+
+                        <!-- Teaching Content Card -->
+                        <div class="col-lg-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, var(--blue-light-f5) 0%, var(--green-f5) 100%);">
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-book me-2"></i>Teaching Content</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="teaching-content-url" class="form-label small fw-bold">Content URL</label>
+                                        <input type="url" class="form-control form-control-sm" id="teaching-content-url"
+                                            placeholder="https://example.com" />
+                                    </div>
+                                    <button class="btn btn-sm w-100" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;" onclick="updateTeachingContent()">
+                                        <i class="bi bi-save me-1"></i>Save
                                     </button>
+
+                                    <div id="teaching-content-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style="font-size: 0.85rem;">
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div id="password-alert" class="alert alert-info mt-3 hidden" role="alert">
-                                <!-- Alert message will be displayed here -->
-                            </div>
-
-                            <hr class="my-4">
-
-                            <h6>Share with Students</h6>
-                            <p class="text-muted">Once a password is set, students can access the promotion using this
-                                link:</p>
-                            <div class="input-group mb-3">
-                                <input type="text" class="form-control" id="student-access-link" readonly>
-                                <button class="btn btn-outline-secondary" type="button" onclick="copyAccessLink()">
-                                    <i class="bi bi-clipboard me-2"></i>Copy Link
-                                </button>
+                                <div class="card-footer bg-light border-top p-2">
+                                    <small class="text-muted d-block mb-2">Preview:</small>
+                                    <div class="d-flex gap-1">
+                                        <a id="teaching-content-preview-btn" href="#" class="btn btn-sm btn-outline-primary hidden" target="_blank">
+                                            <i class="bi bi-book me-1"></i>View
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="removeTeachingContent()" id="remove-teaching-btn" style="display:none;">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        <small class="text-muted align-self-center ms-1" id="no-content-message">No content</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -483,106 +534,122 @@
 
                 <!-- Program Info Tab (New) -->
                 <div id="info-tab" class="section-content hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Program Details</h2>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <button class="btn btn-outline-secondary" onclick="Reports.printDescripcionTecnica(promotionId)" title="Generar PDF de la Descripción Técnica de Formación">
-                                <i class="bi bi-file-earmark-richtext me-2"></i>Descripción Técnica
-                            </button>
-                            <button class="btn btn-primary" onclick="saveExtendedInfo()">
-                                <i class="bi bi-save me-2"></i>Save All Changes
-                            </button>
+                    <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
+                        <div>
+                            <h2 class="mb-0">Program Details</h2>
                         </div>
+                        <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()" 
+                            title="Save all changes to Program Details">
+                            <i class="bi bi-save me-2"></i>Save All Changes
+                        </button>
                     </div>
 
-                    <div class="row">
-                        <!-- Schedule -->
-                        <div class="col-12 mb-4">
+                    <!-- Program Details Navigation Tabs -->
+                    <nav class="nav nav-tabs mb-4" id="program-details-tabs" role="tablist">
+                        <button class="nav-link active" id="program-details-schedule-tab" type="button" role="tab" aria-selected="true"
+                            onclick="switchProgramDetailsTab('schedule')">
+                            <i class="bi bi-clock me-2"></i>Horario
+                        </button>
+                        <button class="nav-link" id="program-details-team-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('team')">
+                            <i class="bi bi-people me-2"></i>Team
+                        </button>
+                        <button class="nav-link" id="program-details-resources-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('resources')">
+                            <i class="bi bi-tools me-2"></i>Resources
+                        </button>
+                        <button class="nav-link" id="program-details-pildoras-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('pildoras')">
+                            <i class="bi bi-lightbulb me-2"></i>Píldoras
+                        </button>
+                        <button class="nav-link" id="program-details-evaluation-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('evaluation')">
+                            <i class="bi bi-clipboard-check me-2"></i>Evaluation
+                        </button>
+                        <button class="nav-link" id="program-details-quicklinks-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('quicklinks')">
+                            <i class="bi bi-lightning me-2"></i>Quick Links
+                        </button>
+                        <button class="nav-link" id="program-details-sections-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('sections')">
+                            <i class="bi bi-file-text me-2"></i>Sections
+                        </button>
+                    </nav>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="program-details-content">
+                        <!-- Schedule Tab -->
+                        <div class="tab-pane fade show active" id="program-details-schedule" role="tabpanel" aria-labelledby="program-details-schedule-tab">
                             <div class="card">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0"><i class="bi bi-clock me-2"></i>Horario (Schedule)</h5>
-                                </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-md-6 border-end">
-                                            <h6 class="text-primary mb-3">Online Days</h6>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Entry Hour</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-online-entry"></div>
+                                        <div class="col-md-6 border-end pb-md-0 pb-4">
+                                            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-laptop me-2"></i>Online</h6>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Entry Hour</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-online-entry">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Start Píldoras</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-online-start"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Start Píldoras</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-online-start">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Break</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-online-break"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Break</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-online-break">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Lunch (if any)</label>
-                                                <div class="col-sm-8"><input type="text" class="form-control"
-                                                        id="sched-online-lunch" placeholder="Use text if needed"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Lunch (if any)</label>
+                                                <input type="text" class="form-control form-control-sm" id="sched-online-lunch" placeholder="Use text if needed">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Finish Hour</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-online-finish"></div>
+                                            <div class="mb-0">
+                                                <label class="form-label form-label-sm">Finish Hour</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-online-finish">
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <h6 class="text-success mb-3">Presential Days</h6>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Entry Hour</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-entry"></div>
+                                        <div class="col-md-6 ps-md-4">
+                                            <h6 class=" fw-bold mb-3"><i class="bi bi-people me-2"></i>Presencial</h6>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Entry Hour</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-entry">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Start Píldoras</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-start"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Start Píldoras</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-start">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Break</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-break"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Break</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-break">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Lunch</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-lunch"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Lunch</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-lunch">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Finish Hour</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-finish"></div>
+                                            <div class="mb-0">
+                                                <label class="form-label form-label-sm">Finish Hour</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-finish">
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="mt-3">
-                                        <label class="form-label">Additional Schedule Notes</label>
-                                        <textarea class="form-control" id="sched-notes" rows="2"></textarea>
+                                    <div class="mt-4 pt-3 border-top">
+                                        <label class="form-label form-label-sm">Additional Schedule Notes</label>
+                                        <textarea class="form-control form-control-sm" id="sched-notes" rows="2"></textarea>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Acta de Inicio Data — moved to modal, accessible from Overview -->
-
-                        <!-- Team -->
-                        <div class="col-12 mb-4">
+                        <!-- Team Tab -->
+                        <div class="tab-pane fade" id="program-details-team" role="tabpanel" aria-labelledby="program-details-team-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Equipo (Team)</h5>
+                                    <h6 class="mb-0"><i class="bi bi-people me-2"></i>Team Members</h6>
                                     <button class="btn btn-sm btn-outline-primary" onclick="openTeamModal()">
                                         <i class="bi bi-plus"></i> Add Member
                                     </button>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body p-0">
                                     <div class="table-responsive">
-                                        <table class="table table-hover">
+                                        <table class="table table-hover mb-0">
                                             <thead>
                                                 <tr>
                                                     <th>Name</th>
@@ -601,18 +668,18 @@
                             </div>
                         </div>
 
-                        <!-- Resources -->
-                        <div class="col-12 mb-4">
+                        <!-- Resources Tab -->
+                        <div class="tab-pane fade" id="program-details-resources" role="tabpanel" aria-labelledby="program-details-resources-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0"><i class="bi bi-tools me-2"></i>Recursos (Resources)</h5>
+                                    <h6 class="mb-0"><i class="bi bi-tools me-2"></i>Resources</h6>
                                     <button class="btn btn-sm btn-outline-primary" onclick="openResourceModal()">
                                         <i class="bi bi-plus"></i> Add Resource
                                     </button>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body p-0">
                                     <div class="table-responsive">
-                                        <table class="table table-hover">
+                                        <table class="table table-hover mb-0">
                                             <thead>
                                                 <tr>
                                                     <th>Title</th>
@@ -630,40 +697,42 @@
                             </div>
                         </div>
 
-                        <!-- Píldoras -->
-                        <div class="col-12 mb-4">
+                        <!-- Píldoras Tab -->
+                        <div class="tab-pane fade" id="program-details-pildoras" role="tabpanel" aria-labelledby="program-details-pildoras-tab">
                             <div class="card">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h5>
-                                        <!-- Module Navigation -->
-                                        <div class="d-flex align-items-center gap-2" id="pildoras-module-nav">
-                                            <button class="btn btn-sm btn-outline-secondary" id="prev-module-btn"
-                                                onclick="navigateToPreviousModule()" disabled>
-                                                <i class="bi bi-chevron-left"></i>
-                                            </button>
-                                            <span class="fw-semibold text-primary" id="current-module-name">Módulo
-                                                I</span>
-                                            <button class="btn btn-sm btn-outline-secondary" id="next-module-btn"
-                                                onclick="navigateToNextModule()">
-                                                <i class="bi bi-chevron-right"></i>
-                                            </button>
+                                <div class="card-header bg-light">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h6>
+                                            <!-- Module Navigation -->
+                                            <div class="d-flex align-items-center gap-2" id="pildoras-module-nav">
+                                                <button class="btn btn-sm btn-outline-secondary" id="prev-module-btn"
+                                                    onclick="navigateToPreviousModule()" disabled>
+                                                    <i class="bi bi-chevron-left"></i>
+                                                </button>
+                                                <span class="fw-semibold text-primary" id="current-module-name">Módulo I</span>
+                                                <button class="btn btn-sm btn-outline-secondary" id="next-module-btn"
+                                                    onclick="navigateToNextModule()">
+                                                    <i class="bi bi-chevron-right"></i>
+                                                </button>
+                                            </div>
+                                            <div class="badge text-dark" id="current-module-stats">
+                                                <span id="module-pildoras-count">0</span> píldoras
+                                            </div>
                                         </div>
-                                        <div class="badge text-dark" id="current-module-stats">
-                                            <span id="module-pildoras-count">0</span> píldoras
-                                        </div>
-                                        <div class="form-check form-switch ms-3 border-start ps-4"
-                                            style="padding-left: 3.5rem !important;">
+                                        <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox"
                                                 id="pildoras-assignment-toggle"
                                                 onchange="togglePildorasAssignment(this.checked)">
                                             <label class="form-check-label fw-semibold"
                                                 for="pildoras-assignment-toggle">
-                                                Self-Assignment Open
+                                                Self-Assignment
                                             </label>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2">
+                                </div>
+                                <div class="card-header bg-white border-bottom pt-3 pb-2">
+                                    <div class="d-flex flex-wrap gap-2">
                                         <button class="btn btn-sm btn-outline-primary" type="button"
                                             onclick="addPildoraRow()">
                                             <i class="bi bi-plus"></i> Add Píldora
@@ -672,19 +741,19 @@
                                             onchange="importPildorasFromCsv(this)">
                                         <button class="btn btn-sm btn-outline-secondary" type="button"
                                             onclick="document.getElementById('pildoras-csv-input').click()">
-                                            <i class="bi bi-filetype-csv"></i> Import CSV
+                                            <i class="bi bi-filetype-csv"></i> CSV
                                         </button>
                                         <input type="file" id="pildoras-excel-input" accept=".xlsx,.xls" class="d-none"
                                             onchange="importPildorasFromExcel(this)">
                                         <button class="btn btn-sm btn-outline-success" type="button"
                                             onclick="document.getElementById('pildoras-excel-input').click()">
-                                            <i class="bi bi-file-earmark-spreadsheet"></i> Import Excel
+                                            <i class="bi bi-file-earmark-spreadsheet"></i> Excel
                                         </button>
                                     </div>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body p-0">
                                     <div class="table-responsive">
-                                        <table class="table table-hover align-middle">
+                                        <table class="table table-hover align-middle mb-0">
                                             <thead>
                                                 <tr>
                                                     <th>Presentación</th>
@@ -699,49 +768,15 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                    <small class="text-muted">Use las casillas de Student para asignar uno o varios
-                                        estudiantes a cada píldora.</small>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Competencias -->
-                        <div class="col-12 mb-4">
-                            <div class="card">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <h5 class="mb-0"><i class="bi bi-award me-2"></i>Competencias</h5>
-                                        <span class="badge bg-warning text-dark d-none" id="competences-unsaved-badge">
-                                            <i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i>Sin guardar
-                                        </span>
-                                    </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <select class="form-select form-select-sm" id="competences-area-filter"
-                                            style="min-width: 160px;"
-                                            onchange="window.ProgramCompetences?.filterByArea()">
-                                            <option value="">Todas las áreas</option>
-                                            <!-- populated dynamically from DB by ProgramCompetences.init() -->
-                                        </select>
-                                        <button class="btn btn-sm btn-outline-primary"
-                                            onclick="window.ProgramCompetences?.openAddCompetenceModal()">
-                                            <i class="bi bi-plus"></i> Añadir Competencia
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div id="competences-list-container">
-                                        <!-- Renderizado por program-competences.js -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Evaluation -->
-                        <div class="col-12 mb-4">
+                        <!-- Evaluation Tab -->
+                        <div class="tab-pane fade" id="program-details-evaluation" role="tabpanel" aria-labelledby="program-details-evaluation-tab">
                             <div class="card">
                                 <div class="card-header bg-light">
-                                    <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Evaluación (Evaluation
-                                        Criteria)</h5>
+                                    <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Evaluation Criteria</h6>
                                 </div>
                                 <div class="card-body">
                                     <textarea class="form-control" id="evaluation-text" rows="6"
@@ -750,11 +785,11 @@
                             </div>
                         </div>
 
-                        <!-- Quick Links Section -->
-                        <div class="col-12 mb-4">
+                        <!-- Quick Links Tab -->
+                        <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel" aria-labelledby="program-details-quicklinks-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h5>
+                                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h6>
                                     <button class="btn btn-sm btn-primary" onclick="openQuickLinkModal()">
                                         <i class="bi bi-plus-circle me-2"></i>Add Link
                                     </button>
@@ -767,11 +802,11 @@
                             </div>
                         </div>
 
-                        <!-- Sections -->
-                        <div class="col-12 mb-4">
+                        <!-- Sections Tab -->
+                        <div class="tab-pane fade" id="program-details-sections" role="tabpanel" aria-labelledby="program-details-sections-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Sections</h5>
+                                    <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Sections</h6>
                                     <button class="btn btn-sm btn-primary" onclick="openSectionModal()">
                                         <i class="bi bi-plus-circle me-2"></i>Add Section
                                     </button>
@@ -1788,8 +1823,8 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
     <script src="js/config.js"></script>
     <script src="js/reports.js"></script>
     <script src="js/program-competences.js"></script>
-    <script src="js/promotion-detail.js"></script>
     <script src="js/student-tracking.js"></script>
+    <script src="js/promotion-detail.js"></script>
 </body>
 
 </html>

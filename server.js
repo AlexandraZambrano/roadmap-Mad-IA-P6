@@ -408,6 +408,56 @@ app.delete('/api/promotions/:promotionId/access-password', verifyToken, async (r
   }
 });
 
+// ==================== TEACHING CONTENT ENDPOINTS ====================
+
+// Get teaching content URL (teacher only)
+app.get('/api/promotions/:promotionId/teaching-content', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    res.json({ teachingContentUrl: promotion.teachingContentUrl || null });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Set teaching content URL (teacher only)
+app.post('/api/promotions/:promotionId/teaching-content', verifyToken, async (req, res) => {
+  try {
+    const { teachingContentUrl } = req.body;
+    if (!teachingContentUrl) return res.status(400).json({ error: 'Teaching content URL is required' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    promotion.teachingContentUrl = teachingContentUrl;
+    await promotion.save();
+
+    res.json({ message: 'Teaching content URL updated', teachingContentUrl });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Remove teaching content URL (teacher only)
+app.delete('/api/promotions/:promotionId/teaching-content', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    promotion.teachingContentUrl = undefined;
+    await promotion.save();
+
+    res.json({ message: 'Teaching content URL removed' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ==================== BOOTCAMP TEMPLATES ====================
 
 // Initialize default templates if they don't exist

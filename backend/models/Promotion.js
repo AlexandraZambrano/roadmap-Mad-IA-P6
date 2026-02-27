@@ -47,6 +47,7 @@ const PromotionSchema = new mongoose.Schema({
         newPassword: String,
         changedAt: { type: Date, default: Date.now }
     }],
+    teachingContentUrl: { type: String }, // URL to teaching content (for "Contenido Docente" button)
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });

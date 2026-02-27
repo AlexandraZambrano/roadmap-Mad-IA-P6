@@ -39,6 +39,26 @@ function escapeHtml(text) {
     return text.toString().replace(/[&<>"']/g, function (m) { return map[m]; });
 }
 
+// Utility function to toggle password visibility
+function togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    const button = event.target.closest('.password-toggle');
+    
+    if (input) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            if (button) {
+                button.innerHTML = '<i class="bi bi-eye-slash"></i>';
+            }
+        } else {
+            input.type = 'password';
+            if (button) {
+                button.innerHTML = '<i class="bi bi-eye"></i>';
+            }
+        }
+    }
+}
+
 // Immediate CSS injection for student view (to prevent flicker)
 if (userRole === 'student') {
     const style = document.createElement('style');
@@ -191,6 +211,13 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadExtendedInfo() {
     const token = localStorage.getItem('token');
     try {
+        // Ensure Schedule tab is active on load
+        const scheduleTab = document.getElementById('program-details-schedule-tab');
+        if (scheduleTab) {
+            const tab = new bootstrap.Tab(scheduleTab);
+            tab.show();
+        }
+
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`); // Public endpoint
         if (response.ok) {
             extendedInfoData = await response.json();
@@ -1651,6 +1678,15 @@ async function loadPromotion() {
             document.getElementById('promotion-start').textContent = promotion.startDate || '-';
             document.getElementById('promotion-end').textContent = promotion.endDate || '-';
             document.getElementById('modules-count').textContent = (promotion.modules || []).length;
+
+            // Load teaching content button
+            if (promotion.teachingContentUrl) {
+                const teachingContentBtn = document.getElementById('teaching-content-btn');
+                if (teachingContentBtn) {
+                    teachingContentBtn.href = promotion.teachingContentUrl;
+                    teachingContentBtn.classList.remove('hidden');
+                }
+            }
 
             // Check if current user is owner (to enable/disable collaborator management)
             if (userRole === 'teacher') {
@@ -3537,6 +3573,9 @@ async function loadAccessPassword() {
     } catch (error) {
         console.error('Error loading access password:', error);
     }
+
+    // Load teaching content
+    loadTeachingContent();
 }
 
 async function updateAccessPassword() {
@@ -3650,6 +3689,162 @@ function copyAccessLink() {
                 alert('Could not copy link. Please copy manually.');
             }
         });
+    }
+}
+
+// ==================== TEACHING CONTENT FUNCTIONS ====================
+
+async function loadTeachingContent() {
+    if (userRole !== 'teacher') return;
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/teaching-content`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const urlInput = document.getElementById('teaching-content-url');
+            const previewBtn = document.getElementById('teaching-content-preview-btn');
+            const overviewBtn = document.getElementById('teaching-content-btn');
+            const noContentMsg = document.getElementById('no-content-message');
+            const removeBtn = document.getElementById('remove-teaching-btn');
+
+            if (data.teachingContentUrl) {
+                if (urlInput) {
+                    urlInput.value = data.teachingContentUrl;
+                }
+                if (previewBtn) {
+                    previewBtn.href = data.teachingContentUrl;
+                    previewBtn.classList.remove('hidden');
+                }
+                if (overviewBtn) {
+                    overviewBtn.href = data.teachingContentUrl;
+                    overviewBtn.classList.remove('hidden');
+                }
+                if (noContentMsg) {
+                    noContentMsg.style.display = 'none';
+                }
+                if (removeBtn) {
+                    removeBtn.style.display = 'inline-block';
+                }
+            } else {
+                if (previewBtn) {
+                    previewBtn.classList.add('hidden');
+                }
+                if (overviewBtn) {
+                    overviewBtn.classList.add('hidden');
+                }
+                if (noContentMsg) {
+                    noContentMsg.style.display = 'block';
+                }
+                if (removeBtn) {
+                    removeBtn.style.display = 'none';
+                }
+                if (urlInput) {
+                    urlInput.value = '';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading teaching content:', error);
+    }
+}
+
+async function updateTeachingContent() {
+    if (userRole !== 'teacher') return;
+
+    const token = localStorage.getItem('token');
+    const urlInput = document.getElementById('teaching-content-url');
+    const alertEl = document.getElementById('teaching-content-alert');
+    const url = urlInput ? urlInput.value.trim() : '';
+
+    if (!url) {
+        if (alertEl) {
+            alertEl.className = 'alert alert-warning';
+            alertEl.textContent = 'Please enter a URL for the teaching content';
+            alertEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/teaching-content`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ teachingContentUrl: url })
+        });
+
+        if (response.ok) {
+            if (alertEl) {
+                alertEl.className = 'alert alert-success';
+                alertEl.textContent = 'Teaching content link saved successfully! The button will now appear in the Overview section.';
+                alertEl.classList.remove('hidden');
+
+                setTimeout(() => {
+                    alertEl.classList.add('hidden');
+                }, 5000);
+            }
+
+            // Update the preview button
+            loadTeachingContent();
+        } else {
+            const data = await response.json();
+            if (alertEl) {
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = data.error || 'Error saving teaching content';
+                alertEl.classList.remove('hidden');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating teaching content:', error);
+        if (alertEl) {
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = 'Connection error. Please try again.';
+            alertEl.classList.remove('hidden');
+        }
+    }
+}
+
+async function removeTeachingContent() {
+    if (userRole !== 'teacher') return;
+
+    if (!confirm('Are you sure you want to remove the teaching content link?')) {
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/teaching-content`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const alertEl = document.getElementById('teaching-content-alert');
+            if (alertEl) {
+                alertEl.className = 'alert alert-success';
+                alertEl.textContent = 'Teaching content link removed successfully!';
+                alertEl.classList.remove('hidden');
+
+                setTimeout(() => {
+                    alertEl.classList.add('hidden');
+                }, 5000);
+            }
+
+            // Update the UI
+            loadTeachingContent();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Error removing teaching content');
+        }
+    } catch (error) {
+        console.error('Error removing teaching content:', error);
+        alert('Connection error. Please try again.');
     }
 }
 
@@ -4352,10 +4547,73 @@ async function exportAttendanceToExcel() {
         // Restore button state
         const exportBtn = document.querySelector('[onclick="exportAttendanceToExcel()"]');
         if (exportBtn) {
-            exportBtn.innerHTML = originalText || '<i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel';
+            exportBtn.innerHTML = '<i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel';
             exportBtn.disabled = false;
         }
     }
+}
+
+/**
+ * Update the subtitle in Program Details when switching between tabs
+ * @param {string} sectionName - Name of the section being viewed
+ */
+function updateProgramDetailsSubtitle(sectionName) {
+    const subtitle = document.getElementById('program-details-subtitle');
+    if (subtitle) {
+        subtitle.textContent = sectionName;
+    }
+}
+
+/**
+ * Switch Program Details Tabs with reliable behavior
+ * @param {string} tabName - Name of the tab to activate (schedule, team, resources, pildoras, evaluation, quicklinks, sections)
+ */
+function switchProgramDetailsTab(tabName) {
+    const tabNameMap = {
+        'schedule': { tabId: 'program-details-schedule', buttonId: 'program-details-schedule-tab', label: 'Schedule' },
+        'team': { tabId: 'program-details-team', buttonId: 'program-details-team-tab', label: 'Team' },
+        'resources': { tabId: 'program-details-resources', buttonId: 'program-details-resources-tab', label: 'Resources' },
+        'pildoras': { tabId: 'program-details-pildoras', buttonId: 'program-details-pildoras-tab', label: 'Píldoras' },
+        'evaluation': { tabId: 'program-details-evaluation', buttonId: 'program-details-evaluation-tab', label: 'Evaluation' },
+        'quicklinks': { tabId: 'program-details-quicklinks', buttonId: 'program-details-quicklinks-tab', label: 'Quick Links' },
+        'sections': { tabId: 'program-details-sections', buttonId: 'program-details-sections-tab', label: 'Sections' }
+    };
+
+    const tab = tabNameMap[tabName];
+    if (!tab) return;
+
+    // Hide all tabs
+    const allTabs = document.querySelectorAll('#program-details-content .tab-pane');
+    allTabs.forEach(t => {
+        t.style.display = 'none';
+        t.classList.remove('show', 'active');
+    });
+
+    // Remove active class from all buttons
+    const allButtons = document.querySelectorAll('#program-details-tabs .nav-link');
+    allButtons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+    });
+
+    // Show selected tab with animation
+    const selectedTab = document.getElementById(tab.tabId);
+    if (selectedTab) {
+        selectedTab.style.display = 'block';
+        // Trigger reflow to enable animation
+        void selectedTab.offsetHeight;
+        selectedTab.classList.add('show', 'active');
+    }
+
+    // Activate selected button
+    const selectedButton = document.getElementById(tab.buttonId);
+    if (selectedButton) {
+        selectedButton.classList.add('active');
+        selectedButton.setAttribute('aria-selected', 'true');
+    }
+
+    // Update subtitle
+    updateProgramDetailsSubtitle(tab.label);
 }
 
 // Selection state management
