@@ -7,7 +7,6 @@
  *   3. Acta de Inicio               (program-level)
  *   4. Descripción Técnica Formación (full bootcamp)
  */
-
 (function (window) {
     'use strict';
 
@@ -336,6 +335,20 @@
         return new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
     }
 
+    /** Format a YYYY-MM-DD or ISO date as Spanish long date with weekday: "lunes, 10 de agosto de 2026" */
+    function _fmtDateEs(d) {
+        if (!d) return '—';
+        try {
+            // Parse as local date to avoid timezone shift
+            const parts = String(d).split('T')[0].split('-');
+            if (parts.length === 3) {
+                const dt = new Date(+parts[0], +parts[1]-1, +parts[2]);
+                return dt.toLocaleDateString('es-ES', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+            }
+            return String(d);
+        } catch { return String(d); }
+    }
+
     function _levelBadge(level) {
         const map = { 0: ['grey','Sin nivel'], 1: ['red','Básico'], 2: ['yellow','Medio'], 3: ['green','Avanzado'],
                       4: ['blue','Excelente'] };
@@ -588,260 +601,370 @@ async function printActaInicio(promotionId) {
         const sched = ext.schedule || {};
         const team  = ext.team || [];
 
+        const ORANGE = '#E85D26';
+        const BLUE   = '#4472C4';  // azul usado en los valores del documento real
+
         const style = `
             <style>
                 * { box-sizing: border-box; margin: 0; padding: 0; }
                 body {
-                    font-family: Arial, sans-serif;
+                    font-family: 'Poppins', Arial, sans-serif;
                     font-size: 10pt;
                     color: #1a1a1a;
                     padding: 40pt 50pt 80pt 50pt;
+                    line-height: 1.5;
                 }
 
                 /* ── Título principal ── */
                 .doc-title {
-                    font-size: 14pt;
+                    font-size: 22pt;
                     font-weight: bold;
-                    margin-bottom: 6pt;
-                }
-                .doc-subtitle {
-                    font-size: 10pt;
-                    margin-bottom: 16pt;
-                    color: #333;
+                    color: ${ORANGE};
+                    text-align: center;
+                    margin-bottom: 22pt;
+                    margin-top: 10pt;
                 }
 
-                /* ── Tabla principal de datos (2 columnas, estilo acta) ── */
+                /* ── Subtítulo: nombre proyecto y fecha ── */
+                .doc-meta {
+                    margin-bottom: 20pt;
+                }
+                .doc-meta .label {
+                    font-weight: bold;
+                    color: ${ORANGE};
+                    font-size: 11pt;
+                }
+                .doc-meta .value {
+                    color: #1a1a1a;
+                    font-size: 11pt;
+                    font-style: italic;
+                }
+                .doc-meta .promo-name {
+                    display: block;
+                    font-size: 13pt;
+                    font-weight: bold;
+                    color: ${BLUE};
+                    text-align: center;
+                    margin-top: 4pt;
+                    margin-bottom: 2pt;
+                }
+                .doc-meta .promo-sub {
+                    display: block;
+                    font-size: 11pt;
+                    font-weight: bold;
+                    color: ${BLUE};
+                    text-align: center;
+                    margin-bottom: 14pt;
+                }
+                .doc-meta .fecha-label {
+                    font-weight: bold;
+                    color: ${ORANGE};
+                    font-size: 10.5pt;
+                }
+                .doc-meta .fecha-value {
+                    font-style: italic;
+                    color: #1a1a1a;
+                    font-size: 10.5pt;
+                }
+
+                /* ── Tabla principal ── */
                 .main-table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-bottom: 20pt;
                 }
                 .main-table td {
-                    border: 1px solid #aaa;
-                    padding: 9pt 10pt;
+                    border: 1px solid #b0b0b0;
+                    padding: 10pt 12pt;
                     vertical-align: top;
-                    line-height: 1.5;
+                    line-height: 1.55;
                 }
-                .main-table td:first-child {
-                    width: 38%;
-                    font-weight: normal;
-                    color: #1a1a1a;
-                }
-                .main-table td:last-child {
-                    width: 62%;
-                    color: #1a1a1a;
-                }
-
-                /* ── Nota de aprobación ── */
-                .approval-note {
-                    font-size: 10pt;
+                /* columna izquierda: negrita, color oscuro */
+                .main-table td.label {
+                    width: 35%;
                     font-weight: bold;
-                    margin-top: 20pt;
-                    line-height: 1.6;
+                    color: #1a1a1a;
+                    font-size: 10pt;
+                }
+                /* columna derecha: color naranja/azul según doc */
+                .main-table td.value {
+                    width: 65%;
+                    color: ${BLUE};
+                    font-size: 10pt;
+                }
+                /* filas donde el valor va en naranja (horario, responsable, formadores...) */
+                .main-table td.value.orange {
+                    color: ${ORANGE};
                 }
 
-                /* ── Pie de página con logo ── */
+                /* ── Sección aprobación ── */
+                .approval {
+                    margin-top: 18pt;
+                    font-size: 10pt;
+                }
+                .approval p {
+                    margin-bottom: 5pt;
+                }
+                .approval .al {
+                    font-weight: bold;
+                }
+                .approval .sign-area {
+                    margin-top: 30pt;
+                    height: 50pt;
+                    border-bottom: 1px solid #999;
+                    width: 200pt;
+                }
+
+                /* ── Pie de página ── */
                 .footer {
                     position: fixed;
-                    bottom: 20pt;
+                    bottom: 16pt;
                     right: 40pt;
-                    text-align: right;
+                    display: flex;
+                    align-items: center;
+                    gap: 6pt;
                 }
-                .footer-logo-text {
-                    font-size: 13pt;
-                    font-weight: bold;
-                    color: #E85D26;
-                    letter-spacing: 0.5pt;
-                }
-                .footer-logo-sub {
-                    font-size: 7pt;
-                    color: #999;
-                    letter-spacing: 1pt;
-                    text-transform: uppercase;
-                }
-                .footer-logo-badge {
-                    display: inline-block;
-                    background: #E85D26;
+                .footer-badge {
+                    background: ${ORANGE};
                     color: white;
-                    font-size: 8pt;
+                    font-size: 9pt;
                     font-weight: bold;
-                    padding: 1pt 3pt;
-                    margin-right: 3pt;
-                    vertical-align: middle;
+                    padding: 2pt 4pt;
+                    border-radius: 2pt;
+                }
+                .footer-text {
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: ${ORANGE};
+                }
+                .footer-sub {
+                    font-size: 6.5pt;
+                    color: #999;
+                    letter-spacing: 1.2pt;
+                    text-transform: uppercase;
+                    display: block;
+                    margin-top: -2pt;
+                }
+                .page-num {
+                    position: fixed;
+                    bottom: 16pt;
+                    left: 50pt;
+                    font-size: 8pt;
+                    color: #aaa;
                 }
 
                 @media print {
-                    .footer { position: fixed; bottom: 20pt; right: 40pt; }
+                    body { padding: 20pt 30pt 60pt 30pt; }
+                    .no-break { page-break-inside: avoid; }
                 }
             </style>
         `;
 
-        // ── Horario: texto único para la celda ──
-        const horarioOnline = sched.online
-            ? `Online — Entrada: ${_esc(sched.online.entry||'—')}, Inicio píldoras: ${_esc(sched.online.start||'—')}, Descanso: ${_esc(sched.online.break||'—')}, Comida: ${_esc(sched.online.lunch||'—')}, Salida: ${_esc(sched.online.finish||'—')}`
-            : '—';
-        const horarioPresencial = sched.presential
-            ? `Presencial — Entrada: ${_esc(sched.presential.entry||'—')}, Inicio píldoras: ${_esc(sched.presential.start||'—')}, Descanso: ${_esc(sched.presential.break||'—')}, Comida: ${_esc(sched.presential.lunch||'—')}, Salida: ${_esc(sched.presential.finish||'—')}`
-            : '—';
-        const horarioCell = horarioOnline + '<br>' + horarioPresencial + (sched.notes ? `<br><em>Notas: ${_esc(sched.notes)}</em>` : '');
+        // ── Helpers para construir celdas ──
+        const row = (labelHtml, valueHtml, colorClass = '') =>
+            `<tr>
+                <td class="label">${labelHtml}</td>
+                <td class="value ${colorClass}">${valueHtml}</td>
+            </tr>`;
 
-        // ── Equipo: texto para cada rol ──
-        const getRol = (rol) => {
-            const m = team.find(t => (t.role||'').toLowerCase().includes(rol));
-            return m ? _esc(m.name) : '—';
+        const esc = (v) => _esc(v);
+        const val = (v) => esc(v || '—');
+
+        // ── Horario ──
+        let horarioHtml = '';
+        if (sched.online)      horarioHtml += `Virtual: de ${esc(sched.online.entry||'—')} a ${esc(sched.online.finish||'—')}<br>`;
+        if (sched.presential)  horarioHtml += `Presencial: de ${esc(sched.presential.entry||'—')} a ${esc(sched.presential.finish||'—')}`;
+        if (!horarioHtml)      horarioHtml = '—';
+        if (sched.notes)       horarioHtml += `<br><em>${esc(sched.notes)}</em>`;
+
+        // ── Equipo por rol ──
+        const byRole = (keywords) => {
+            const found = team.filter(m =>
+                keywords.some(k => (m.role||'').toLowerCase().includes(k))
+            );
+            if (!found.length) return '—';
+            return found.map(m => esc(m.name + (m.period ? ` | ${m.period}` : ''))).join('<br>');
         };
-        const responsableProyecto   = getRol('responsable') || getRol('project') || (team[0] ? _esc(team[0].name) : '—');
-        const formadorPrincipal     = getRol('formador') || (team[1] ? _esc(team[1].name) : '—');
-        const coformador            = getRol('coformador') || getRol('co-formador') || (team[2] ? _esc(team[2].name) : '—');
-        const responsablePromocion  = getRol('promocion') || getRol('promoción') || (team[3] ? _esc(team[3].name) : '—');
-
-        // ── Otros roles (los que no sean los 4 principales) ──
-        const mainRoles = ['responsable', 'project', 'formador', 'coformador', 'co-formador', 'promocion', 'promoción'];
         const otrosRoles = team
-            .filter(m => !mainRoles.some(r => (m.role||'').toLowerCase().includes(r)))
-            .map(m => `${_esc(m.role||'')}: ${_esc(m.name||'')}`)
+            .filter(m => !['responsable','project','formador','coformador','co-formador',
+                           'coordinador','empleabilidad'].some(k => (m.role||'').toLowerCase().includes(k)))
+            .map(m => `- ${esc(m.role||'')}: ${esc(m.name||'')}`)
             .join('<br>') || '—';
 
-        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">${style}</head><body>`;
+        // ── Responsable del proyecto (para sección aprobación) ──
+        const responsable = team.find(m =>
+            ['responsable','project'].some(k => (m.role||'').toLowerCase().includes(k))
+        );
 
-        // ── Título ──
-        html += `
-        <div class="doc-title">Acta de inicio de proyecto formativo</div>
-        <div class="doc-subtitle">
-            <strong>Nombre proyecto:</strong> ${_esc(promo.name)}<br>
-            <strong>Fecha de elaboración del acta:</strong> ${_today()}
+        // ── HTML ──
+        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">${style}</head><body>`;
+
+        // Título
+        html += `<div class="doc-title">Acta de inicio de proyecto formativo</div>`;
+
+        // Meta: nombre proyecto + fecha
+        html += `<div class="doc-meta">
+            <span class="label">Nombre proyecto: </span>
+            <span class="promo-name">${val(promo.name)}</span>
+            ${promo.subtitle ? `<span class="promo-sub">${esc(promo.subtitle)}</span>` : ''}
+            <br>
+            <span class="fecha-label">Fecha de elaboración del acta: </span>
+            <span class="fecha-value">${_today()}</span>
         </div>`;
 
-        // ── Tabla principal con todas las filas del acta original ──
-        html += `<table class="main-table"><tbody>
-            <tr>
-                <td>Escuela y/o área<br>responsable del<br>proyecto formativo</td>
-                <td>${_esc(ext.school || '—')}</td>
-            </tr>
-            <tr>
-                <td>Tipo proyecto<br>formativo</td>
-                <td>${_esc(ext.type || promo.type || 'Bootcamp')}</td>
-            </tr>
-            <tr>
-                <td>Fecha de inicio de<br>proyecto formativo</td>
-                <td>${_esc(promo.startDate || '—')}</td>
-            </tr>
-            <tr>
-                <td>Fecha de fin de<br>proyecto formativo</td>
-                <td>${_esc(promo.endDate || '—')}</td>
-            </tr>
-            <tr>
-                <td>Fecha límite de<br>inscripciones abiertas</td>
-                <td>${_esc(ext.inscriptionDeadline || '—')}</td>
-            </tr>
-            <tr>
-                <td>Fecha límite de la<br>jornada de selección</td>
-                <td>${_esc(ext.selectionDeadline || '—')}</td>
-            </tr>
-            <tr>
-                <td>Fecha inicio<br>formación:</td>
-                <td>${_esc(promo.startDate || '—')}</td>
-            </tr>
-            <tr>
-                <td>Fecha de fin de<br>formación:</td>
-                <td>${_esc(promo.endDate || '—')}</td>
-            </tr>
-            <tr>
-                <td>Fecha de inicio<br>periodo salida<br>positiva:</td>
-                <td>${_esc(ext.positiveExitStart || '—')}</td>
-            </tr>
-            <tr>
-                <td>Fecha de fin de<br>periodo de salida<br>positiva:</td>
-                <td>${_esc(ext.positiveExitEnd || '—')}</td>
-            </tr>
-            <tr>
-                <td>Horas totales de<br>formación</td>
-                <td>${_esc(ext.totalHours || promo.hours || '—')}</td>
-            </tr>
-            <tr>
-                <td>Modalidad</td>
-                <td>${_esc(ext.modality || promo.modality || '—')}</td>
-            </tr>
-            <tr>
-                <td>Días presenciales y<br>lugar</td>
-                <td>${_esc(ext.presentialDays || '—')}</td>
-            </tr>
-            <tr>
-                <td>Horario</td>
-                <td>${horarioCell}</td>
-            </tr>
-            <tr>
-                <td>Responsable del<br>proyecto</td>
-                <td>${responsableProyecto}</td>
-            </tr>
-            <tr>
-                <td>Formador/a principal</td>
-                <td>${formadorPrincipal}</td>
-            </tr>
-            <tr>
-                <td>Coformador/a</td>
-                <td>${coformador}</td>
-            </tr>
-            <tr>
-                <td>Responsable de<br>promoción</td>
-                <td>${responsablePromocion}</td>
-            </tr>
-            <tr>
-                <td>Otros roles:</td>
-                <td>${otrosRoles}</td>
-            </tr>
-            <tr>
-                <td>Materiales/recursos<br>necesarios</td>
-                <td>${_esc(ext.materials || '—')}</td>
-            </tr>
-            <tr>
-                <td>Período prácticas<br>(sí/no)</td>
-                <td>${_esc(ext.internships != null ? (ext.internships ? 'Sí' : 'No') : '—')}</td>
-            </tr>
-            <tr>
-                <td>Financiadores</td>
-                <td>${_esc(ext.funders || '—')}</td>
-            </tr>
-            <tr>
-                <td>Fecha de<br>justificación a cada<br>financiador</td>
-                <td>${_esc(ext.funderDeadlines || '—')}</td>
-            </tr>
-            <tr>
-                <td>OKR y KPIs de FF5 en<br>este proyecto<br>formativo</td>
-                <td>${_esc(ext.okrKpis || '—')}</td>
-            </tr>
-            <tr>
-                <td>KPIs financiadores</td>
-                <td>${_esc(ext.funderKpis || '—')}</td>
-            </tr>
-            <tr>
-                <td>Día off formador/a</td>
-                <td>${_esc(ext.trainerDayOff || '—')}</td>
-            </tr>
-            <tr>
-                <td>Día off coformador/a</td>
-                <td>${_esc(ext.cotrainerDayOff || '—')}</td>
-            </tr>
-            <tr>
-                <td>Planificación de<br>reuniones de<br>proyecto</td>
-                <td>${_esc(ext.projectMeetings || '—')}</td>
-            </tr>
-            <tr>
-                <td>Planificación de<br>reuniones de equipo<br>(formador/a-coform<br>ador/a-responsable<br>de promoción)</td>
-                <td>${_esc(ext.teamMeetings || '—')}</td>
-            </tr>
-        </tbody></table>`;
+        // Tabla principal
+        html += `<table class="main-table"><tbody>`;
 
-        // ── Nota de aprobación (tal cual en el documento original) ──
-        html += `<p class="approval-note">
-            Aprobación y difusión del documento a través de ASANA y solo por parte del "Responsable del proyecto" definido en este acta.
-        </p>`;
+        html += row(
+            'Escuela y/o área<br>responsable del<br>proyecto formativo',
+            val(ext.school || promo.school)
+        );
+        html += row(
+            'Tipo proyecto formativo',
+            val(ext.projectType || ext.type || promo.type || 'Bootcamp')
+        );
+        html += row(
+            'Fecha de inicio de<br>proyecto formativo',
+            val(promo.startDate)
+        );
+        html += row(
+            'Fecha de fin de<br>proyecto formativo',
+            val(promo.endDate)
+        );
+        html += row(
+            'Fecha inicio formación:',
+            val(promo.startDate)
+        );
+        html += row(
+            'Fecha de fin de<br>formación:',
+            val(promo.endDate)
+        );
+        html += row(
+            'Fecha de inicio periodo<br>salida positiva:',
+            val(_fmtDateEs(ext.positiveExitStart))
+        );
+        html += row(
+            'Fecha de fin de periodo<br>de salida positiva:',
+            val(_fmtDateEs(ext.positiveExitEnd))
+        );
+        html += row(
+            'Horas totales de<br>formación',
+            val(ext.totalHours || promo.hours)
+        );
+        html += row(
+            'Modalidad',
+            val(ext.modality || promo.modality),
+            'orange'
+        );
+        html += row(
+            'Días presenciales y<br>lugar',
+            val(ext.presentialDays),
+            'orange'
+        );
+        html += row(
+            'Horario',
+            horarioHtml,
+            'orange'
+        );
+        html += row(
+            'Responsable del<br>proyecto',
+            byRole(['responsable','project']),
+            'orange'
+        );
+        html += row(
+            'Formador/a principal',
+            byRole(['formador']),
+            'orange'
+        );
+        html += row(
+            'Coformador/a',
+            byRole(['coformador','co-formador']),
+            'orange'
+        );
+        html += row(
+            'Coordinador/a de<br>Formación y<br>Empleabilidad IT',
+            byRole(['coordinador','empleabilidad']),
+            'orange'
+        );
+        // fila vacía como en el documento real
+        html += `<tr><td class="label"></td><td class="value"></td></tr>`;
+        html += row('Otros roles:', otrosRoles, 'orange');
+        html += row(
+            'Materiales/recursos<br>necesarios',
+            val(ext.materials),
+            'orange'
+        );
+        html += row(
+            'Período prácticas<br>(sí/no)',
+            ext.internships != null ? (ext.internships ? 'Sí' : 'No') : '—',
+            'orange'
+        );
+        html += row(
+            'Financiadores',
+            val((ext.funders||'').replace(/\n/g, ' ')),
+            'orange'
+        );
+        html += row(
+            'Fecha de justificación a<br>cada financiador',
+            val(ext.funderDeadlines),
+            'orange'
+        );
+        html += row(
+            'OKR y KPIs de FF5 en<br>este proyecto formativo',
+            val((ext.okrKpis||'').replace(/\n/g,'<br>')),
+            'orange'
+        );
+        // KPIs por financiador (format: "Funder: kpi\n---\nFunder2: kpi2")
+        const kpiLines = (ext.funderKpis||'').split(/\n---\n/).map(b => {
+            const m = b.match(/^([^:]+):\s*([\s\S]*)$/);
+            return m ? `<strong>${esc(m[1].trim())}:</strong> ${esc(m[2].trim())}` : esc(b.trim());
+        }).filter(Boolean);
+        html += row(
+            'KPIs financiadores',
+            kpiLines.length ? kpiLines.join('<br>') : '—',
+            'orange'
+        );
+        html += row(
+            'Día off Formador/a',
+            val(ext.trainerDayOff),
+            'orange'
+        );
+        html += row(
+            'Día off coFormador/a',
+            val(ext.cotrainerDayOff),
+            'orange'
+        );
+        html += row(
+            'Planificación de<br>reuniones de proyecto',
+            val(ext.projectMeetings),
+            'orange'
+        );
+        html += row(
+            'Planificación de<br>reuniones de equipo<br>(formador/a-coformad<br>or/a-responsable de<br>promoción)',
+            val(ext.teamMeetings),
+            'orange'
+        );
 
-        // ── Logo Factoría F5 en pie ──
+        html += `</tbody></table>`;
+
+        // ── Sección aprobación (igual que en la última página del acta real) ──
+        html += `<div class="approval">
+            <p><span class="al">Aprobación y difusión del documento:</span></p>
+            <br>
+            <p><span class="al">Nombre:</span> ${responsable ? esc(responsable.name) : '—'}</p>
+            <p><span class="al">Cargo:</span> ${responsable ? esc(responsable.role) : '—'}</p>
+            <p><span class="al">Firma y fecha:</span> ${_today()}</p>
+            <div class="sign-area"></div>
+        </div>`;
+
+        // ── Pie con logo Factoría F5 ──
         html += `
         <div class="footer">
-            <div><span class="footer-logo-badge">F5</span><span class="footer-logo-text">factoría</span></div>
-            <div class="footer-logo-sub">powered by simplon</div>
+            <div>
+                <span class="footer-badge">F5</span>
+                <span class="footer-text">factoría</span>
+                <span class="footer-sub">powered by simplon</span>
+            </div>
         </div>`;
 
         html += `</body></html>`;

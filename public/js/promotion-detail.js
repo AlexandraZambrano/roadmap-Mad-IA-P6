@@ -207,6 +207,9 @@ Evaluación Global al Final del Bootcamp
 
             document.getElementById('evaluation-text').value = extendedInfoData.evaluation || defaultEvaluation;
 
+            // Acta de Inicio fields are loaded into extendedInfoData and populated
+            // into the modal on demand when openActaModal() is called.
+
             // Set Píldoras Assignment Toggle
             const assignmentToggle = document.getElementById('pildoras-assignment-toggle');
             if (assignmentToggle) {
@@ -1163,6 +1166,9 @@ async function saveExtendedInfo() {
     // Gather Evaluation
     const evaluation = document.getElementById('evaluation-text').value;
 
+    // Note: Acta de Inicio fields are saved separately via saveActaData() from the modal.
+    // extendedInfoData already holds them from the last load or saveActaData() call.
+
     // Update global object
     extendedInfoData.schedule = schedule;
     extendedInfoData.evaluation = evaluation;
@@ -1217,6 +1223,285 @@ async function saveExtendedInfo() {
     } catch (error) {
         console.error('Error saving info:', error);
         alert(`Error saving info: ${error.message}`);
+    }
+}
+
+// ── Acta de Inicio modal ─────────────────────────────────────────────────────
+
+const WEEKDAYS = ['lunes','martes','miércoles','jueves','viernes'];
+
+/** Build a weekday <select> with given id and optional selected value */
+function _actaDaySelect(id, selected) {
+    const opts = WEEKDAYS.map(d =>
+        `<option value="${d}"${d === selected ? ' selected' : ''}>${d.charAt(0).toUpperCase()+d.slice(1)}</option>`
+    ).join('');
+    return `<select class="form-select form-select-sm" id="${id}" style="min-width:130px;">${opts}</select>`;
+}
+
+/** Re-render the KPI textareas per funder */
+function actaRenderFunderKpis() {
+    const container = document.getElementById('acta-funder-kpis-container');
+    const emptyMsg  = document.getElementById('acta-funder-kpis-empty');
+    const tags = document.querySelectorAll('#acta-funders-tags .acta-tag');
+    const funders = Array.from(tags).map(t => t.dataset.value);
+
+    if (!funders.length) {
+        container.innerHTML = '';
+        if (emptyMsg) emptyMsg.style.display = '';
+        return;
+    }
+    if (emptyMsg) emptyMsg.style.display = 'none';
+
+    // Keep existing text so editing isn't lost
+    const existing = {};
+    container.querySelectorAll('textarea[data-funder]').forEach(ta => {
+        existing[ta.dataset.funder] = ta.value;
+    });
+
+    container.innerHTML = funders.map(f => `
+        <div class="mb-2">
+            <label class="form-label fw-semibold small text-secondary">${f}</label>
+            <textarea class="form-control form-control-sm" data-funder="${f}" rows="2"
+                placeholder="KPIs para ${f}">${existing[f] || ''}</textarea>
+        </div>`).join('');
+}
+
+/** Add a funder tag */
+function actaAddFunder(value) {
+    const input = document.getElementById('acta-funder-input');
+    const val = (value || input.value).trim();
+    if (!val) return;
+
+    // Check uniqueness
+    const existing = Array.from(document.querySelectorAll('#acta-funders-tags .acta-tag'))
+        .map(t => t.dataset.value);
+    if (existing.includes(val)) { if (!value) { input.value=''; } return; }
+
+    const tag = document.createElement('span');
+    tag.className = 'acta-tag';
+    tag.dataset.value = val;
+    tag.innerHTML = `${val} <span class="rm" onclick="this.parentElement.remove(); actaRenderFunderKpis()">×</span>`;
+    document.getElementById('acta-funders-tags').appendChild(tag);
+    if (!value) input.value = '';
+    actaRenderFunderKpis();
+}
+
+/** Add a day-off row (trainer or cotrainer) */
+function actaAddDayOffRow(type, moduleName, dayValue) {
+    const container = document.getElementById(`acta-${type}-dayoff-rows`);
+    const rowId = `dayoff-${type}-${Date.now()}`;
+    const div = document.createElement('div');
+    div.className = 'acta-dayoff-row';
+    div.innerHTML = `
+        <input type="text" class="form-control form-control-sm" placeholder="Buscar persona..." list="acta-users-datalist" value="${moduleName||''}">
+        ${_actaDaySelect(`${rowId}-day`, dayValue || 'lunes')}
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()">
+            <i class="bi bi-trash"></i>
+        </button>`;
+    container.appendChild(div);
+}
+
+/** Serialize day-off rows into a string */
+function _actaReadDayOffRows(type) {
+    const rows = document.querySelectorAll(`#acta-${type}-dayoff-rows .acta-dayoff-row`);
+    return Array.from(rows).map(row => {
+        const name = row.querySelector('input[type=text]')?.value.trim() || '';
+        const day  = row.querySelector('select')?.value || '';
+        return name ? `${name} (${day})` : day;
+    }).filter(Boolean).join('. ');
+}
+
+/** Parse a stored day-off string back into rows */
+function _actaPopulateDayOffRows(type, stored) {
+    const container = document.getElementById(`acta-${type}-dayoff-rows`);
+    container.innerHTML = '';
+    if (!stored) return;
+    // format: "Módulo 1. Nombre (día). Módulo 2. ..."
+    // Split by '. ' but keep content between parens
+    const parts = stored.split(/\.\s+(?=[A-ZÁÉÍÓÚÑ])/);
+    parts.forEach(part => {
+        const m = part.match(/^(.*?)\s*\((\w+)\)\s*\.?$/);
+        if (m) {
+            actaAddDayOffRow(type, m[1].trim(), m[2].toLowerCase());
+        } else if (part.trim()) {
+            actaAddDayOffRow(type, part.trim(), 'lunes');
+        }
+    });
+    if (!container.children.length) actaAddDayOffRow(type);
+}
+
+/** Get today's date as YYYY-MM-DD for date input min */
+function _actaToday() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function openActaModal() {
+    const d = extendedInfoData;
+
+    // Simple fields
+    document.getElementById('acta-school').value         = d.school || '';
+    document.getElementById('acta-project-type').value   = d.projectType || 'Bootcamp';
+    document.getElementById('acta-total-hours').value    = d.totalHours || '';
+    document.getElementById('acta-modality').value       = d.modality || '';
+    document.getElementById('acta-materials').value      = d.materials || 'No son necesarios recursos adicionales.';
+    document.getElementById('acta-funder-deadlines').value = d.funderDeadlines || '';
+    document.getElementById('acta-okr-kpis').value       = d.okrKpis ||
+        'PIPO3.R1 Satisfacción 4,2/5 de coders sobre la excelencia del equipo formativo de la formación\nISEC2.R1 Jornadas de selección con un 40% de personas participantes con el proceso 100% finalizado.\nISEC3.R2 Resultado 78% salida positiva.\nISECR2 Finalizar cada programa con un máximo de bajas de 10%.';
+    document.getElementById('acta-project-meetings').value = d.projectMeetings || 'Ver el calendario de reuniones en Asana.';
+
+    // Date inputs
+    const today = _actaToday();
+    const startEl = document.getElementById('acta-positive-exit-start');
+    const endEl   = document.getElementById('acta-positive-exit-end');
+    startEl.min = today;
+    endEl.min   = today;
+    // stored as YYYY-MM-DD or human string — if it looks like a date input value use it, else keep blank
+    startEl.value = /^\d{4}-\d{2}-\d{2}$/.test(d.positiveExitStart) ? d.positiveExitStart : '';
+    endEl.value   = /^\d{4}-\d{2}-\d{2}$/.test(d.positiveExitEnd)   ? d.positiveExitEnd   : '';
+
+    // Presential days checkboxes
+    const storedDays = (d.presentialDays || '').toLowerCase();
+    WEEKDAYS.forEach(day => {
+        const cb = document.getElementById(`pd-${day.substring(0,3)}`);
+        if (cb) cb.checked = storedDays.includes(day);
+    });
+
+    // Presential location — extract from stored string if possible
+    const locationSelect = document.getElementById('acta-presential-location');
+    const locations = Array.from(locationSelect.options).map(o => o.value).filter(Boolean);
+    const matchedLoc = locations.find(l => (d.presentialDays||'').includes(l));
+    locationSelect.value = matchedLoc || '';
+
+    // Internships
+    const inEl = document.getElementById('acta-internships');
+    inEl.value = d.internships === true ? 'true' : d.internships === false ? 'false' : '';
+
+    // Funders tags — clear and re-add
+    document.getElementById('acta-funders-tags').innerHTML = '';
+    const storedFunders = (d.funders || 'SAGE.\nJP Morgan.\nEn colaboración con Microsoft y Somos F5.');
+    storedFunders.split('\n').map(f => f.trim()).filter(Boolean).forEach(f => actaAddFunder(f));
+
+    // Funder KPIs — populate after funders rendered
+    const storedKpis = d.funderKpis || '';
+    // Parse format: "Financiador: kpi text\n---\n..."
+    setTimeout(() => {
+        const kpiBlocks = storedKpis.split(/\n---\n/);
+        kpiBlocks.forEach(block => {
+            const m = block.match(/^([^:]+):\s*([\s\S]*)$/);
+            if (m) {
+                const ta = document.querySelector(`#acta-funder-kpis-container textarea[data-funder="${m[1].trim()}"]`);
+                if (ta) ta.value = m[2].trim();
+            }
+        });
+    }, 50);
+
+    // Populate users datalist from team members
+    const datalist = document.getElementById('acta-users-datalist');
+    if (datalist) {
+        const teamMembers = extendedInfoData.team || [];
+        datalist.innerHTML = teamMembers.map(m => {
+            const label = m.role ? `${m.name} (${m.role})` : m.name;
+            return `<option value="${label}">`;
+        }).join('');
+    }
+
+    // Day-off rows
+    _actaPopulateDayOffRows('trainer',   d.trainerDayOff   || '');
+    _actaPopulateDayOffRows('cotrainer', d.cotrainerDayOff || '');
+    if (!document.querySelector('#acta-trainer-dayoff-rows .acta-dayoff-row'))   actaAddDayOffRow('trainer');
+    if (!document.querySelector('#acta-cotrainer-dayoff-rows .acta-dayoff-row')) actaAddDayOffRow('cotrainer');
+
+    // Team meeting
+    const tmParts = (d.teamMeetings || 'Semanal - jueves (14:30-15:00)').match(/(\w+)\s*\((\d{2}:\d{2})-(\d{2}:\d{2})\)/i);
+    if (tmParts) {
+        const dayEl = document.getElementById('acta-team-meeting-day');
+        const day = tmParts[1].toLowerCase();
+        if (WEEKDAYS.includes(day)) dayEl.value = day;
+        document.getElementById('acta-team-meeting-start').value = tmParts[2];
+        document.getElementById('acta-team-meeting-end').value   = tmParts[3];
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('actaInicioModal'));
+    modal.show();
+}
+
+// Handle Enter key in funder input
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('acta-funder-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); actaAddFunder(); }
+    });
+});
+
+async function saveActaData() {
+    const token = localStorage.getItem('token');
+
+    // Simple fields
+    extendedInfoData.school          = document.getElementById('acta-school').value;
+    extendedInfoData.projectType     = document.getElementById('acta-project-type').value;
+    extendedInfoData.materials       = document.getElementById('acta-materials').value;
+    extendedInfoData.funderDeadlines = document.getElementById('acta-funder-deadlines').value;
+    extendedInfoData.okrKpis         = document.getElementById('acta-okr-kpis').value;
+    extendedInfoData.projectMeetings = document.getElementById('acta-project-meetings').value;
+    extendedInfoData.totalHours      = document.getElementById('acta-total-hours').value;
+    extendedInfoData.modality        = document.getElementById('acta-modality').value;
+
+    // Internships
+    const inRaw = document.getElementById('acta-internships').value;
+    extendedInfoData.internships = inRaw === 'true' ? true : inRaw === 'false' ? false : null;
+
+    // Dates (stored as YYYY-MM-DD)
+    extendedInfoData.positiveExitStart = document.getElementById('acta-positive-exit-start').value;
+    extendedInfoData.positiveExitEnd   = document.getElementById('acta-positive-exit-end').value;
+
+    // Presential days + location
+    const checkedDays = WEEKDAYS.filter(day => {
+        const cb = document.getElementById(`pd-${day.substring(0,3)}`);
+        return cb && cb.checked;
+    });
+    const location = document.getElementById('acta-presential-location').value;
+    const dayCount = checkedDays.length;
+    extendedInfoData.presentialDays = dayCount
+        ? `${dayCount} día${dayCount>1?'s':''}, ${checkedDays.join(' y ')}${location ? ', '+location : ''}`
+        : (location || '');
+
+    // Funders (unique tags → newline-separated)
+    const funderTags = Array.from(document.querySelectorAll('#acta-funders-tags .acta-tag'))
+        .map(t => t.dataset.value);
+    extendedInfoData.funders = funderTags.join('\n');
+
+    // Funder KPIs (format: "Funder: kpi\n---\nFunder2: kpi2")
+    const kpiBlocks = [];
+    document.querySelectorAll('#acta-funder-kpis-container textarea[data-funder]').forEach(ta => {
+        if (ta.value.trim()) kpiBlocks.push(`${ta.dataset.funder}: ${ta.value.trim()}`);
+    });
+    extendedInfoData.funderKpis = kpiBlocks.join('\n---\n');
+
+    // Day-off rows
+    extendedInfoData.trainerDayOff   = _actaReadDayOffRows('trainer');
+    extendedInfoData.cotrainerDayOff = _actaReadDayOffRows('cotrainer');
+
+    // Team meetings
+    const tmDay   = document.getElementById('acta-team-meeting-day').value;
+    const tmStart = document.getElementById('acta-team-meeting-start').value;
+    const tmEnd   = document.getElementById('acta-team-meeting-end').value;
+    extendedInfoData.teamMeetings = `Semanal - ${tmDay} (${tmStart}-${tmEnd})`;
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(extendedInfoData)
+        });
+        if (response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('actaInicioModal'))?.hide();
+            alert('Datos del Acta de Inicio guardados correctamente.');
+        } else {
+            const err = await response.json().catch(() => ({}));
+            alert(`Error al guardar: ${response.status} - ${err.error || 'Error desconocido'}`);
+        }
+    } catch (error) {
+        console.error('Error saving acta data:', error);
+        alert(`Error al guardar: ${error.message}`);
     }
 }
 

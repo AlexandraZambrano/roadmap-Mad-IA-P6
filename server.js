@@ -2498,7 +2498,10 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
       console.log('ModulesPildoras count:', req.body.modulesPildoras.length);
     }
 
-    const { schedule, team, resources, evaluation, pildoras, modulesPildoras, pildorasAssignmentOpen, competences } = req.body;
+    const { schedule, team, resources, evaluation, pildoras, modulesPildoras, pildorasAssignmentOpen, competences,
+            school, projectType, positiveExitStart, positiveExitEnd, totalHours,
+            modality, presentialDays, materials, internships, funders, funderDeadlines,
+            okrKpis, funderKpis, trainerDayOff, cotrainerDayOff, projectMeetings, teamMeetings } = req.body;
     const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
     const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
     const normalizedCompetences = Array.isArray(competences) ? competences : [];
@@ -2514,7 +2517,24 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
           pildoras: normalizedPildoras,
           modulesPildoras: normalizedModulesPildoras,
           pildorasAssignmentOpen: !!pildorasAssignmentOpen,
-          competences: normalizedCompetences
+          competences: normalizedCompetences,
+          school: school || '',
+          projectType: projectType || '',
+          positiveExitStart: positiveExitStart || '',
+          positiveExitEnd: positiveExitEnd || '',
+          totalHours: totalHours || '',
+          modality: modality || '',
+          presentialDays: presentialDays || '',
+          materials: materials || '',
+          internships: internships !== undefined ? internships : null,
+          funders: funders || '',
+          funderDeadlines: funderDeadlines || '',
+          okrKpis: okrKpis || '',
+          funderKpis: funderKpis || '',
+          trainerDayOff: trainerDayOff || '',
+          cotrainerDayOff: cotrainerDayOff || '',
+          projectMeetings: projectMeetings || '',
+          teamMeetings: teamMeetings || ''
         }
       },
       { upsert: true, returnDocument: 'after', strict: false }
