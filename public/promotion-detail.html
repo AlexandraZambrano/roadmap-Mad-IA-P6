@@ -230,6 +230,51 @@
                                 id="delete-selected-btn" style="display:none;">
                                 <i class="bi bi-trash me-2"></i>Delete Selected
                             </button>
+
+                            <!-- ── Bulk PDF Reports ── -->
+                            <div class="dropdown" id="bulk-reports-dropdown" style="display:none;">
+                                <button class="btn btn-outline-warning dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF Informes
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width:230px;">
+                                    <li><h6 class="dropdown-header text-uppercase" style="font-size:.7rem; letter-spacing:.06em;">Seleccionados</h6></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#"
+                                            onclick="event.preventDefault(); _bulkReportTechnical()">
+                                            <i class="bi bi-file-earmark-bar-graph me-2 text-secondary"></i>
+                                            Seguimiento Técnico
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#"
+                                            onclick="event.preventDefault(); _bulkReportTransversal()">
+                                            <i class="bi bi-file-earmark-person me-2 text-secondary"></i>
+                                            Seguimiento Transversal
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header text-uppercase" style="font-size:.7rem; letter-spacing:.06em;">Por proyecto</h6></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#"
+                                            onclick="event.preventDefault(); _bulkReportByProject()">
+                                            <i class="bi bi-kanban me-2 text-success"></i>
+                                            Informe por proyecto…
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header text-uppercase" style="font-size:.7rem; letter-spacing:.06em;">Promoción completa</h6></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#"
+                                            onclick="event.preventDefault(); window.Reports?.printAllProjectsSummary(promotionId)">
+                                            <i class="bi bi-collection me-2 text-primary"></i>
+                                            Resumen de todos los proyectos
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <!-- ── /Bulk PDF Reports ── -->
+
                             <input type="file" id="students-excel-input" accept=".xlsx,.xls" class="d-none"
                                 onchange="importStudentsFromExcel(this)">
                             <button class="btn btn-outline-success"
@@ -1487,6 +1532,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="js/config.js"></script>
     <script src="js/reports.js"></script>
     <script src="js/program-competences.js"></script>

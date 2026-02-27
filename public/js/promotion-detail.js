@@ -3318,6 +3318,11 @@ function updateSelectionState() {
     if (deleteSelectedBtn) {
         deleteSelectedBtn.style.display = selectedCount > 0 ? 'inline-block' : 'none';
     }
+
+    const bulkReportsDropdown = document.getElementById('bulk-reports-dropdown');
+    if (bulkReportsDropdown) {
+        bulkReportsDropdown.style.display = selectedCount > 0 ? 'inline-block' : 'none';
+    }
 }
 
 function toggleAllStudents(source) {
@@ -3359,6 +3364,160 @@ function exportSelectedStudentsCsv() {
 
     exportStudentsToCSV(selectedStudents, `selected-students-promotion-${promotionId}.csv`);
 }
+
+// ── Bulk PDF Report helpers ───────────────────────────────────────────────────
+function _getSelectedStudentIds() {
+    return Array.from(document.querySelectorAll('.student-checkbox:checked'))
+        .map(cb => cb.dataset.studentId);
+}
+
+function _bulkReportTechnical() {
+    const ids = _getSelectedStudentIds();
+    if (!ids.length) { alert('Selecciona al menos un estudiante.'); return; }
+    window.Reports?.printBulkTechnical(ids, promotionId);
+}
+
+function _bulkReportTransversal() {
+    const ids = _getSelectedStudentIds();
+    if (!ids.length) { alert('Selecciona al menos un estudiante.'); return; }
+    window.Reports?.printBulkTransversal(ids, promotionId);
+}
+
+async function _bulkReportByProject() {
+    // Remove any existing modal
+    document.getElementById('_project-picker-modal')?.remove();
+
+    // Show a loading modal while we fetch the promotion roadmap
+    const loadingModal = document.createElement('div');
+    loadingModal.id = '_project-picker-modal';
+    loadingModal.innerHTML = `
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;">
+            <div style="background:#fff;border-radius:10px;padding:32px 40px;min-width:280px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.25);">
+                <div style="width:36px;height:36px;border:4px solid #FF6B35;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px;"></div>
+                <div style="font-family:Inter,sans-serif;font-size:14px;color:#444;">Cargando proyectos…</div>
+                <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+            </div>
+        </div>`;
+    document.body.appendChild(loadingModal);
+
+    try {
+        const token = localStorage.getItem('token');
+
+        // Fetch just the promotion to read the roadmap projects
+        const promoRes = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const promo = promoRes.ok ? await promoRes.json() : {};
+
+        // Collect all project names from the roadmap (modules[].projects[].name)
+        const allProjects = [];
+        const seen = new Set();
+        (promo.modules || []).forEach(mod => {
+            (mod.projects || []).forEach(p => {
+                if (p.name && !seen.has(p.name.trim())) {
+                    seen.add(p.name.trim());
+                    allProjects.push({ name: p.name.trim(), moduleName: mod.name || '' });
+                }
+            });
+        });
+
+        // Remove loading modal
+        document.getElementById('_project-picker-modal')?.remove();
+
+        if (!allProjects.length) {
+            alert('No hay proyectos definidos en el roadmap de esta promoción.');
+            return;
+        }
+
+        // Build the dropdown options grouped by module
+        const options = allProjects.map(({ name, moduleName }) =>
+            `<option value="${name.replace(/"/g, '&quot;')}" data-module="${moduleName.replace(/"/g, '&quot;')}">${name}</option>`
+        ).join('');
+
+        // Get selected student IDs to know how many PDFs will be generated
+        const selectedIds = _getSelectedStudentIds();
+
+        // Build the picker modal
+        const modal = document.createElement('div');
+        modal.id = '_project-picker-modal';
+        modal.innerHTML = `
+            <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;">
+                <div style="background:#fff;border-radius:12px;padding:28px 28px 22px;min-width:360px;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.28);font-family:Inter,sans-serif;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                        <div>
+                            <div style="font-size:11px;color:#FF6B35;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">Informes por Proyecto</div>
+                            <strong style="font-size:16px;color:#1A1A2E;">Selecciona un proyecto</strong>
+                        </div>
+                        <button onclick="document.getElementById('_project-picker-modal').remove()"
+                            style="background:none;border:1px solid #dee2e6;border-radius:6px;padding:4px 10px;font-size:13px;cursor:pointer;color:#666;">✕</button>
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <label style="font-size:12px;font-weight:600;color:#4A4A6A;display:block;margin-bottom:6px;">Proyecto del roadmap</label>
+                        <select id="_proj-select"
+                            style="width:100%;padding:10px 12px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;
+                                   font-family:Inter,sans-serif;color:#1A1A2E;background:#fff;outline:none;cursor:pointer;">
+                            <option value="" disabled selected>— Elige un proyecto —</option>
+                            ${options}
+                        </select>
+                    </div>
+                    <div id="_proj-preview" style="min-height:28px;margin-bottom:16px;font-size:12px;color:#4A4A6A;">
+                        ${selectedIds.length
+                            ? `<span style="background:#fff8f0;color:#FF6B35;border-radius:6px;padding:4px 10px;display:inline-block;">
+                                Se generará un PDF por cada uno de los <strong>${selectedIds.length}</strong> coders seleccionados
+                              </span>`
+                            : `<span style="background:#fff3cd;color:#856404;border-radius:6px;padding:4px 10px;display:inline-block;">
+                                ⚠ No hay coders seleccionados. Se procesarán todos los de la promoción.
+                              </span>`
+                        }
+                    </div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button onclick="document.getElementById('_project-picker-modal').remove()"
+                            style="padding:9px 18px;border:1px solid #dee2e6;border-radius:8px;font-size:13px;
+                                   background:#fff;color:#666;cursor:pointer;font-family:Inter,sans-serif;">
+                            Cancelar
+                        </button>
+                        <button id="_proj-download-btn" disabled
+                            onclick="_confirmBulkProjectDownload()"
+                            style="padding:9px 22px;border:none;border-radius:8px;font-size:13px;font-weight:600;
+                                   background:#FF6B35;color:#fff;cursor:pointer;font-family:Inter,sans-serif;
+                                   opacity:0.5;transition:opacity .15s;">
+                            <i class="bi bi-download me-1"></i> Descargar PDFs
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+
+        // Wire up the select change
+        const sel = document.getElementById('_proj-select');
+        const btn = document.getElementById('_proj-download-btn');
+        sel.addEventListener('change', () => {
+            if (sel.value) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            } else {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+            }
+        });
+
+    } catch (err) {
+        document.getElementById('_project-picker-modal')?.remove();
+        console.error('[BulkByProject] Error cargando proyectos:', err);
+        alert('Error al cargar los proyectos: ' + err.message);
+    }
+}
+
+function _confirmBulkProjectDownload() {
+    const sel = document.getElementById('_proj-select');
+    const projectName = sel?.value;
+    if (!projectName) return;
+    document.getElementById('_project-picker-modal')?.remove();
+    // Pass the currently selected student IDs (or null = all students)
+    const selectedIds = _getSelectedStudentIds();
+    window.Reports?.printBulkByProject(projectName, promotionId, selectedIds.length ? selectedIds : null);
+}
+// ── /Bulk PDF Report helpers ──────────────────────────────────────────────────
 
 // Delete selected students
 async function deleteSelectedStudents() {
@@ -3815,8 +3974,3 @@ async function exportAttendanceToExcel() {
 }
 
 // Selection state management
-function updateSelectionState(checkbox) {
-    // This function is called when checkboxes are clicked
-    // You can add logic here to update UI based on selection
-}
-

@@ -103,66 +103,220 @@
         </div>`;
     }
 
-    // ─── Open a print window ─────────────────────────────────────────────────
-    function _printWindow(htmlContent, previewOnly = false) {
+    // ─── html2pdf options ────────────────────────────────────────────────────
+    // (kept only for _previewWindow which still uses html2pdf CDN loaded inside the popup)
+
+    /** Wrap html in a full standalone document */
+    function _wrapHtml(htmlContent) {
+        return `<!DOCTYPE html><html lang="es"><head>
+            <meta charset="UTF-8">
+            <style>${_baseCss()}</style>
+        </head><body style="margin:0;padding:12px 16px;background:#fff;">${htmlContent}${_footer()}</body></html>`;
+    }
+
+    /**
+     * Core renderer: renders htmlContent inside a hidden iframe,
+     * captures it with html2canvas, slices into A4 pages with jsPDF.
+     * Returns Promise<jsPDF instance>.
+     */
+    function _renderToPdf(htmlContent, filename) {
+        return new Promise((resolve, reject) => {
+            if (!window.html2canvas || !window.jspdf) {
+                reject(new Error('Librerías html2canvas / jsPDF no cargadas. Revisa tu conexión.'));
+                return;
+            }
+            const { jsPDF } = window.jspdf;
+
+            // Create a hidden iframe so the browser fully lays out the HTML
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'position:fixed;top:0;left:0;width:794px;height:1px;opacity:0;pointer-events:none;border:none;z-index:-1;';
+            document.body.appendChild(iframe);
+
+            // Write the full HTML document into the iframe
+            iframe.contentDocument.open();
+            iframe.contentDocument.write(_wrapHtml(htmlContent));
+            iframe.contentDocument.close();
+
+            // Give the browser time to finish layout/fonts
+            const capture = () => {
+                const iDoc = iframe.contentDocument;
+                const body = iDoc.body;
+                // Expand iframe to full content height so nothing is clipped
+                const scrollH = Math.max(body.scrollHeight, body.offsetHeight, iDoc.documentElement.scrollHeight);
+                iframe.style.height = scrollH + 'px';
+
+                html2canvas(body, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    windowWidth: 794,
+                    scrollX: 0,
+                    scrollY: 0,
+                    width: body.scrollWidth,
+                    height: scrollH
+                }).then(canvas => {
+                    document.body.removeChild(iframe);
+
+                    const imgData = canvas.toDataURL('image/jpeg', 0.97);
+                    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+                    const pageW  = pdf.internal.pageSize.getWidth();   // 210mm
+                    const pageH  = pdf.internal.pageSize.getHeight();  // 297mm
+                    const margin = 14; // mm
+
+                    const usableW = pageW - margin * 2;
+                    const usableH = pageH - margin * 2;
+
+                    // Scale the canvas to fit the usable page width
+                    const canvasMmW = usableW;
+                    const canvasMmH = canvas.height * (usableW / canvas.width);
+
+                    let yPos = 0; // position within canvas in mm
+                    let firstPage = true;
+
+                    while (yPos < canvasMmH) {
+                        if (!firstPage) pdf.addPage();
+                        firstPage = false;
+
+                        // Clip: shift the image up by yPos so the current slice appears at top
+                        pdf.addImage(
+                            imgData, 'JPEG',
+                            margin,           // x
+                            margin - yPos,    // y  (negative shifts image upward)
+                            canvasMmW,        // w
+                            canvasMmH,        // h
+                            undefined,
+                            'FAST'
+                        );
+
+                        yPos += usableH;
+                    }
+
+                    pdf.setProperties({ title: filename || 'informe.pdf' });
+                    resolve(pdf);
+                }).catch(err => {
+                    document.body.removeChild(iframe);
+                    reject(err);
+                });
+            };
+
+            // Wait for iframe load event, then a short extra tick for fonts
+            if (iframe.contentDocument.readyState === 'complete') {
+                setTimeout(capture, 300);
+            } else {
+                iframe.onload = () => setTimeout(capture, 300);
+            }
+        });
+    }
+
+    /** Directly download a single PDF. Returns a Promise. */
+    async function _savePdf(htmlContent, filename) {
+        const pdf = await _renderToPdf(htmlContent, filename);
+        pdf.save(filename || 'informe.pdf');
+    }
+
+    /** Generate a PDF Blob without downloading it (for ZIP). Returns Promise<Blob>. */
+    async function _getPdfBlob(htmlContent, filename) {
+        const pdf = await _renderToPdf(htmlContent, filename);
+        return pdf.output('blob');
+    }
+
+    /** Bundle multiple { blob, filename } objects into a ZIP and download it. */
+    async function _zipAndDownload(files, zipName) {
+        if (!window.JSZip) {
+            alert('La librería JSZip no está cargada. Comprueba tu conexión a internet.');
+            return;
+        }
+        const zip = new JSZip();
+        files.forEach(({ blob, filename }) => zip.file(filename, blob));
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(zipBlob);
+        a.download = zipName || 'informes.zip';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 1000);
+    }
+
+    /** Show a saving spinner overlay */
+    function _showSaving(msg) {
+        const existing = document.getElementById('_pdf-saving-overlay');
+        if (existing) existing.remove();
+        const el = document.createElement('div');
+        el.id = '_pdf-saving-overlay';
+        el.innerHTML = `
+            <div style="position:fixed;inset:0;background:rgba(26,26,46,.7);z-index:99999;
+                        display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+                <div style="width:48px;height:48px;border:5px solid #FF6B35;border-top-color:transparent;
+                            border-radius:50%;animation:spin .8s linear infinite;"></div>
+                <div style="color:#fff;font-family:Inter,sans-serif;font-size:15px;">${msg || 'Generando PDF…'}</div>
+                <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+            </div>`;
+        document.body.appendChild(el);
+    }
+
+    function _hideSaving() {
+        document.getElementById('_pdf-saving-overlay')?.remove();
+    }
+
+    // ─── Legacy preview window (kept ONLY for printProjectReport signature preview) ──
+    function _previewWindow(htmlContent, filename) {
         const win = window.open('', '_blank', 'width=960,height=780');
         if (!win) { alert('El navegador bloqueó la ventana emergente. Permite los popups para este sitio.'); return; }
 
-        const printBarCss = `
-            #print-bar {
-                position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
-                background: #1A1A2E; color: #fff;
-                display: flex; align-items: center; justify-content: space-between;
-                padding: 10px 20px; gap: 12px;
-                font-family: 'Inter', sans-serif; font-size: 13px;
-                box-shadow: 0 2px 8px rgba(0,0,0,.4);
-            }
-            #print-bar .bar-left { display:flex; align-items:center; gap:10px; }
-            #print-bar .bar-logo { font-weight:700; color:#FF6B35; font-size:15px; letter-spacing:.5px; }
-            #print-bar .bar-hint { color:#ccc; font-size:12px; }
-            #print-bar .btn-print {
-                background: #FF6B35; color: #fff; border: none; border-radius: 6px;
-                padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
-                display: flex; align-items: center; gap: 6px; transition: background .15s;
-            }
-            #print-bar .btn-print:hover { background: #e05520; }
-            #print-bar .btn-close {
-                background: transparent; color: #aaa; border: 1px solid #555; border-radius: 6px;
-                padding: 7px 14px; font-size: 12px; cursor: pointer; transition: color .15s;
-            }
-            #print-bar .btn-close:hover { color: #fff; border-color: #aaa; }
-            @media print { #print-bar { display: none !important; } }
-            body.preview-mode { padding-top: 56px; }
+        const barCss = `
+            #print-bar { position:fixed;top:0;left:0;right:0;z-index:9999;background:#1A1A2E;color:#fff;
+                display:flex;align-items:center;justify-content:space-between;padding:10px 20px;gap:12px;
+                font-family:'Inter',sans-serif;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.4); }
+            .bar-logo{font-weight:700;color:#FF6B35;font-size:15px;}
+            .bar-hint{color:#ccc;font-size:12px;}
+            .btn-save{background:#FF6B35;color:#fff;border:none;border-radius:6px;padding:8px 20px;
+                font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;}
+            .btn-save:hover{background:#e05520;}
+            .btn-cl{background:transparent;color:#aaa;border:1px solid #555;border-radius:6px;
+                padding:7px 14px;font-size:12px;cursor:pointer;}
+            .btn-cl:hover{color:#fff;border-color:#aaa;}
+            @media print{#print-bar{display:none!important}}
+            body{padding-top:56px;}
         `;
 
-        const printBar = previewOnly ? `
-            <div id="print-bar">
-                <div class="bar-left">
-                    <span class="bar-logo">Bootcamp Manager</span>
-                    <span class="bar-hint">Vista previa — revisa el documento antes de guardar</span>
-                </div>
-                <div style="display:flex;gap:8px;">
-                    <button class="btn-print" onclick="window.print()">
-                        🖨️ Imprimir / Guardar PDF
-                    </button>
-                    <button class="btn-close" onclick="window.close()">Cerrar</button>
-                </div>
-            </div>` : '';
-
-        const bodyClass = previewOnly ? 'class="preview-mode"' : '';
+        // Encode filename for safe use in JS inside the popup
+        const safeFilename = JSON.stringify(filename || 'informe-proyecto.pdf');
 
         win.document.write(`<!DOCTYPE html><html lang="es"><head>
             <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>Informe – Bootcamp Manager</title>
-            <style>${_baseCss()}${previewOnly ? printBarCss : ''}</style>
-        </head><body ${bodyClass}>${printBar}${htmlContent}${_footer()}</body></html>`);
+            <title>Vista previa – Bootcamp Manager</title>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+            <style>${_baseCss()}${barCss}</style>
+        </head><body>
+            <div id="print-bar">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="bar-logo">Bootcamp Manager</span>
+                    <span class="bar-hint">Vista previa · añade tu firma antes de guardar</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-save" onclick="savePdf()">⬇ Guardar PDF</button>
+                    <button class="btn-cl" onclick="window.close()">Cerrar</button>
+                </div>
+            </div>
+            <div id="pdf-content">${htmlContent}${_footer()}</div>
+            <script>
+                function savePdf(){
+                    var btn=document.querySelector('.btn-save');
+                    btn.disabled=true; btn.textContent='Generando…';
+                    var el=document.getElementById('pdf-content');
+                    html2pdf().set({
+                        margin:[18,16,18,16], filename:${safeFilename},
+                        image:{type:'jpeg',quality:.97},
+                        html2canvas:{scale:2,useCORS:true,logging:false},
+                        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+                        pagebreak:{mode:['avoid-all','css'],before:'.page-break'}
+                    }).from(el).save().then(function(){ btn.disabled=false; btn.textContent='⬇ Guardar PDF'; });
+                }
+            <\/script>
+        </body></html>`);
         win.document.close();
-        if (!previewOnly) {
-            win.onload = () => { win.focus(); win.print(); };
-        } else {
-            win.onload = () => win.focus();
-        }
+        win.onload = () => win.focus();
     }
 
     // ─── Escape helper ───────────────────────────────────────────────────────
@@ -309,8 +463,12 @@
                 html += `<p class="empty-note">Sin píldoras presentadas.</p>`;
             }
 
-            _printWindow(html);
+            const filename = `tecnico_${(fullName).replace(/\s+/g,'-')}.pdf`;
+            _showSaving('Generando PDF…');
+            await _savePdf(html, filename);
+            _hideSaving();
         } catch (e) {
+            _hideSaving();
             console.error('[Reports] printTechnical:', e);
             alert('Error generando el informe técnico: ' + e.message);
         }
@@ -402,8 +560,12 @@
                 html += `<p class="empty-note">Sin incidencias registradas.</p>`;
             }
 
-            _printWindow(html);
+            const filename = `transversal_${(fullName).replace(/\s+/g,'-')}.pdf`;
+            _showSaving('Generando PDF…');
+            await _savePdf(html, filename);
+            _hideSaving();
         } catch (e) {
+            _hideSaving();
             console.error('[Reports] printTransversal:', e);
             alert('Error generando el informe transversal: ' + e.message);
         }
@@ -412,136 +574,288 @@
     // ════════════════════════════════════════════════════════════════════════
     // 3. ACTA DE INICIO
     // ════════════════════════════════════════════════════════════════════════
-    async function printActaInicio(promotionId) {
-        const token = localStorage.getItem('token');
-        try {
-            const [promoRes, extRes, studentsRes] = await Promise.all([
-                fetch(`${API_URL}/api/promotions/${promotionId}`,              { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`),
-                fetch(`${API_URL}/api/promotions/${promotionId}/students`,     { headers: { 'Authorization': `Bearer ${token}` } })
-            ]);
-            if (!promoRes.ok) throw new Error('No se pudo cargar la promoción');
-            const promo    = await promoRes.json();
-            const ext      = extRes.ok ? await extRes.json() : {};
-            const students = studentsRes.ok ? await studentsRes.json() : [];
+async function printActaInicio(promotionId) {
+    const token = localStorage.getItem('token');
+    try {
+        const [promoRes, extRes] = await Promise.all([
+            fetch(`${API_URL}/api/promotions/${promotionId}`,              { headers: { 'Authorization': `Bearer ${token}` } }),
+            fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`)
+        ]);
+        if (!promoRes.ok) throw new Error('No se pudo cargar la promoción');
+        const promo = await promoRes.json();
+        const ext   = extRes.ok ? await extRes.json() : {};
 
-            const sched = ext.schedule || {};
-            const team  = ext.team || [];
+        const sched = ext.schedule || {};
+        const team  = ext.team || [];
 
-            let html = _header(
-                'Acta de Inicio',
-                promo.name,
-                null,
-                _today()
-            );
-
-            // ── 1. Datos del programa ──
-            html += `<h3>1. Datos del Programa</h3>
-            <div class="section-box accent row3">
-                <div class="kv"><strong>Nombre:</strong><br>${_esc(promo.name)}</div>
-                <div class="kv"><strong>Fecha inicio:</strong><br>${_esc(promo.startDate || '—')}</div>
-                <div class="kv"><strong>Fecha fin:</strong><br>${_esc(promo.endDate || '—')}</div>
-                <div class="kv"><strong>Duración:</strong><br>${_esc(promo.weeks || '—')} semanas</div>
-                <div class="kv"><strong>Nº de coders:</strong><br>${students.length}</div>
-                <div class="kv"><strong>Módulos:</strong><br>${(promo.modules || []).length}</div>
-            </div>`;
-
-            if (promo.description) {
-                html += `<div class="section-box" style="margin-top:0;"><p>${_esc(promo.description)}</p></div>`;
-            }
-
-            // ── 2. Equipo formativo ──
-            html += `<h3>2. Equipo Formativo</h3>`;
-            if (team.length) {
-                html += `<table><thead><tr><th>Nombre</th><th>Rol</th><th>Email</th><th>LinkedIn</th></tr></thead><tbody>`;
-                team.forEach(m => {
-                    html += `<tr>
-                        <td>${_esc(m.name || '—')}</td>
-                        <td>${_esc(m.role || '—')}</td>
-                        <td>${_esc(m.email || '—')}</td>
-                        <td>${m.linkedin ? `<a href="${_esc(m.linkedin)}">${_esc(m.linkedin)}</a>` : '—'}</td>
-                    </tr>`;
-                });
-                html += `</tbody></table>`;
-            } else {
-                html += `<p class="empty-note">Sin equipo formativo registrado.</p>`;
-            }
-
-            // ── 3. Horario ──
-            html += `<h3>3. Horario</h3>
-            <div class="row2">
-                <div class="section-box blue">
-                    <h4>Días Online</h4>
-                    <div class="kv"><strong>Entrada:</strong> ${_esc(sched.online?.entry || '—')}</div>
-                    <div class="kv"><strong>Inicio píldoras:</strong> ${_esc(sched.online?.start || '—')}</div>
-                    <div class="kv"><strong>Descanso:</strong> ${_esc(sched.online?.break || '—')}</div>
-                    <div class="kv"><strong>Comida:</strong> ${_esc(sched.online?.lunch || '—')}</div>
-                    <div class="kv"><strong>Salida:</strong> ${_esc(sched.online?.finish || '—')}</div>
-                </div>
-                <div class="section-box green">
-                    <h4>Días Presenciales</h4>
-                    <div class="kv"><strong>Entrada:</strong> ${_esc(sched.presential?.entry || '—')}</div>
-                    <div class="kv"><strong>Inicio píldoras:</strong> ${_esc(sched.presential?.start || '—')}</div>
-                    <div class="kv"><strong>Descanso:</strong> ${_esc(sched.presential?.break || '—')}</div>
-                    <div class="kv"><strong>Comida:</strong> ${_esc(sched.presential?.lunch || '—')}</div>
-                    <div class="kv"><strong>Salida:</strong> ${_esc(sched.presential?.finish || '—')}</div>
-                </div>
-            </div>`;
-            if (sched.notes) {
-                html += `<div class="section-box"><p><strong>Notas:</strong> ${_esc(sched.notes)}</p></div>`;
-            }
-
-            // ── 4. Lista de participantes ──
-            html += `<h3>4. Lista de Participantes</h3>`;
-            if (students.length) {
-                html += `<table><thead><tr>
-                    <th>#</th><th>Nombre completo</th><th>Email</th>
-                    <th>Nacionalidad</th><th>Sit. Administrativa</th>
-                    <th>Firma</th>
-                </tr></thead><tbody>`;
-                students.forEach((s, i) => {
-                    html += `<tr>
-                        <td>${i + 1}</td>
-                        <td>${_esc((s.name || '') + ' ' + (s.lastname || ''))}</td>
-                        <td>${_esc(s.email || '—')}</td>
-                        <td>${_esc(s.nationality || '—')}</td>
-                        <td>${_esc(s.administrativeSituation || '—')}</td>
-                        <td style="width:80pt;"></td>
-                    </tr>`;
-                });
-                html += `</tbody></table>`;
-            } else {
-                html += `<p class="empty-note">Sin participantes registrados.</p>`;
-            }
-
-            // ── 5. Firma del equipo formativo ──
-            html += `<h3 style="margin-top:14pt;">5. Firmas del Equipo Formativo</h3>
-            <div style="display:grid; grid-template-columns: repeat(${Math.min(team.length || 2, 3)}, 1fr); gap:12pt; margin-top:8pt;">`;
-            if (team.length) {
-                team.forEach(m => {
-                    html += `<div class="section-box no-break" style="min-height:60pt;">
-                        <div style="font-size:9pt; color:${SECONDARY};">${_esc(m.role || '')}</div>
-                        <div style="font-weight:600; margin-bottom:4pt;">${_esc(m.name || '')}</div>
-                        <div style="border-bottom:1px solid #999; height:30pt; margin-top:8pt;"></div>
-                        <div style="font-size:8pt; color:#aaa; margin-top:3pt;">Firma</div>
-                    </div>`;
-                });
-            } else {
-                for (let i = 0; i < 2; i++) {
-                    html += `<div class="section-box no-break" style="min-height:60pt;">
-                        <div style="border-bottom:1px solid #999; height:30pt; margin-top:8pt;"></div>
-                        <div style="font-size:8pt; color:#aaa; margin-top:3pt;">Firma</div>
-                    </div>`;
+        const style = `
+            <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 10pt;
+                    color: #1a1a1a;
+                    padding: 40pt 50pt 80pt 50pt;
                 }
-            }
-            html += `</div>`;
 
-            _printWindow(html);
-        } catch (e) {
-            console.error('[Reports] printActaInicio:', e);
-            alert('Error generando el Acta de Inicio: ' + e.message);
-        }
+                /* ── Título principal ── */
+                .doc-title {
+                    font-size: 14pt;
+                    font-weight: bold;
+                    margin-bottom: 6pt;
+                }
+                .doc-subtitle {
+                    font-size: 10pt;
+                    margin-bottom: 16pt;
+                    color: #333;
+                }
+
+                /* ── Tabla principal de datos (2 columnas, estilo acta) ── */
+                .main-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20pt;
+                }
+                .main-table td {
+                    border: 1px solid #aaa;
+                    padding: 9pt 10pt;
+                    vertical-align: top;
+                    line-height: 1.5;
+                }
+                .main-table td:first-child {
+                    width: 38%;
+                    font-weight: normal;
+                    color: #1a1a1a;
+                }
+                .main-table td:last-child {
+                    width: 62%;
+                    color: #1a1a1a;
+                }
+
+                /* ── Nota de aprobación ── */
+                .approval-note {
+                    font-size: 10pt;
+                    font-weight: bold;
+                    margin-top: 20pt;
+                    line-height: 1.6;
+                }
+
+                /* ── Pie de página con logo ── */
+                .footer {
+                    position: fixed;
+                    bottom: 20pt;
+                    right: 40pt;
+                    text-align: right;
+                }
+                .footer-logo-text {
+                    font-size: 13pt;
+                    font-weight: bold;
+                    color: #E85D26;
+                    letter-spacing: 0.5pt;
+                }
+                .footer-logo-sub {
+                    font-size: 7pt;
+                    color: #999;
+                    letter-spacing: 1pt;
+                    text-transform: uppercase;
+                }
+                .footer-logo-badge {
+                    display: inline-block;
+                    background: #E85D26;
+                    color: white;
+                    font-size: 8pt;
+                    font-weight: bold;
+                    padding: 1pt 3pt;
+                    margin-right: 3pt;
+                    vertical-align: middle;
+                }
+
+                @media print {
+                    .footer { position: fixed; bottom: 20pt; right: 40pt; }
+                }
+            </style>
+        `;
+
+        // ── Horario: texto único para la celda ──
+        const horarioOnline = sched.online
+            ? `Online — Entrada: ${_esc(sched.online.entry||'—')}, Inicio píldoras: ${_esc(sched.online.start||'—')}, Descanso: ${_esc(sched.online.break||'—')}, Comida: ${_esc(sched.online.lunch||'—')}, Salida: ${_esc(sched.online.finish||'—')}`
+            : '—';
+        const horarioPresencial = sched.presential
+            ? `Presencial — Entrada: ${_esc(sched.presential.entry||'—')}, Inicio píldoras: ${_esc(sched.presential.start||'—')}, Descanso: ${_esc(sched.presential.break||'—')}, Comida: ${_esc(sched.presential.lunch||'—')}, Salida: ${_esc(sched.presential.finish||'—')}`
+            : '—';
+        const horarioCell = horarioOnline + '<br>' + horarioPresencial + (sched.notes ? `<br><em>Notas: ${_esc(sched.notes)}</em>` : '');
+
+        // ── Equipo: texto para cada rol ──
+        const getRol = (rol) => {
+            const m = team.find(t => (t.role||'').toLowerCase().includes(rol));
+            return m ? _esc(m.name) : '—';
+        };
+        const responsableProyecto   = getRol('responsable') || getRol('project') || (team[0] ? _esc(team[0].name) : '—');
+        const formadorPrincipal     = getRol('formador') || (team[1] ? _esc(team[1].name) : '—');
+        const coformador            = getRol('coformador') || getRol('co-formador') || (team[2] ? _esc(team[2].name) : '—');
+        const responsablePromocion  = getRol('promocion') || getRol('promoción') || (team[3] ? _esc(team[3].name) : '—');
+
+        // ── Otros roles (los que no sean los 4 principales) ──
+        const mainRoles = ['responsable', 'project', 'formador', 'coformador', 'co-formador', 'promocion', 'promoción'];
+        const otrosRoles = team
+            .filter(m => !mainRoles.some(r => (m.role||'').toLowerCase().includes(r)))
+            .map(m => `${_esc(m.role||'')}: ${_esc(m.name||'')}`)
+            .join('<br>') || '—';
+
+        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">${style}</head><body>`;
+
+        // ── Título ──
+        html += `
+        <div class="doc-title">Acta de inicio de proyecto formativo</div>
+        <div class="doc-subtitle">
+            <strong>Nombre proyecto:</strong> ${_esc(promo.name)}<br>
+            <strong>Fecha de elaboración del acta:</strong> ${_today()}
+        </div>`;
+
+        // ── Tabla principal con todas las filas del acta original ──
+        html += `<table class="main-table"><tbody>
+            <tr>
+                <td>Escuela y/o área<br>responsable del<br>proyecto formativo</td>
+                <td>${_esc(ext.school || '—')}</td>
+            </tr>
+            <tr>
+                <td>Tipo proyecto<br>formativo</td>
+                <td>${_esc(ext.type || promo.type || 'Bootcamp')}</td>
+            </tr>
+            <tr>
+                <td>Fecha de inicio de<br>proyecto formativo</td>
+                <td>${_esc(promo.startDate || '—')}</td>
+            </tr>
+            <tr>
+                <td>Fecha de fin de<br>proyecto formativo</td>
+                <td>${_esc(promo.endDate || '—')}</td>
+            </tr>
+            <tr>
+                <td>Fecha límite de<br>inscripciones abiertas</td>
+                <td>${_esc(ext.inscriptionDeadline || '—')}</td>
+            </tr>
+            <tr>
+                <td>Fecha límite de la<br>jornada de selección</td>
+                <td>${_esc(ext.selectionDeadline || '—')}</td>
+            </tr>
+            <tr>
+                <td>Fecha inicio<br>formación:</td>
+                <td>${_esc(promo.startDate || '—')}</td>
+            </tr>
+            <tr>
+                <td>Fecha de fin de<br>formación:</td>
+                <td>${_esc(promo.endDate || '—')}</td>
+            </tr>
+            <tr>
+                <td>Fecha de inicio<br>periodo salida<br>positiva:</td>
+                <td>${_esc(ext.positiveExitStart || '—')}</td>
+            </tr>
+            <tr>
+                <td>Fecha de fin de<br>periodo de salida<br>positiva:</td>
+                <td>${_esc(ext.positiveExitEnd || '—')}</td>
+            </tr>
+            <tr>
+                <td>Horas totales de<br>formación</td>
+                <td>${_esc(ext.totalHours || promo.hours || '—')}</td>
+            </tr>
+            <tr>
+                <td>Modalidad</td>
+                <td>${_esc(ext.modality || promo.modality || '—')}</td>
+            </tr>
+            <tr>
+                <td>Días presenciales y<br>lugar</td>
+                <td>${_esc(ext.presentialDays || '—')}</td>
+            </tr>
+            <tr>
+                <td>Horario</td>
+                <td>${horarioCell}</td>
+            </tr>
+            <tr>
+                <td>Responsable del<br>proyecto</td>
+                <td>${responsableProyecto}</td>
+            </tr>
+            <tr>
+                <td>Formador/a principal</td>
+                <td>${formadorPrincipal}</td>
+            </tr>
+            <tr>
+                <td>Coformador/a</td>
+                <td>${coformador}</td>
+            </tr>
+            <tr>
+                <td>Responsable de<br>promoción</td>
+                <td>${responsablePromocion}</td>
+            </tr>
+            <tr>
+                <td>Otros roles:</td>
+                <td>${otrosRoles}</td>
+            </tr>
+            <tr>
+                <td>Materiales/recursos<br>necesarios</td>
+                <td>${_esc(ext.materials || '—')}</td>
+            </tr>
+            <tr>
+                <td>Período prácticas<br>(sí/no)</td>
+                <td>${_esc(ext.internships != null ? (ext.internships ? 'Sí' : 'No') : '—')}</td>
+            </tr>
+            <tr>
+                <td>Financiadores</td>
+                <td>${_esc(ext.funders || '—')}</td>
+            </tr>
+            <tr>
+                <td>Fecha de<br>justificación a cada<br>financiador</td>
+                <td>${_esc(ext.funderDeadlines || '—')}</td>
+            </tr>
+            <tr>
+                <td>OKR y KPIs de FF5 en<br>este proyecto<br>formativo</td>
+                <td>${_esc(ext.okrKpis || '—')}</td>
+            </tr>
+            <tr>
+                <td>KPIs financiadores</td>
+                <td>${_esc(ext.funderKpis || '—')}</td>
+            </tr>
+            <tr>
+                <td>Día off formador/a</td>
+                <td>${_esc(ext.trainerDayOff || '—')}</td>
+            </tr>
+            <tr>
+                <td>Día off coformador/a</td>
+                <td>${_esc(ext.cotrainerDayOff || '—')}</td>
+            </tr>
+            <tr>
+                <td>Planificación de<br>reuniones de<br>proyecto</td>
+                <td>${_esc(ext.projectMeetings || '—')}</td>
+            </tr>
+            <tr>
+                <td>Planificación de<br>reuniones de equipo<br>(formador/a-coform<br>ador/a-responsable<br>de promoción)</td>
+                <td>${_esc(ext.teamMeetings || '—')}</td>
+            </tr>
+        </tbody></table>`;
+
+        // ── Nota de aprobación (tal cual en el documento original) ──
+        html += `<p class="approval-note">
+            Aprobación y difusión del documento a través de ASANA y solo por parte del "Responsable del proyecto" definido en este acta.
+        </p>`;
+
+        // ── Logo Factoría F5 en pie ──
+        html += `
+        <div class="footer">
+            <div><span class="footer-logo-badge">F5</span><span class="footer-logo-text">factoría</span></div>
+            <div class="footer-logo-sub">powered by simplon</div>
+        </div>`;
+
+        html += `</body></html>`;
+
+        const filename = `acta-inicio_${(promo.name||'promo').replace(/\s+/g,'-')}.pdf`;
+        _showSaving('Generando PDF…');
+        await _savePdf(html, filename);
+        _hideSaving();
+    } catch (e) {
+        _hideSaving();
+        console.error('[Reports] printActaInicio:', e);
+        alert('Error generando el Acta de Inicio: ' + e.message);
     }
+}
 
     // ════════════════════════════════════════════════════════════════════════
     // 4. DESCRIPCIÓN TÉCNICA DE FORMACIÓN
@@ -722,8 +1036,12 @@
                 </div>`;
             } else { html += `<p class="empty-note">Sin criterios de evaluación definidos.</p>`; }
 
-            _printWindow(html);
+            const filename = `descripcion-tecnica_${(promo.name||'promo').replace(/\s+/g,'-')}.pdf`;
+            _showSaving('Generando PDF…');
+            await _savePdf(html, filename);
+            _hideSaving();
         } catch (e) {
+            _hideSaving();
             console.error('[Reports] printDescripcionTecnica:', e);
             alert('Error generando la Descripción Técnica: ' + e.message);
         }
@@ -865,7 +1183,462 @@
             </div>
         </div>`;
 
-        _printWindow(html, true /* preview */);
+        const filename = `proyecto_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${(fullName).replace(/\s+/g,'-')}.pdf`;
+        _previewWindow(html, filename);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 6. BULK REPORTS  (multi-student)
+    // ════════════════════════════════════════════════════════════════════════
+
+    // ── helpers shared by bulk functions ────────────────────────────────────
+
+    /** Fetch one student with error-safe fallback */
+    async function _fetchStudent(studentId, promotionId, token) {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`,
+            { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) throw new Error(`No se pudo cargar el estudiante ${studentId}`);
+        return res.json();
+    }
+
+    /** Fetch all projects (teams) that belong to a named project across multiple students */
+    function _techPageHtml(s, promo) {
+        const tt = s.technicalTracking || {};
+        const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
+        let html = _header('Ficha de Seguimiento Técnico', fullName, promo.name, _today());
+
+        html += `<div class="section-box accent row2">
+            <div>
+                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+                <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
+            </div>
+            <div>
+                <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
+                <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
+            </div>
+        </div>`;
+
+        html += `<h3>✦ Notas del Profesor</h3>`;
+        const notes = tt.teacherNotes || [];
+        if (notes.length) {
+            html += `<table><thead><tr><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
+            notes.forEach(n => {
+                html += `<tr><td style="white-space:nowrap;">${_fmtDate(n.createdAt || n.date)}</td><td>${_esc(n.note || n.text || '')}</td></tr>`;
+            });
+            html += `</tbody></table>`;
+        } else { html += `<p class="empty-note">Sin notas registradas.</p>`; }
+
+        html += `<h3>✦ Proyectos Realizados</h3>`;
+        const teams = tt.teams || [];
+        if (teams.length) {
+            teams.forEach(t => {
+                const typeBadge = t.projectType === 'individual'
+                    ? `<span class="badge badge-info">Individual</span>`
+                    : `<span class="badge badge-green">Grupal</span>`;
+                const members = (t.members || []).map(m => _esc(m.name)).join(', ');
+                const comps   = t.competences || [];
+                html += `<div class="section-box green no-break">
+                    <div style="display:flex; align-items:center; gap:8pt; margin-bottom:5pt;">
+                        <strong style="font-size:11pt;">${_esc(t.teamName || 'Proyecto')}</strong>
+                        ${typeBadge}
+                    </div>
+                    <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
+                    ${members ? `<div class="kv"><strong>Compañeros:</strong> ${members}</div>` : ''}
+                    ${t.teacherNote ? `<div class="kv" style="margin-top:4pt; font-style:italic; color:#555;">"${_esc(t.teacherNote)}"</div>` : ''}
+                    ${comps.length ? `
+                    <div style="margin-top:6pt;">
+                        <strong style="font-size:9pt; color:${SECONDARY};">Competencias:</strong>
+                        ${comps.map(c => {
+                            const tools = (c.toolsUsed || []).map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
+                            return `<div style="margin-top:3pt;">${_levelBadge(c.level)} <strong>${_esc(c.competenceName)}</strong> ${tools}</div>`;
+                        }).join('')}
+                    </div>` : ''}
+                </div>`;
+            });
+        } else { html += `<p class="empty-note">Sin proyectos registrados.</p>`; }
+
+        html += `<h3>✦ Módulos Completados</h3>`;
+        const mods = tt.completedModules || [];
+        if (mods.length) {
+            html += `<table><thead><tr><th>Módulo</th><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
+            mods.forEach(m => {
+                const gradeMap = { 1:'Insuficiente', 2:'Básico', 3:'Competente', 4:'Excelente' };
+                html += `<tr><td>${_esc(m.moduleName||'—')}</td><td>${_fmtDate(m.completionDate)}</td><td>${gradeMap[m.finalGrade]||m.finalGrade||'—'}</td></tr>`;
+            });
+            html += `</tbody></table>`;
+        } else { html += `<p class="empty-note">Sin módulos completados.</p>`; }
+
+        return html;
+    }
+
+    function _transPageHtml(s, promo) {
+        const tr2 = s.transversalTracking || {};
+        const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
+        let html = _header('Ficha de Seguimiento Transversal', fullName, promo.name, _today());
+
+        html += `<div class="section-box accent row2">
+            <div>
+                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+                <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
+            </div>
+            <div>
+                <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
+                <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
+            </div>
+        </div>`;
+
+        html += `<h3>✦ Sesiones de Empleabilidad</h3>`;
+        const emp = tr2.employabilitySessions || [];
+        if (emp.length) {
+            html += `<table><thead><tr><th>Fecha</th><th>Tema</th><th>Notas</th></tr></thead><tbody>`;
+            emp.forEach(e => { html += `<tr><td>${_fmtDate(e.date)}</td><td>${_esc(e.topic||'—')}</td><td>${_esc(e.notes||'')}</td></tr>`; });
+            html += `</tbody></table>`;
+        } else { html += `<p class="empty-note">Sin sesiones de empleabilidad.</p>`; }
+
+        html += `<h3>✦ Sesiones Individuales</h3>`;
+        const ind = tr2.individualSessions || [];
+        if (ind.length) {
+            html += `<table><thead><tr><th>Fecha</th><th>Tema</th><th>Notas</th></tr></thead><tbody>`;
+            ind.forEach(e => { html += `<tr><td>${_fmtDate(e.date)}</td><td>${_esc(e.topic||'—')}</td><td>${_esc(e.notes||'')}</td></tr>`; });
+            html += `</tbody></table>`;
+        } else { html += `<p class="empty-note">Sin sesiones individuales.</p>`; }
+
+        html += `<h3>✦ Incidencias</h3>`;
+        const incs = tr2.incidents || [];
+        if (incs.length) {
+            html += `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Estado</th></tr></thead><tbody>`;
+            incs.forEach(i => {
+                html += `<tr><td>${_fmtDate(i.date)}</td><td>${_esc(i.type||'—')}</td><td>${_esc(i.description||'')}</td>
+                    <td>${i.resolved?'<span class="badge badge-green">Resuelta</span>':'<span class="badge badge-red">Pendiente</span>'}</td></tr>`;
+            });
+            html += `</tbody></table>`;
+        } else { html += `<p class="empty-note">Sin incidencias registradas.</p>`; }
+
+        return html;
+    }
+
+    // ── 6a. Bulk Technical ───────────────────────────────────────────────────
+    async function printBulkTechnical(studentIds, promotionId) {
+        if (!studentIds?.length) { alert('Selecciona al menos un estudiante.'); return; }
+        const token = localStorage.getItem('token');
+        try {
+            const promoRes = await fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const promo = promoRes.ok ? await promoRes.json() : {};
+            const students = await Promise.all(studentIds.map(id => _fetchStudent(id, promotionId, token)));
+
+            if (students.length === 1) {
+                const s = students[0];
+                const fullName = `${s.name||''} ${s.lastname||''}`.trim();
+                _showSaving('Generando PDF…');
+                await _savePdf(_techPageHtml(s, promo), `tecnico_${fullName.replace(/\s+/g,'-')}.pdf`);
+            } else {
+                // Sequential processing — one iframe at a time
+                const files = [];
+                for (let i = 0; i < students.length; i++) {
+                    const s = students[i];
+                    const fullName = `${s.name||''} ${s.lastname||''}`.trim();
+                    const fname = `tecnico_${fullName.replace(/\s+/g,'-')}.pdf`;
+                    _showSaving(`Generando PDF ${i + 1} de ${students.length}: ${fullName}…`);
+                    const blob = await _getPdfBlob(_techPageHtml(s, promo), fname);
+                    files.push({ blob, filename: fname });
+                }
+                _showSaving(`Comprimiendo ${files.length} PDFs…`);
+                await _zipAndDownload(files, `seguimiento-tecnico_${(promo.name||'promo').replace(/\s+/g,'-')}.zip`);
+            }
+            _hideSaving();
+        } catch (e) {
+            _hideSaving();
+            console.error('[Reports] printBulkTechnical:', e);
+            alert('Error generando los informes: ' + e.message);
+        }
+    }
+
+    // ── 6b. Bulk Transversal ─────────────────────────────────────────────────
+    async function printBulkTransversal(studentIds, promotionId) {
+        if (!studentIds?.length) { alert('Selecciona al menos un estudiante.'); return; }
+        const token = localStorage.getItem('token');
+        try {
+            const promoRes = await fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const promo = promoRes.ok ? await promoRes.json() : {};
+            const students = await Promise.all(studentIds.map(id => _fetchStudent(id, promotionId, token)));
+
+            if (students.length === 1) {
+                const s = students[0];
+                const fullName = `${s.name||''} ${s.lastname||''}`.trim();
+                _showSaving('Generando PDF…');
+                await _savePdf(_transPageHtml(s, promo), `transversal_${fullName.replace(/\s+/g,'-')}.pdf`);
+            } else {
+                // Sequential processing — one iframe at a time
+                const files = [];
+                for (let i = 0; i < students.length; i++) {
+                    const s = students[i];
+                    const fullName = `${s.name||''} ${s.lastname||''}`.trim();
+                    const fname = `transversal_${fullName.replace(/\s+/g,'-')}.pdf`;
+                    _showSaving(`Generando PDF ${i + 1} de ${students.length}: ${fullName}…`);
+                    const blob = await _getPdfBlob(_transPageHtml(s, promo), fname);
+                    files.push({ blob, filename: fname });
+                }
+                _showSaving(`Comprimiendo ${files.length} PDFs…`);
+                await _zipAndDownload(files, `seguimiento-transversal_${(promo.name||'promo').replace(/\s+/g,'-')}.zip`);
+            }
+            _hideSaving();
+        } catch (e) {
+            _hideSaving();
+            console.error('[Reports] printBulkTransversal:', e);
+            alert('Error generando los informes: ' + e.message);
+        }
+    }
+
+    // ── 6c. Bulk by Project (all students who participated in a specific project) ──
+    // studentIds: array of IDs to process, or null/undefined = all students in the promotion
+    async function printBulkByProject(projectName, promotionId, studentIds) {
+        if (!projectName) { alert('Especifica el nombre del proyecto.'); return; }
+        const token = localStorage.getItem('token');
+        try {
+            const [promoRes, studentsRes] = await Promise.all([
+                fetch(`${API_URL}/api/promotions/${promotionId}`,          { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/promotions/${promotionId}/students`, { headers: { 'Authorization': `Bearer ${token}` } })
+            ]);
+            const promo       = promoRes.ok ? await promoRes.json() : {};
+            const studentList = studentsRes.ok ? await studentsRes.json() : [];
+
+            // If specific IDs were passed, restrict to those; otherwise use all
+            const toFetch = studentIds?.length
+                ? studentList.filter(s => studentIds.includes(s.id || s._id))
+                : studentList;
+
+            if (!toFetch.length) {
+                alert('No se encontraron los estudiantes seleccionados.');
+                return;
+            }
+
+            // Fetch full tracking data sequentially to avoid race conditions
+            _showSaving(`Cargando datos de ${toFetch.length} coders…`);
+            const fullStudents = [];
+            for (const s of toFetch) {
+                const sid = s.id || s._id;
+                try {
+                    const data = await _fetchStudent(sid, promotionId, token);
+                    fullStudents.push(data);
+                } catch (e) {
+                    console.warn(`[Reports] No se pudo cargar el estudiante ${sid}:`, e);
+                }
+            }
+
+            // Filter to those who have the project registered in their tracking
+            const involved = fullStudents.filter(s =>
+                (s.technicalTracking?.teams || []).some(t =>
+                    (t.teamName || '').trim().toLowerCase() === projectName.trim().toLowerCase()
+                )
+            );
+
+            if (!involved.length) {
+                _hideSaving();
+                alert(`Ninguno de los coders seleccionados tiene el proyecto "${projectName}" registrado en su seguimiento.`);
+                return;
+            }
+
+            const safeProjName = projectName.replace(/\s+/g, '-');
+
+            // Helper: build HTML for a single student's project page
+            const _buildStudentProjectHtml = (s) => {
+                const fullName = `${s.name||''} ${s.lastname||''}`.trim();
+                let sHtml = _header(`Proyecto: ${_esc(projectName)}`, fullName, promo.name, _today());
+                const projectTeams = (s.technicalTracking?.teams || []).filter(t =>
+                    (t.teamName || '').toLowerCase() === projectName.toLowerCase()
+                );
+                projectTeams.forEach(t => {
+                    const typeBadge = t.projectType === 'individual'
+                        ? `<span class="badge badge-info">Individual</span>`
+                        : `<span class="badge badge-green">Grupal</span>`;
+                    const comps = t.competences || [];
+                    sHtml += `<div class="section-box accent row2" style="margin-bottom:8pt;">
+                        <div>
+                            <div class="kv"><strong>Tipo:</strong> ${typeBadge}</div>
+                            <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName||'—')}</div>
+                        </div>
+                        <div>
+                            <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
+                            <div class="kv"><strong>Email:</strong> ${_esc(s.email||'—')}</div>
+                        </div>
+                    </div>`;
+                    if (t.members?.length && t.projectType === 'grupal') {
+                        sHtml += `<div class="section-box" style="margin-bottom:8pt;">
+                            <strong style="font-size:10pt;">Integrantes del equipo</strong>
+                            <ul style="margin:5pt 0 0 14pt; padding:0;">${t.members.map(m=>`<li>${_esc(m.name)}</li>`).join('')}</ul>
+                        </div>`;
+                    }
+                    if (t.teacherNote) {
+                        sHtml += `<h3>Nota del Profesor</h3>
+                        <div class="section-box" style="border-left:4px solid #0dcaf0;">
+                            <p style="white-space:pre-wrap; font-style:italic;">${_esc(t.teacherNote)}</p>
+                        </div>`;
+                    }
+                    sHtml += `<h3>Competencias Trabajadas</h3>`;
+                    if (comps.length) {
+                        sHtml += `<table><thead><tr><th>Competencia</th><th>Nivel</th><th>Herramientas</th></tr></thead><tbody>`;
+                        comps.forEach(c => {
+                            const tools = (c.toolsUsed||[]).map(tl=>`<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
+                            sHtml += `<tr><td><strong>${_esc(c.competenceName)}</strong></td><td>${_levelBadge(c.level)}</td><td>${tools||'—'}</td></tr>`;
+                        });
+                        sHtml += `</tbody></table>`;
+                    } else { sHtml += `<p class="empty-note">Sin competencias evaluadas.</p>`; }
+                });
+                sHtml += `<div style="margin-top:28pt;"><div class="section-box no-break" style="max-width:260pt;">
+                    <div style="font-size:9pt; color:${SECONDARY}; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
+                    <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
+                    <div style="font-size:8pt; color:#aaa; margin-top:4pt;">Docente responsable</div>
+                </div></div>`;
+                return sHtml;
+            };
+
+            if (involved.length === 1) {
+                const s = involved[0];
+                const fullName = `${s.name||''} ${s.lastname||''}`.trim();
+                _showSaving('Generando PDF…');
+                await _savePdf(_buildStudentProjectHtml(s), `proyecto_${safeProjName}_${fullName.replace(/\s+/g,'-')}.pdf`);
+            } else {
+                // Process sequentially (one iframe at a time) to avoid browser rendering conflicts
+                const files = [];
+                for (let i = 0; i < involved.length; i++) {
+                    const s = involved[i];
+                    const fullName = `${s.name||''} ${s.lastname||''}`.trim();
+                    const fname = `proyecto_${safeProjName}_${fullName.replace(/\s+/g,'-')}.pdf`;
+                    _showSaving(`Generando PDF ${i + 1} de ${involved.length}: ${fullName}…`);
+                    const blob = await _getPdfBlob(_buildStudentProjectHtml(s), fname);
+                    files.push({ blob, filename: fname });
+                }
+                _showSaving(`Comprimiendo ${files.length} PDFs…`);
+                await _zipAndDownload(files, `proyecto_${safeProjName}.zip`);
+            }
+            _hideSaving();
+        } catch (e) {
+            _hideSaving();
+            console.error('[Reports] printBulkByProject:', e);
+            alert('Error generando el informe por proyecto: ' + e.message);
+        }
+    }
+
+    // ── 6d. All-projects summary for the whole promotion ────────────────────
+    async function printAllProjectsSummary(promotionId) {
+        const token = localStorage.getItem('token');
+        try {
+            const [promoRes, studentsRes] = await Promise.all([
+                fetch(`${API_URL}/api/promotions/${promotionId}`,          { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/promotions/${promotionId}/students`, { headers: { 'Authorization': `Bearer ${token}` } })
+            ]);
+            const promo    = promoRes.ok ? await promoRes.json() : {};
+            const students = studentsRes.ok ? await studentsRes.json() : [];
+
+            const fullStudents = await Promise.all(
+                students.map(s => _fetchStudent(s.id, promotionId, token).catch(() => null))
+            );
+
+            // Collect all unique project names
+            const projectMap = new Map(); // projectName → [{ student, team }]
+            fullStudents.filter(Boolean).forEach(s => {
+                (s.technicalTracking?.teams || []).forEach(t => {
+                    const key = (t.teamName || 'Sin nombre').trim();
+                    if (!projectMap.has(key)) projectMap.set(key, []);
+                    projectMap.get(key).push({ student: s, team: t });
+                });
+            });
+
+            if (!projectMap.size) {
+                alert('No se encontraron proyectos registrados en esta promoción.');
+                return;
+            }
+
+            let html = _header(
+                'Resumen de Proyectos de la Promoción',
+                `${projectMap.size} proyectos · ${fullStudents.filter(Boolean).length} coders`,
+                promo.name,
+                _today()
+            );
+
+            // Overview table
+            html += `<h3>Índice de Proyectos</h3>
+            <table>
+                <thead><tr><th>Proyecto</th><th>Tipo</th><th>Coders</th><th>Módulo</th></tr></thead>
+                <tbody>`;
+            projectMap.forEach((entries, name) => {
+                const firstTeam = entries[0].team;
+                const typeBadge = firstTeam.projectType === 'individual'
+                    ? `<span class="badge badge-info">Individual</span>`
+                    : `<span class="badge badge-green">Grupal</span>`;
+                const coderList = entries.map(e => `${_esc(e.student.name||'')} ${_esc(e.student.lastname||'')}`.trim()).join(', ');
+                html += `<tr>
+                    <td><strong>${_esc(name)}</strong></td>
+                    <td>${typeBadge}</td>
+                    <td style="font-size:9pt;">${coderList}</td>
+                    <td>${_esc(firstTeam.moduleName||'—')}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+
+            // Detail section per project
+            let projectIndex = 0;
+            projectMap.forEach((entries, name) => {
+                if (projectIndex > 0) html += `<div style="margin-top:18pt; padding-top:12pt; border-top:2px solid ${PRIMARY};"></div>`;
+                html += `<h2 style="margin-top:14pt;">${_esc(name)}</h2>`;
+
+                // Aggregate all competences across all students for this project
+                const compAgg = new Map(); // competenceName → { levels:[], tools:Set }
+                entries.forEach(({ team: t }) => {
+                    (t.competences || []).forEach(c => {
+                        if (!compAgg.has(c.competenceName)) compAgg.set(c.competenceName, { levels: [], tools: new Set() });
+                        const agg = compAgg.get(c.competenceName);
+                        agg.levels.push(c.level ?? 0);
+                        (c.toolsUsed || []).forEach(tl => agg.tools.add(tl));
+                    });
+                });
+
+                // Per-student mini cards
+                html += `<div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:8pt; margin-bottom:8pt;">`;
+                entries.forEach(({ student: s, team: t }) => {
+                    const fullName = `${s.name||''} ${s.lastname||''}`.trim();
+                    const comps = t.competences || [];
+                    html += `<div class="section-box no-break" style="font-size:9pt;">
+                        <div style="font-weight:700; font-size:10pt; margin-bottom:3pt;">${_esc(fullName)}</div>
+                        <div class="kv"><strong>Email:</strong> ${_esc(s.email||'—')}</div>
+                        ${comps.map(c => {
+                            const tools = (c.toolsUsed||[]).map(tl=>`<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
+                            return `<div style="margin-top:3pt;">${_levelBadge(c.level)} ${_esc(c.competenceName)} ${tools}</div>`;
+                        }).join('')}
+                        ${t.teacherNote ? `<div style="margin-top:4pt; font-style:italic; color:#666; border-top:1px solid #eee; padding-top:3pt;">"${_esc(t.teacherNote)}"</div>` : ''}
+                    </div>`;
+                });
+                html += `</div>`;
+
+                // Aggregated competence summary for the project
+                if (compAgg.size) {
+                    html += `<h3>Competencias del Proyecto (resumen)</h3>
+                    <table><thead><tr><th>Competencia</th><th>Nivel medio</th><th>Herramientas</th></tr></thead><tbody>`;
+                    compAgg.forEach((agg, compName) => {
+                        const avg = agg.levels.reduce((a, b) => a + b, 0) / agg.levels.length;
+                        const roundedAvg = Math.round(avg);
+                        const tools = [...agg.tools].map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
+                        html += `<tr>
+                            <td><strong>${_esc(compName)}</strong></td>
+                            <td>${_levelBadge(roundedAvg)} <span style="color:#aaa; font-size:8pt;">(media ${avg.toFixed(1)})</span></td>
+                            <td>${tools || '—'}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table>`;
+                }
+
+                projectIndex++;
+            });
+
+            const safeProm = (promo.name||'promo').replace(/\s+/g,'-');
+            _showSaving(`Generando resumen de ${projectMap.size} proyecto${projectMap.size > 1 ? 's' : ''}…`);
+            await _savePdf(html, `resumen-proyectos_${safeProm}.pdf`);
+            _hideSaving();
+        } catch (e) {
+            _hideSaving();
+            console.error('[Reports] printAllProjectsSummary:', e);
+            alert('Error generando el resumen de proyectos: ' + e.message);
+        }
     }
 
     // ─── Public API ──────────────────────────────────────────────────────────
@@ -874,7 +1647,11 @@
         printTransversal,
         printActaInicio,
         printDescripcionTecnica,
-        printProjectReport
+        printProjectReport,
+        printBulkTechnical,
+        printBulkTransversal,
+        printBulkByProject,
+        printAllProjectsSummary
     };
 
 })(window);
