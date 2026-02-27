@@ -205,6 +205,13 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadExtendedInfo() {
     const token = localStorage.getItem('token');
     try {
+        // Ensure Schedule tab is active on load
+        const scheduleTab = document.getElementById('program-details-schedule-tab');
+        if (scheduleTab) {
+            const tab = new bootstrap.Tab(scheduleTab);
+            tab.show();
+        }
+
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`); // Public endpoint
         if (response.ok) {
             extendedInfoData = await response.json();

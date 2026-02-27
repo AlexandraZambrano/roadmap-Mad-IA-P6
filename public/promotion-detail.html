@@ -488,7 +488,6 @@
                     <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
                         <div>
                             <h2 class="mb-0">Program Details</h2>
-                            <small class="text-muted" id="program-details-subtitle">Schedule</small>
                         </div>
                         <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()" 
                             title="Save all changes to Program Details">
@@ -501,7 +500,7 @@
                         <button class="nav-link active" id="program-details-schedule-tab" data-bs-toggle="tab" 
                             data-bs-target="#program-details-schedule" type="button" role="tab" 
                             onclick="updateProgramDetailsSubtitle('Schedule')">
-                            <i class="bi bi-clock me-2"></i>Schedule
+                            <i class="bi bi-clock me-2"></i>Horario
                         </button>
                         <button class="nav-link" id="program-details-team-tab" data-bs-toggle="tab" 
                             data-bs-target="#program-details-team" type="button" role="tab"
@@ -543,7 +542,7 @@
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-6 border-end pb-md-0 pb-4">
-                                            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-globe me-2"></i>Online Days</h6>
+                                            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-laptop me-2"></i>Online</h6>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Entry Hour</label>
                                                 <input type="time" class="form-control form-control-sm" id="sched-online-entry">
@@ -566,7 +565,7 @@
                                             </div>
                                         </div>
                                         <div class="col-md-6 ps-md-4">
-                                            <h6 class="text-success fw-bold mb-3"><i class="bi bi-building me-2"></i>Presential Days</h6>
+                                            <h6 class=" fw-bold mb-3"><i class="bi bi-people me-2"></i>Presencial</h6>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Entry Hour</label>
                                                 <input type="time" class="form-control form-control-sm" id="sched-presential-entry">
