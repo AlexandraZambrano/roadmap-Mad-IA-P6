@@ -2501,7 +2501,8 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
     const { schedule, team, resources, evaluation, pildoras, modulesPildoras, pildorasAssignmentOpen, competences,
             school, projectType, positiveExitStart, positiveExitEnd, totalHours,
             modality, presentialDays, materials, internships, funders, funderDeadlines,
-            okrKpis, funderKpis, trainerDayOff, cotrainerDayOff, projectMeetings, teamMeetings } = req.body;
+            okrKpis, funderKpis, trainerDayOff, cotrainerDayOff, projectMeetings, teamMeetings,
+            approvalName, approvalRole } = req.body;
     const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
     const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
     const normalizedCompetences = Array.isArray(competences) ? competences : [];
@@ -2534,7 +2535,9 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
           trainerDayOff: trainerDayOff || '',
           cotrainerDayOff: cotrainerDayOff || '',
           projectMeetings: projectMeetings || '',
-          teamMeetings: teamMeetings || ''
+          teamMeetings: teamMeetings || '',
+          approvalName: approvalName || '',
+          approvalRole: approvalRole || ''
         }
       },
       { upsert: true, returnDocument: 'after', strict: false }

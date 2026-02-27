@@ -78,6 +78,8 @@ const ExtendedInfoSchema = new mongoose.Schema({
     cotrainerDayOff: { type: String, default: '' },
     projectMeetings: { type: String, default: '' },
     teamMeetings: { type: String, default: '' },
+    approvalName: { type: String, default: '' },
+    approvalRole: { type: String, default: '' },
     competences: [{
         id: String,
         area: String,

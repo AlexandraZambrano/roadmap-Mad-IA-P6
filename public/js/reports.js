@@ -144,6 +144,13 @@
                 const scrollH = Math.max(body.scrollHeight, body.offsetHeight, iDoc.documentElement.scrollHeight);
                 iframe.style.height = scrollH + 'px';
 
+                // ── Collect bottom-edge of every <tr> in CSS px (from body top)
+                //    BEFORE html2canvas runs so the iframe is still live. ──
+                const bodyTop = body.getBoundingClientRect().top;
+                const rowBottomsPx = Array.from(iDoc.querySelectorAll('tr')).map(tr => {
+                    return tr.getBoundingClientRect().bottom - bodyTop;
+                }).filter(v => v > 0);
+
                 html2canvas(body, {
                     scale: 2,
                     useCORS: true,
@@ -156,7 +163,6 @@
                 }).then(canvas => {
                     document.body.removeChild(iframe);
 
-                    const imgData = canvas.toDataURL('image/jpeg', 0.97);
                     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
                     const pageW  = pdf.internal.pageSize.getWidth();   // 210mm
@@ -166,29 +172,49 @@
                     const usableW = pageW - margin * 2;
                     const usableH = pageH - margin * 2;
 
-                    // Scale the canvas to fit the usable page width
                     const canvasMmW = usableW;
-                    const canvasMmH = canvas.height * (usableW / canvas.width);
+                    // canvas was rendered at scale:2, so 1 CSS px = 2 canvas px
+                    const cssPxToMm = usableW / (canvas.width / 2);
+                    const canvasMmH = (canvas.height / 2) * cssPxToMm;
 
-                    let yPos = 0; // position within canvas in mm
+                    // Convert row bottoms from CSS px → mm
+                    const rowBottomsMm = rowBottomsPx.map(px => px * cssPxToMm);
+
+                    // ── Smart page-break: build slices that always end at a row boundary ──
+                    const slices = [];
+                    let yPos = 0;
+                    while (yPos < canvasMmH - 0.5) {
+                        let sliceH = Math.min(usableH, canvasMmH - yPos);
+                        if (sliceH < canvasMmH - yPos) {
+                            // Not the last page — find the last row-bottom that fits
+                            const sliceEnd = yPos + sliceH;
+                            const fits = rowBottomsMm.filter(e => e > yPos + 5 && e <= sliceEnd - 1);
+                            if (fits.length) sliceH = fits[fits.length - 1] - yPos;
+                        }
+                        slices.push({ yPos, sliceH });
+                        yPos += sliceH;
+                    }
+
+                    // ── Render each slice into its own sub-canvas and add to PDF ──
                     let firstPage = true;
-
-                    while (yPos < canvasMmH) {
+                    for (const { yPos: yp, sliceH: sh } of slices) {
                         if (!firstPage) pdf.addPage();
                         firstPage = false;
 
-                        // Clip: shift the image up by yPos so the current slice appears at top
-                        pdf.addImage(
-                            imgData, 'JPEG',
-                            margin,           // x
-                            margin - yPos,    // y  (negative shifts image upward)
-                            canvasMmW,        // w
-                            canvasMmH,        // h
-                            undefined,
-                            'FAST'
-                        );
+                        const pxStart = Math.round(yp / cssPxToMm * 2);
+                        const pxH    = Math.round(sh / cssPxToMm * 2);
+                        const sliceCanvas = document.createElement('canvas');
+                        sliceCanvas.width  = canvas.width;
+                        sliceCanvas.height = Math.max(1, pxH);
+                        const ctx = sliceCanvas.getContext('2d');
+                        ctx.drawImage(canvas, 0, pxStart, canvas.width, pxH, 0, 0, canvas.width, pxH);
 
-                        yPos += usableH;
+                        pdf.addImage(
+                            sliceCanvas.toDataURL('image/jpeg', 0.97), 'JPEG',
+                            margin, margin,
+                            canvasMmW, sh,
+                            undefined, 'FAST'
+                        );
                     }
 
                     pdf.setProperties({ title: filename || 'informe.pdf' });
@@ -901,7 +927,8 @@ async function printActaInicio(promotionId) {
         );
         html += row(
             'Financiadores',
-            val((ext.funders||'').replace(/\n/g, ' ')),
+            (ext.funders||'').split('\n').map(f => f.trim()).filter(Boolean)
+                .map(f => esc(f)).join('<br>') || '—',
             'orange'
         );
         html += row(
@@ -911,27 +938,33 @@ async function printActaInicio(promotionId) {
         );
         html += row(
             'OKR y KPIs de FF5 en<br>este proyecto formativo',
-            val((ext.okrKpis||'').replace(/\n/g,'<br>')),
+            (ext.okrKpis||'').split('\n').map(l => l.trim()).filter(Boolean)
+                .map(l => `• ${esc(l)}`).join('<br>') || '—',
             'orange'
         );
         // KPIs por financiador (format: "Funder: kpi\n---\nFunder2: kpi2")
         const kpiLines = (ext.funderKpis||'').split(/\n---\n/).map(b => {
             const m = b.match(/^([^:]+):\s*([\s\S]*)$/);
-            return m ? `<strong>${esc(m[1].trim())}:</strong> ${esc(m[2].trim())}` : esc(b.trim());
+            if (!m) return esc(b.trim());
+            const kpiItems = m[2].trim().split('\n').map(l => l.trim()).filter(Boolean)
+                .map(l => `&nbsp;&nbsp;• ${esc(l)}`).join('<br>');
+            return `<strong>${esc(m[1].trim())}:</strong><br>${kpiItems || '—'}`;
         }).filter(Boolean);
         html += row(
             'KPIs financiadores',
-            kpiLines.length ? kpiLines.join('<br>') : '—',
+            kpiLines.length ? kpiLines.join('<br><br>') : '—',
             'orange'
         );
         html += row(
             'Día off Formador/a',
-            val(ext.trainerDayOff),
+            (ext.trainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean)
+                .map(e => esc(e)).join('<br>') || '—',
             'orange'
         );
         html += row(
             'Día off coFormador/a',
-            val(ext.cotrainerDayOff),
+            (ext.cotrainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean)
+                .map(e => esc(e)).join('<br>') || '—',
             'orange'
         );
         html += row(
@@ -948,11 +981,13 @@ async function printActaInicio(promotionId) {
         html += `</tbody></table>`;
 
         // ── Sección aprobación (igual que en la última página del acta real) ──
+        const approvalName = ext.approvalName || (responsable ? responsable.name : '');
+        const approvalRole = ext.approvalRole || (responsable ? responsable.role : '');
         html += `<div class="approval">
             <p><span class="al">Aprobación y difusión del documento:</span></p>
             <br>
-            <p><span class="al">Nombre:</span> ${responsable ? esc(responsable.name) : '—'}</p>
-            <p><span class="al">Cargo:</span> ${responsable ? esc(responsable.role) : '—'}</p>
+            <p><span class="al">Nombre:</span> ${approvalName ? esc(approvalName) : '—'}</p>
+            <p><span class="al">Cargo:</span> ${approvalRole ? esc(approvalRole) : '—'}</p>
             <p><span class="al">Firma y fecha:</span> ${_today()}</p>
             <div class="sign-area"></div>
         </div>`;

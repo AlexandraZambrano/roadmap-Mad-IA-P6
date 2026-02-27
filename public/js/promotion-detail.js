@@ -1421,6 +1421,10 @@ function openActaModal() {
         document.getElementById('acta-team-meeting-end').value   = tmParts[3];
     }
 
+    // Approval fields
+    document.getElementById('acta-approval-name').value = d.approvalName || '';
+    document.getElementById('acta-approval-role').value = d.approvalRole || '';
+
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('actaInicioModal'));
     modal.show();
 }
@@ -1485,6 +1489,10 @@ async function saveActaData() {
     const tmStart = document.getElementById('acta-team-meeting-start').value;
     const tmEnd   = document.getElementById('acta-team-meeting-end').value;
     extendedInfoData.teamMeetings = `Semanal - ${tmDay} (${tmStart}-${tmEnd})`;
+
+    // Approval fields
+    extendedInfoData.approvalName = document.getElementById('acta-approval-name').value.trim();
+    extendedInfoData.approvalRole = document.getElementById('acta-approval-role').value.trim();
 
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
