@@ -50,38 +50,38 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#roadmap" onclick="switchTab('roadmap')">
-                                <i class="bi bi-map me-2"></i>Roadmap
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#calendar" onclick="switchTab('calendar')">
-                                <i class="bi bi-calendar me-2"></i>Calendar
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link" href="#students" onclick="switchTab('students')">
-                                <i class="bi bi-people me-2"></i>Students
+                                <i class="bi bi-people me-2"></i>Lista de estudiantes
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#attendance" onclick="switchTab('attendance')">
-                                <i class="bi bi-calendar-check me-2"></i>Attendance
-                            </a>
-                        </li>
-                        <li class="nav-item teacher-only">
-                            <a class="nav-link" href="#access-settings" onclick="switchTab('access-settings')">
-                                <i class="bi bi-lock me-2"></i>Access Settings
-                            </a>
-                        </li>
-                        <li class="nav-item teacher-only">
-                            <a class="nav-link" href="#collaborators" onclick="switchTab('collaborators')">
-                                <i class="bi bi-person-plus me-2"></i>Collaborators
+                                <i class="bi bi-calendar-check me-2"></i>Asistencia
                             </a>
                         </li>
                         <li class="nav-item teacher-only">
                             <a class="nav-link" href="#info" onclick="switchTab('info')">
-                                <i class="bi bi-info-circle me-2"></i>Program Info
+                                <i class="bi bi-info-circle me-2"></i>Contenido del Programa
+                            </a>
+                        </li>
+                                           <li class="nav-item">
+                            <a class="nav-link" href="#roadmap" onclick="switchTab('roadmap')">
+                                <i class="bi bi-map me-2"></i>Roadmap
+                            </a>
+                        </li>
+                                                <li class="nav-item">
+                            <a class="nav-link" href="#calendar" onclick="switchTab('calendar')">
+                                <i class="bi bi-calendar me-2"></i>Calendario
+                            </a>
+                        </li>
+                                                <li class="nav-item teacher-only">
+                            <a class="nav-link" href="#access-settings" onclick="switchTab('access-settings')">
+                                <i class="bi bi-lock me-2"></i>Accesos
+                            </a>
+                        </li>
+                        <li class="nav-item teacher-only">
+                            <a class="nav-link" href="#collaborators" onclick="switchTab('collaborators')">
+                                <i class="bi bi-person-plus me-2"></i>Collaboradores
                             </a>
                         </li>
                     </ul>
@@ -110,15 +110,40 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">Program Information</h5>
-                                    <p><strong>Duration:</strong> <span id="promotion-weeks">-</span> weeks</p>
-                                    <p><strong>Start Date:</strong> <span id="promotion-start">-</span></p>
-                                    <p><strong>End Date:</strong> <span id="promotion-end">-</span></p>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+                                    
+                                    <!-- Título -->
+                                    <h5 class="card-title mb-0">
+                                        Program Information
+                                    </h5>
+
+                                    <!-- Contenedor de datos -->
+                                    <div class="d-flex flex-wrap  gap-3">
+                                        
+                                        <div class="d-flex align-items-center gap-1">
+                                            <strong>Duration:</strong>
+                                            <span id="promotion-weeks">-</span>
+                                            <span>weeks</span>
+                                        </div>
+
+                                        <div class="d-flex align-items-center gap-1">
+                                            <strong>Start Date:</strong>
+                                            <span id="promotion-start">-</span>
+                                        </div>
+
+                                        <div class="d-flex align-items-center gap-1">
+                                            <strong>End Date:</strong>
+                                            <span id="promotion-end">-</span>
+                                        </div>
+
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
+                    </div>
                         <!-- <div class="col-md-6">
                             <div class="card">
                                 <div class="card-body">
@@ -460,99 +485,126 @@
 
                 <!-- Program Info Tab (New) -->
                 <div id="info-tab" class="section-content hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Program Details</h2>
-                        <button class="btn btn-primary" onclick="saveExtendedInfo()">
-                            <i class="bi bi-save me-2"></i>Save All Changes
-                        </button>
+                    <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
+                        <div>
+                            <h2 class="mb-0">Program Details</h2>
+                            <small class="text-muted" id="program-details-subtitle">Schedule</small>
+                        </div>
                     </div>
 
-                    <div class="row">
-                        <!-- Schedule -->
-                        <div class="col-12 mb-4">
+                    <!-- Program Details Navigation Tabs -->
+                    <nav class="nav nav-tabs mb-4" id="program-details-tabs" role="tablist">
+                        <button class="nav-link active" id="program-details-schedule-tab" data-bs-toggle="tab" 
+                            data-bs-target="#program-details-schedule" type="button" role="tab" 
+                            onclick="updateProgramDetailsSubtitle('Schedule')">
+                            <i class="bi bi-clock me-2"></i>Schedule
+                        </button>
+                        <button class="nav-link" id="program-details-team-tab" data-bs-toggle="tab" 
+                            data-bs-target="#program-details-team" type="button" role="tab"
+                            onclick="updateProgramDetailsSubtitle('Team')">
+                            <i class="bi bi-people me-2"></i>Team
+                        </button>
+                        <button class="nav-link" id="program-details-resources-tab" data-bs-toggle="tab" 
+                            data-bs-target="#program-details-resources" type="button" role="tab"
+                            onclick="updateProgramDetailsSubtitle('Resources')">
+                            <i class="bi bi-tools me-2"></i>Resources
+                        </button>
+                        <button class="nav-link" id="program-details-pildoras-tab" data-bs-toggle="tab" 
+                            data-bs-target="#program-details-pildoras" type="button" role="tab"
+                            onclick="updateProgramDetailsSubtitle('Píldoras')">
+                            <i class="bi bi-lightbulb me-2"></i>Píldoras
+                        </button>
+                        <button class="nav-link" id="program-details-evaluation-tab" data-bs-toggle="tab" 
+                            data-bs-target="#program-details-evaluation" type="button" role="tab"
+                            onclick="updateProgramDetailsSubtitle('Evaluation')">
+                            <i class="bi bi-clipboard-check me-2"></i>Evaluation
+                        </button>
+                        <button class="nav-link" id="program-details-quicklinks-tab" data-bs-toggle="tab" 
+                            data-bs-target="#program-details-quicklinks" type="button" role="tab"
+                            onclick="updateProgramDetailsSubtitle('Quick Links')">
+                            <i class="bi bi-lightning me-2"></i>Quick Links
+                        </button>
+                        <button class="nav-link" id="program-details-sections-tab" data-bs-toggle="tab" 
+                            data-bs-target="#program-details-sections" type="button" role="tab"
+                            onclick="updateProgramDetailsSubtitle('Sections')">
+                            <i class="bi bi-file-text me-2"></i>Sections
+                        </button>
+                    </nav>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="program-details-content">
+                        <!-- Schedule Tab -->
+                        <div class="tab-pane fade show active" id="program-details-schedule" role="tabpanel">
                             <div class="card">
-                                <div class="card-header bg-light">
-                                    <h5 class="mb-0"><i class="bi bi-clock me-2"></i>Horario (Schedule)</h5>
-                                </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-md-6 border-end">
-                                            <h6 class="text-primary mb-3">Online Days</h6>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Entry Hour</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-online-entry"></div>
+                                        <div class="col-md-6 border-end pb-md-0 pb-4">
+                                            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-globe me-2"></i>Online Days</h6>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Entry Hour</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-online-entry">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Start Píldoras</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-online-start"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Start Píldoras</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-online-start">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Break</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-online-break"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Break</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-online-break">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Lunch (if any)</label>
-                                                <div class="col-sm-8"><input type="text" class="form-control"
-                                                        id="sched-online-lunch" placeholder="Use text if needed"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Lunch (if any)</label>
+                                                <input type="text" class="form-control form-control-sm" id="sched-online-lunch" placeholder="Use text if needed">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Finish Hour</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-online-finish"></div>
+                                            <div class="mb-0">
+                                                <label class="form-label form-label-sm">Finish Hour</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-online-finish">
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <h6 class="text-success mb-3">Presential Days</h6>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Entry Hour</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-entry"></div>
+                                        <div class="col-md-6 ps-md-4">
+                                            <h6 class="text-success fw-bold mb-3"><i class="bi bi-building me-2"></i>Presential Days</h6>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Entry Hour</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-entry">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Start Píldoras</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-start"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Start Píldoras</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-start">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Break</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-break"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Break</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-break">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Lunch</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-lunch"></div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Lunch</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-lunch">
                                             </div>
-                                            <div class="mb-2 row">
-                                                <label class="col-sm-4 col-form-label">Finish Hour</label>
-                                                <div class="col-sm-8"><input type="time" class="form-control"
-                                                        id="sched-presential-finish"></div>
+                                            <div class="mb-0">
+                                                <label class="form-label form-label-sm">Finish Hour</label>
+                                                <input type="time" class="form-control form-control-sm" id="sched-presential-finish">
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="mt-3">
-                                        <label class="form-label">Additional Schedule Notes</label>
-                                        <textarea class="form-control" id="sched-notes" rows="2"></textarea>
+                                    <div class="mt-4 pt-3 border-top">
+                                        <label class="form-label form-label-sm">Additional Schedule Notes</label>
+                                        <textarea class="form-control form-control-sm" id="sched-notes" rows="2"></textarea>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Team -->
-                        <div class="col-12 mb-4">
+                        <!-- Team Tab -->
+                        <div class="tab-pane fade" id="program-details-team" role="tabpanel">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Equipo (Team)</h5>
+                                    <h6 class="mb-0"><i class="bi bi-people me-2"></i>Team Members</h6>
                                     <button class="btn btn-sm btn-outline-primary" onclick="openTeamModal()">
                                         <i class="bi bi-plus"></i> Add Member
                                     </button>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body p-0">
                                     <div class="table-responsive">
-                                        <table class="table table-hover">
+                                        <table class="table table-hover mb-0">
                                             <thead>
                                                 <tr>
                                                     <th>Name</th>
@@ -571,18 +623,18 @@
                             </div>
                         </div>
 
-                        <!-- Resources -->
-                        <div class="col-12 mb-4">
+                        <!-- Resources Tab -->
+                        <div class="tab-pane fade" id="program-details-resources" role="tabpanel">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0"><i class="bi bi-tools me-2"></i>Recursos (Resources)</h5>
+                                    <h6 class="mb-0"><i class="bi bi-tools me-2"></i>Resources</h6>
                                     <button class="btn btn-sm btn-outline-primary" onclick="openResourceModal()">
                                         <i class="bi bi-plus"></i> Add Resource
                                     </button>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body p-0">
                                     <div class="table-responsive">
-                                        <table class="table table-hover">
+                                        <table class="table table-hover mb-0">
                                             <thead>
                                                 <tr>
                                                     <th>Title</th>
@@ -600,40 +652,42 @@
                             </div>
                         </div>
 
-                        <!-- Píldoras -->
-                        <div class="col-12 mb-4">
+                        <!-- Píldoras Tab -->
+                        <div class="tab-pane fade" id="program-details-pildoras" role="tabpanel">
                             <div class="card">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h5>
-                                        <!-- Module Navigation -->
-                                        <div class="d-flex align-items-center gap-2" id="pildoras-module-nav">
-                                            <button class="btn btn-sm btn-outline-secondary" id="prev-module-btn"
-                                                onclick="navigateToPreviousModule()" disabled>
-                                                <i class="bi bi-chevron-left"></i>
-                                            </button>
-                                            <span class="fw-semibold text-primary" id="current-module-name">Módulo
-                                                I</span>
-                                            <button class="btn btn-sm btn-outline-secondary" id="next-module-btn"
-                                                onclick="navigateToNextModule()">
-                                                <i class="bi bi-chevron-right"></i>
-                                            </button>
+                                <div class="card-header bg-light">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h6>
+                                            <!-- Module Navigation -->
+                                            <div class="d-flex align-items-center gap-2" id="pildoras-module-nav">
+                                                <button class="btn btn-sm btn-outline-secondary" id="prev-module-btn"
+                                                    onclick="navigateToPreviousModule()" disabled>
+                                                    <i class="bi bi-chevron-left"></i>
+                                                </button>
+                                                <span class="fw-semibold text-primary" id="current-module-name">Módulo I</span>
+                                                <button class="btn btn-sm btn-outline-secondary" id="next-module-btn"
+                                                    onclick="navigateToNextModule()">
+                                                    <i class="bi bi-chevron-right"></i>
+                                                </button>
+                                            </div>
+                                            <div class="badge text-dark" id="current-module-stats">
+                                                <span id="module-pildoras-count">0</span> píldoras
+                                            </div>
                                         </div>
-                                        <div class="badge text-dark" id="current-module-stats">
-                                            <span id="module-pildoras-count">0</span> píldoras
-                                        </div>
-                                        <div class="form-check form-switch ms-3 border-start ps-4"
-                                            style="padding-left: 3.5rem !important;">
+                                        <div class="form-check form-switch">
                                             <input class="form-check-input" type="checkbox"
                                                 id="pildoras-assignment-toggle"
                                                 onchange="togglePildorasAssignment(this.checked)">
                                             <label class="form-check-label fw-semibold"
                                                 for="pildoras-assignment-toggle">
-                                                Self-Assignment Open
+                                                Self-Assignment
                                             </label>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2">
+                                </div>
+                                <div class="card-header bg-white border-bottom pt-3 pb-2">
+                                    <div class="d-flex flex-wrap gap-2">
                                         <button class="btn btn-sm btn-outline-primary" type="button"
                                             onclick="addPildoraRow()">
                                             <i class="bi bi-plus"></i> Add Píldora
@@ -642,19 +696,19 @@
                                             onchange="importPildorasFromCsv(this)">
                                         <button class="btn btn-sm btn-outline-secondary" type="button"
                                             onclick="document.getElementById('pildoras-csv-input').click()">
-                                            <i class="bi bi-filetype-csv"></i> Import CSV
+                                            <i class="bi bi-filetype-csv"></i> CSV
                                         </button>
                                         <input type="file" id="pildoras-excel-input" accept=".xlsx,.xls" class="d-none"
                                             onchange="importPildorasFromExcel(this)">
                                         <button class="btn btn-sm btn-outline-success" type="button"
                                             onclick="document.getElementById('pildoras-excel-input').click()">
-                                            <i class="bi bi-file-earmark-spreadsheet"></i> Import Excel
+                                            <i class="bi bi-file-earmark-spreadsheet"></i> Excel
                                         </button>
                                     </div>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body p-0">
                                     <div class="table-responsive">
-                                        <table class="table table-hover align-middle">
+                                        <table class="table table-hover align-middle mb-0">
                                             <thead>
                                                 <tr>
                                                     <th>Presentación</th>
@@ -669,18 +723,15 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                    <small class="text-muted">Use las casillas de Student para asignar uno o varios
-                                        estudiantes a cada píldora.</small>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Evaluation -->
-                        <div class="col-12 mb-4">
+                        <!-- Evaluation Tab -->
+                        <div class="tab-pane fade" id="program-details-evaluation" role="tabpanel">
                             <div class="card">
                                 <div class="card-header bg-light">
-                                    <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Evaluación (Evaluation
-                                        Criteria)</h5>
+                                    <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Evaluation Criteria</h6>
                                 </div>
                                 <div class="card-body">
                                     <textarea class="form-control" id="evaluation-text" rows="6"
@@ -689,11 +740,11 @@
                             </div>
                         </div>
 
-                        <!-- Quick Links Section -->
-                        <div class="col-12 mb-4">
+                        <!-- Quick Links Tab -->
+                        <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h5>
+                                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h6>
                                     <button class="btn btn-sm btn-primary" onclick="openQuickLinkModal()">
                                         <i class="bi bi-plus-circle me-2"></i>Add Link
                                     </button>
@@ -706,11 +757,11 @@
                             </div>
                         </div>
 
-                        <!-- Sections -->
-                        <div class="col-12 mb-4">
+                        <!-- Sections Tab -->
+                        <div class="tab-pane fade" id="program-details-sections" role="tabpanel">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Sections</h5>
+                                    <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Sections</h6>
                                     <button class="btn btn-sm btn-primary" onclick="openSectionModal()">
                                         <i class="bi bi-plus-circle me-2"></i>Add Section
                                     </button>
@@ -754,6 +805,12 @@
                     </div>
                 </div>
             </main>
+
+            <!-- Floating Save Button -->
+            <button id="floating-save-btn" class="floating-save-btn hidden btn btn-primary" onclick="saveExtendedInfo()" 
+                title="Save all changes to Program Details">
+                <i class="bi bi-save me-2"></i>Save All Changes
+            </button>
         </div>
     </div>
 

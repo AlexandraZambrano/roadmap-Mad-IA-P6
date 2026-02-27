@@ -1318,6 +1318,14 @@ function switchTab(tabId) {
     if (tabId === 'collaborators') loadCollaborators();
     if (tabId === 'access-settings') loadAccessPassword();
 
+    // Show/hide floating save button
+    const floatingBtn = document.getElementById('floating-save-btn');
+    if (tabId === 'info') {
+        floatingBtn?.classList.remove('hidden');
+    } else {
+        floatingBtn?.classList.add('hidden');
+    }
+
     // Update active state in sidebar
     document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
@@ -4052,9 +4060,20 @@ async function exportAttendanceToExcel() {
         // Restore button state
         const exportBtn = document.querySelector('[onclick="exportAttendanceToExcel()"]');
         if (exportBtn) {
-            exportBtn.innerHTML = originalText || '<i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel';
+            exportBtn.innerHTML = '<i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel';
             exportBtn.disabled = false;
         }
+    }
+}
+
+/**
+ * Update the subtitle in Program Details when switching between tabs
+ * @param {string} sectionName - Name of the section being viewed
+ */
+function updateProgramDetailsSubtitle(sectionName) {
+    const subtitle = document.getElementById('program-details-subtitle');
+    if (subtitle) {
+        subtitle.textContent = sectionName;
     }
 }
 

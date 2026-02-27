@@ -159,16 +159,17 @@ main {
 }
 
 .btn-outline-primary{
-    background-color: var( --purple-f5);
-    color:white;
-    border: 2px solid var( --purple-f5);
+    background-color: var( --purple-light-f5);
+    color:black;
+    border: 2px solid var( --purple-light-f5);
+      font-weight: 500;
 
 }
 
 .btn-outline-primary:hover{
-    background-color: var( --purple-light-f5);
-    color:white;
-       border:none;
+  background-color: #c1aee6;
+  color: #000;
+border-color: #c1aee6;
 
 }
 
@@ -1102,5 +1103,287 @@ main {
     #access-settings-tab .alert-sm {
         font-size: 0.75rem;
         padding: 0.4rem 0.6rem;
+    }
+}
+
+/* ===== Program Details Optimization ===== */
+#info-tab {
+    padding-bottom: 100px; /* Space for floating button */
+}
+
+#program-details-tabs {
+    position: sticky;
+    top: 16px;
+    background-color: #ffffff;
+    z-index: 50;
+    border-bottom: 2px solid #f0f0f0;
+    padding: 0 0 0.5rem 0;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border-radius: 0.5rem;
+}
+
+#program-details-tabs .nav-link {
+    border: none;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #6c757d;
+    transition: all 0.3s ease;
+}
+
+#program-details-tabs .nav-link:hover {
+    color: var(--principal-1);
+    border-bottom-color: var(--principal-1);
+}
+
+#program-details-tabs .nav-link.active {
+    color: var(--principal-1);
+    border-bottom-color: var(--principal-1);
+    background-color: transparent;
+}
+
+#program-details-content .tab-pane {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#program-details-content .card {
+    border: 1px solid #e9ecef;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.3s ease;
+    margin-bottom: 0;
+}
+
+#program-details-content .card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+#program-details-content .card-header {
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+#program-details-content .card-header h6 {
+    font-size: 1rem;
+    margin: 0;
+    color: #333;
+    font-weight: 600;
+}
+
+#program-details-content .card-body {
+    padding: 1.25rem;
+}
+
+#program-details-content .table {
+    margin-bottom: 0;
+    font-size: 0.95rem;
+}
+
+#program-details-content .table thead th {
+    border-bottom: 2px solid #f0f0f0;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+#program-details-content .table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+}
+
+#program-details-content .form-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+    color: #495057;
+}
+
+#program-details-content .form-control,
+#program-details-content .form-control-sm {
+    border-radius: 0.4rem;
+    border: 1px solid #dee2e6;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#program-details-content .form-control:focus,
+#program-details-content .form-control-sm:focus {
+    border-color: var(--principal-1);
+    box-shadow: 0 0 0 0.2rem rgba(255, 71, 0, 0.15);
+}
+
+#program-details-content .form-label-sm {
+    font-size: 0.85rem;
+}
+
+#program-details-content .form-control-sm {
+    font-size: 0.9rem;
+}
+
+/* ===== Floating Save Button ===== */
+.floating-save-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1050;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(255, 71, 0, 0.3);
+    transition: all 0.3s ease;
+    animation: slideInRight 0.3s ease-out;
+}
+
+.floating-save-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 71, 0, 0.4);
+}
+
+.floating-save-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.floating-save-btn.hidden {
+    display: none !important;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Mobile Responsive for Program Details */
+@media (max-width: 768px) {
+    #program-details-tabs {
+        top: 8px;
+        margin-bottom: 1rem;
+        overflow-x: auto;
+        padding-right: 1rem;
+    }
+
+    #program-details-tabs .nav-link {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    #program-details-content .card-body {
+        padding: 1rem;
+    }
+
+    #program-details-content .table {
+        font-size: 0.85rem;
+    }
+
+    #program-details-content .table thead th {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    #program-details-content .table td {
+        padding: 0.5rem;
+    }
+
+    .floating-save-btn {
+        bottom: 1.5rem;
+        right: 1.5rem;
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+    }
+
+    #info-tab {
+        padding-bottom: 80px;
+    }
+}
+
+@media (max-width: 576px) {
+    #program-details-tabs {
+        top: 4px;
+        margin-bottom: 0.8rem;
+    }
+
+    #program-details-tabs .nav-link {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.75rem;
+    }
+
+    #program-details-content .card-body {
+        padding: 0.75rem;
+    }
+
+    #program-details-content .card-header {
+        padding: 0.75rem;
+    }
+
+    #program-details-content .form-label-sm {
+        font-size: 0.8rem;
+    }
+
+    #program-details-content .table {
+        font-size: 0.75rem;
+    }
+
+    #program-details-content .table thead th {
+        padding: 0.4rem 0.3rem;
+        font-size: 0.7rem;
+    }
+
+    #program-details-content .table td {
+        padding: 0.4rem 0.3rem;
+    }
+
+    .floating-save-btn {
+        bottom: 1rem;
+        right: 1rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+        border-radius: 0.3rem;
+    }
+
+    .floating-save-btn i {
+        display: none;
+    }
+
+    #info-tab {
+        padding-bottom: 70px;
+    }
+
+    .row {
+        --bs-gutter-x: 0.5rem;
+    }
+
+    .col-md-6 {
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+    }
+
+    .col-md-6.border-end {
+        border-right: none !important;
+        padding-bottom: 1rem !important;
+    }
+
+    .col-md-6.ps-md-4 {
+        padding-left: 0.25rem !important;
     }
 }
