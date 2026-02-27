@@ -305,11 +305,18 @@ function displayTeam() {
     tbody.innerHTML = '';
     (extendedInfoData.team || []).forEach((member, index) => {
         const tr = document.createElement('tr');
+        const moduleCell = member.moduleName
+            ? `<span class="badge bg-light text-dark border">${escapeHtml(member.moduleName)}</span>`
+            : '<span class="text-muted small">—</span>';
+        const linkedinCell = member.linkedin
+            ? `<a href="${escapeHtml(member.linkedin)}" target="_blank"><i class="bi bi-linkedin"></i></a>`
+            : '<span class="text-muted small">—</span>';
         tr.innerHTML = `
             <td>${escapeHtml(member.name)}</td>
-            <td>${escapeHtml(member.role)}</td>
-            <td>${escapeHtml(member.email)}</td>
-            <td><a href="${escapeHtml(member.linkedin)}" target="_blank"><i class="bi bi-linkedin"></i></a></td>
+            <td>${escapeHtml(member.role || '')}</td>
+            <td>${escapeHtml(member.email || '')}</td>
+            <td>${moduleCell}</td>
+            <td>${linkedinCell}</td>
             <td>
                 <button class="btn btn-sm btn-danger" onclick="deleteTeamMember(${index})"><i class="bi bi-trash"></i></button>
             </td>
@@ -962,9 +969,52 @@ function importPildorasFromExcel(input) {
         });
 }
 
-function openTeamModal() {
+async function openTeamModal() {
     document.getElementById('team-form').reset();
+
+    // Populate module dropdown
+    const moduleSelect = document.getElementById('team-module');
+    moduleSelect.innerHTML = '<option value="">— No specific module —</option>';
+    (window.promotionModules || []).forEach(mod => {
+        const opt = document.createElement('option');
+        opt.value = mod.id;
+        opt.textContent = mod.name;
+        moduleSelect.appendChild(opt);
+    });
+
+    // Populate collaborators dropdown for quick-fill
+    const collabSelect = document.getElementById('team-from-collaborator');
+    collabSelect.innerHTML = '<option value="">— Fill manually —</option>';
+    collabSelect._collabData = {};
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/collaborators`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const collaborators = await res.json();
+            collaborators.forEach(c => {
+                collabSelect._collabData[c.id] = c;
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                const role = c.userRole || 'Formador/a';
+                opt.textContent = `${c.name} — ${role}`;
+                collabSelect.appendChild(opt);
+            });
+        }
+    } catch (e) { /* silent */ }
+
     teamModal.show();
+}
+
+function fillTeamFromCollaborator() {
+    const select = document.getElementById('team-from-collaborator');
+    const collab = select._collabData && select._collabData[select.value];
+    if (!collab) return;
+    document.getElementById('team-name').value = collab.name || '';
+    document.getElementById('team-email').value = collab.email || '';
+    document.getElementById('team-role').value = collab.userRole || '';
 }
 
 function addTeamMember() {
@@ -972,10 +1022,13 @@ function addTeamMember() {
     const role = document.getElementById('team-role').value;
     const email = document.getElementById('team-email').value;
     const linkedin = document.getElementById('team-linkedin').value;
+    const moduleEl = document.getElementById('team-module');
+    const moduleId = moduleEl.value;
+    const moduleName = moduleId ? moduleEl.options[moduleEl.selectedIndex].text : '';
 
     if (!name) return;
 
-    extendedInfoData.team.push({ name, role, email, linkedin });
+    extendedInfoData.team.push({ name, role, email, linkedin, moduleId, moduleName });
     displayTeam();
     teamModal.hide();
 }
@@ -3343,6 +3396,7 @@ async function loadCollaborators() {
 
         if (response.ok) {
             const collaborators = await response.json();
+            _currentCollabModulesList = collaborators;
             displayCollaborators(collaborators);
         }
     } catch (error) {
@@ -3351,63 +3405,79 @@ async function loadCollaborators() {
 }
 
 async function displayCollaborators(collaborators) {
-    const token = localStorage.getItem('token');
     const tbody = document.getElementById('collaborators-list-body');
-    const listGroup = document.getElementById('collaborators-list'); // For the list-group view
+    const listGroup = document.getElementById('collaborators-list');
 
     if (!tbody && !listGroup) return;
 
-    // Need to get promotion to see who is the owner
-    const promoResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    let isOwner = false;
-    if (promoResponse.ok) {
-        const promotion = await promoResponse.json();
-        isOwner = promotion.teacherId === currentUser.id;
-    }
+    const isOwner = window.currentPromotion && window.currentPromotion.teacherId === currentUser.id;
+    const modules = window.promotionModules || [];
+    const roleColors = { 'Formador/a': 'primary', 'CoFormador/a': 'success', 'Coordinador/a': 'warning' };
 
-    // Update table view if it exists
+    const getModuleNames = (moduleIds) => {
+        if (!moduleIds || moduleIds.length === 0) return '<span class="text-muted small">—</span>';
+        if (modules.length > 0 && moduleIds.length === modules.length) return '<span class="badge bg-secondary">Todos</span>';
+        return moduleIds.map(mid => {
+            const mod = modules.find(m => m.id === mid);
+            return mod ? `<span class="badge bg-light text-dark border me-1">${escapeHtml(mod.name)}</span>` : '';
+        }).join('');
+    };
+
+    // Update table view
     if (tbody) {
         tbody.innerHTML = '';
         if (collaborators.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No collaborators added yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No collaborators added yet</td></tr>';
         } else {
             collaborators.forEach(collab => {
+                const userRole = collab.userRole || 'Formador/a';
+                const badgeColor = roleColors[userRole] || 'secondary';
+                const ownerBadge = collab.isOwner ? '<span class="badge bg-dark ms-1">Owner</span>' : '';
+                const editModulesBtn = isOwner
+                    ? `<button class="btn btn-sm btn-outline-secondary me-1" onclick="openCollaboratorModulesModal('${collab.id}', '${escapeHtml(collab.name)}')" title="Editar módulos"><i class="bi bi-journal-bookmark"></i></button>`
+                    : '';
+                const removeBtn = (isOwner && !collab.isOwner)
+                    ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${collab.id}')" title="Remove collaborator"><i class="bi bi-person-dash"></i></button>`
+                    : '';
                 const tr = document.createElement('tr');
-                const actions = isOwner ? `
-                    <button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${collab.id}')" title="Remove as collaborator">
-                        <i class="bi bi-person-dash"></i> Remove
-                    </button>` : '<span class="text-muted small">Only owner can manage</span>';
-
                 tr.innerHTML = `
-                    <td>${escapeHtml(collab.name)}</td>
+                    <td>${escapeHtml(collab.name)} ${ownerBadge}</td>
+                    <td><span class="badge bg-${badgeColor}">${escapeHtml(userRole)}</span></td>
                     <td>${escapeHtml(collab.email)}</td>
-                    <td>${actions}</td>
+                    <td>${getModuleNames(collab.moduleIds)}</td>
+                    <td class="text-nowrap">${editModulesBtn}${removeBtn || (!isOwner ? '' : '')}</td>
                 `;
                 tbody.appendChild(tr);
             });
         }
     }
 
-    // Update list-group view if it exists
+    // Update list-group view
     if (listGroup) {
         listGroup.innerHTML = '';
         if (collaborators.length === 0) {
             listGroup.innerHTML = '<p class="text-muted p-3">No collaborators yet</p>';
         } else {
             collaborators.forEach(teacher => {
+                const userRole = teacher.userRole || 'Formador/a';
+                const badgeColor = roleColors[userRole] || 'secondary';
+                const ownerBadge = teacher.isOwner ? '<span class="badge bg-dark ms-2">Owner</span>' : '';
+                const editModulesBtn = isOwner
+                    ? `<button class="btn btn-sm btn-outline-secondary me-1" onclick="openCollaboratorModulesModal('${teacher.id}', '${escapeHtml(teacher.name)}')" title="Editar módulos"><i class="bi bi-journal-bookmark"></i></button>`
+                    : '';
+                const deleteBtn = (isOwner && !teacher.isOwner)
+                    ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${teacher.id}')"><i class="bi bi-trash"></i></button>`
+                    : '';
                 const div = document.createElement('div');
                 div.className = 'list-group-item d-flex justify-content-between align-items-center';
-                const ownerBadge = teacher.isOwner ? '<span class="badge bg-primary ms-2">Owner</span>' : '';
-                const deleteBtn = isOwner && !teacher.isOwner ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${teacher.id}')"><i class="bi bi-trash"></i></button>` : '';
-
                 div.innerHTML = `
                     <div>
                         <h6 class="mb-1">${escapeHtml(teacher.name)} ${ownerBadge}</h6>
-                        <p class="mb-0 text-muted small">${escapeHtml(teacher.email)}</p>
+                        <span class="badge bg-${badgeColor} me-2">${escapeHtml(userRole)}</span>
+                        <span class="text-muted small">${escapeHtml(teacher.email)}</span>
+                        <div class="mt-1">${getModuleNames(teacher.moduleIds)}</div>
                     </div>
-                    ${deleteBtn}
+                    <div class="d-flex gap-1">${editModulesBtn}${deleteBtn}</div>
                 `;
                 listGroup.appendChild(div);
             });
@@ -3415,70 +3485,165 @@ async function displayCollaborators(collaborators) {
     }
 }
 
+let collaboratorModulesModal;
+let _currentCollabModulesId = null;
+let _currentCollabModulesList = [];
+
+function openCollaboratorModulesModal(collaboratorId, collaboratorName) {
+    if (!collaboratorModulesModal) {
+        collaboratorModulesModal = new bootstrap.Modal(document.getElementById('collaboratorModulesModal'));
+    }
+    _currentCollabModulesId = collaboratorId;
+
+    document.getElementById('collab-modules-name').textContent = collaboratorName;
+
+    const modules = window.promotionModules || [];
+    const checklist = document.getElementById('collab-modules-checklist');
+    checklist.innerHTML = '';
+
+    // Find current module assignments for this person
+    const allCollabs = _currentCollabModulesList;
+    const entry = allCollabs.find(c => c.id === collaboratorId);
+    const selected = entry ? (entry.moduleIds || []) : [];
+
+    if (modules.length === 0) {
+        checklist.innerHTML = '<p class="text-muted small">No hay módulos definidos en el roadmap.</p>';
+    } else {
+        modules.forEach(mod => {
+            const checked = selected.includes(mod.id) ? 'checked' : '';
+            const div = document.createElement('div');
+            div.className = 'form-check';
+            div.innerHTML = `
+                <input class="form-check-input" type="checkbox" value="${mod.id}" id="collab-mod-${mod.id}" ${checked}>
+                <label class="form-check-label" for="collab-mod-${mod.id}">${escapeHtml(mod.name)}</label>
+            `;
+            checklist.appendChild(div);
+        });
+    }
+
+    collaboratorModulesModal.show();
+}
+
+async function saveCollaboratorModules() {
+    const checkboxes = document.querySelectorAll('#collab-modules-checklist .form-check-input:checked');
+    const moduleIds = Array.from(checkboxes).map(cb => cb.value);
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/collaborators/${_currentCollabModulesId}/modules`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ moduleIds })
+        });
+        if (response.ok) {
+            collaboratorModulesModal.hide();
+            loadCollaborators();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Error guardando módulos');
+        }
+    } catch (error) {
+        alert('Error de conexión');
+    }
+}
+
 async function openCollaboratorModal() {
     const select = document.getElementById('collaborator-select');
     if (!select) return;
 
-    select.innerHTML = '<option value="">Loading teachers...</option>';
+    // Reset preview
+    document.getElementById('collaborator-info-preview').classList.add('d-none');
+
+    // Populate module checkboxes
+    const moduleChecklist = document.getElementById('collaborator-module-checklist');
+    const modules = window.promotionModules || [];
+    if (modules.length === 0) {
+        moduleChecklist.innerHTML = '<span class="text-muted small">No hay módulos definidos en el roadmap.</span>';
+    } else {
+        moduleChecklist.innerHTML = '';
+        modules.forEach(mod => {
+            const div = document.createElement('div');
+            div.className = 'form-check';
+            div.innerHTML = `
+                <input class="form-check-input" type="checkbox" value="${mod.id}" id="add-collab-mod-${mod.id}">
+                <label class="form-check-label" for="add-collab-mod-${mod.id}">${escapeHtml(mod.name)}</label>
+            `;
+            moduleChecklist.appendChild(div);
+        });
+    }
+
+    select.innerHTML = '<option value="">Loading users...</option>';
     collaboratorModal.show();
 
     const token = localStorage.getItem('token');
     try {
-        // Get all teachers
-        const response = await fetch(`${API_URL}/api/teachers`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const [teachersRes, collabRes, promoRes] = await Promise.all([
+            fetch(`${API_URL}/api/teachers`, { headers: { 'Authorization': `Bearer ${token}` } }),
+            fetch(`${API_URL}/api/promotions/${promotionId}/collaborators`, { headers: { 'Authorization': `Bearer ${token}` } }),
+            fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
 
-        // Get current collaborators to exclude them
-        const collabResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/collaborators`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        if (teachersRes.ok && collabRes.ok && promoRes.ok) {
+            const allTeachers = await teachersRes.json();
+            const currentCollaborators = await collabRes.json();
+            const promo = await promoRes.json();
 
-        if (response.ok && collabResponse.ok) {
-            const allTeachers = await response.json();
-            const currentCollaborators = await collabResponse.json();
-            const collaboratorIds = currentCollaborators.map(c => c.id);
+            const existingIds = new Set(currentCollaborators.map(c => c.id));
 
-            // Get promotion owner to exclude
-            const promoResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            let ownerId = null;
-            if (promoResponse.ok) {
-                const promo = await promoResponse.json();
-                ownerId = promo.teacherId;
-            }
-
-            const availableTeachers = allTeachers.filter(t =>
+            const available = allTeachers.filter(t =>
                 t.id !== currentUser.id &&
-                t.id !== ownerId &&
-                !collaboratorIds.includes(t.id)
+                t.id !== promo.teacherId &&
+                !existingIds.has(t.id)
             );
 
-            if (availableTeachers.length === 0) {
-                select.innerHTML = '<option value="">No other teachers available</option>';
+            // Store teacher data for preview use
+            select._teacherData = {};
+            available.forEach(t => { select._teacherData[t.id] = t; });
+
+            if (available.length === 0) {
+                select.innerHTML = '<option value="">No other users available</option>';
             } else {
-                select.innerHTML = '<option value="">Select a teacher...</option>';
-                availableTeachers.forEach(t => {
+                select.innerHTML = '<option value="">Select a user...</option>';
+                available.forEach(t => {
                     const opt = document.createElement('option');
                     opt.value = t.id;
-                    opt.textContent = `${t.name} (${t.email})`;
+                    opt.textContent = `${t.name} — ${t.userRole || 'Formador/a'} (${t.email})`;
                     select.appendChild(opt);
                 });
             }
         }
     } catch (error) {
-        console.error('Error loading teachers:', error);
-        if (select) select.innerHTML = '<option value="">Error loading teachers</option>';
+        console.error('Error loading users:', error);
+        if (select) select.innerHTML = '<option value="">Error loading users</option>';
     }
+}
+
+function onCollaboratorSelected() {
+    const select = document.getElementById('collaborator-select');
+    const preview = document.getElementById('collaborator-info-preview');
+    const teacher = select._teacherData && select._teacherData[select.value];
+    if (!teacher) { preview.classList.add('d-none'); return; }
+
+    const roleColors = { 'Formador/a': 'primary', 'CoFormador/a': 'success', 'Coordinador/a': 'warning' };
+    const role = teacher.userRole || 'Formador/a';
+    document.getElementById('collab-preview-name').textContent = teacher.name;
+    document.getElementById('collab-preview-email').textContent = teacher.email;
+    const badge = document.getElementById('collab-preview-role-badge');
+    badge.textContent = role;
+    badge.className = `badge bg-${roleColors[role] || 'secondary'} mt-1`;
+    preview.classList.remove('d-none');
 }
 
 async function addCollaboratorById() {
     const teacherId = document.getElementById('collaborator-select').value;
     if (!teacherId) {
-        alert('Please select a teacher');
+        alert('Please select a user');
         return;
     }
+    const checked = document.querySelectorAll('#collaborator-module-checklist .form-check-input:checked');
+    const moduleIds = Array.from(checked).map(cb => cb.value);
+    console.log('[addCollaboratorById] teacherId:', teacherId, 'moduleIds:', moduleIds, 'checked count:', checked.length);
+    console.log('[addCollaboratorById] all checkboxes in list:', document.querySelectorAll('#collaborator-module-checklist .form-check-input').length);
 
     const token = localStorage.getItem('token');
     try {
@@ -3488,7 +3653,7 @@ async function addCollaboratorById() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ teacherId })
+            body: JSON.stringify({ teacherId, moduleIds })
         });
 
         if (response.ok) {

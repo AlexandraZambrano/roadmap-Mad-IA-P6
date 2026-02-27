@@ -2669,8 +2669,14 @@ app.put('/api/promotions/:promotionId/pildoras-self-assign', async (req, res) =>
 
 app.get('/api/teachers', verifyToken, async (req, res) => {
   try {
-    const teachers = await Teacher.find({}, 'id name email');
-    res.json(teachers);
+    const teachers = await Teacher.find({}, 'id name email userRole');
+    const result = teachers.map(t => ({
+      id: t.id,
+      name: t.name,
+      email: t.email,
+      userRole: t.userRole || 'Formador/a'
+    }));
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -2680,9 +2686,30 @@ app.get('/api/promotions/:promotionId/collaborators', verifyToken, async (req, r
   try {
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+
     const collaboratorIds = promotion.collaborators || [];
-    const collaborators = await Teacher.find({ id: { $in: collaboratorIds } }, 'id name email');
-    res.json(collaborators);
+    const collaborators = await Teacher.find({ id: { $in: collaboratorIds } }, 'id name email userRole');
+    const owner = await Teacher.findOne({ id: promotion.teacherId }, 'id name email userRole');
+
+    const result = [];
+    if (owner) {
+      result.push({
+        id: owner.id, name: owner.name, email: owner.email,
+        userRole: owner.userRole || 'Formador/a',
+        isOwner: true,
+        moduleIds: promotion.ownerModules || []
+      });
+    }
+    collaborators.forEach(c => {
+      const entry = (promotion.collaboratorModules || []).find(m => m.teacherId === c.id);
+      result.push({
+        id: c.id, name: c.name, email: c.email,
+        userRole: c.userRole || 'Formador/a',
+        isOwner: false,
+        moduleIds: entry ? entry.moduleIds : []
+      });
+    });
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -2690,7 +2717,8 @@ app.get('/api/promotions/:promotionId/collaborators', verifyToken, async (req, r
 
 app.post('/api/promotions/:promotionId/collaborators', verifyToken, async (req, res) => {
   try {
-    const { teacherId } = req.body;
+    const { teacherId, moduleIds } = req.body;
+    console.log('[POST collaborators] teacherId:', teacherId, 'moduleIds:', moduleIds);
     if (!teacherId) return res.status(400).json({ error: 'Teacher ID is required' });
 
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
@@ -2703,10 +2731,48 @@ app.post('/api/promotions/:promotionId/collaborators', verifyToken, async (req, 
     if (promotion.collaborators.includes(teacherId)) return res.status(400).json({ error: 'Teacher already a collaborator' });
 
     promotion.collaborators.push(teacherId);
-    await promotion.save();
 
-    const teacher = await Teacher.findOne({ id: teacherId }, 'id name email');
+    if (!promotion.collaboratorModules) promotion.collaboratorModules = [];
+    const resolvedModuleIds = Array.isArray(moduleIds) ? moduleIds : [];
+    promotion.collaboratorModules.push({ teacherId, moduleIds: resolvedModuleIds });
+    promotion.markModified('collaborators');
+    promotion.markModified('collaboratorModules');
+
+    console.log('[POST collaborators] saving collaboratorModules:', JSON.stringify(promotion.collaboratorModules));
+    await promotion.save();
+    console.log('[POST collaborators] saved OK');
+    const teacher = await Teacher.findOne({ id: teacherId }, 'id name email userRole');
     res.status(201).json({ message: 'Collaborator added', collaborator: teacher });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update module assignments for a collaborator or the owner
+app.put('/api/promotions/:promotionId/collaborators/:teacherId/modules', verifyToken, async (req, res) => {
+  try {
+    const { moduleIds } = req.body;
+    if (!Array.isArray(moduleIds)) return res.status(400).json({ error: 'moduleIds must be an array' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Only owner can manage module assignments' });
+
+    if (req.params.teacherId === promotion.teacherId) {
+      promotion.ownerModules = moduleIds;
+      promotion.markModified('ownerModules');
+    } else {
+      if (!promotion.collaboratorModules) promotion.collaboratorModules = [];
+      const entry = promotion.collaboratorModules.find(m => m.teacherId === req.params.teacherId);
+      if (entry) {
+        entry.moduleIds = moduleIds;
+      } else {
+        promotion.collaboratorModules.push({ teacherId: req.params.teacherId, moduleIds });
+      }
+      promotion.markModified('collaboratorModules');
+    }
+    await promotion.save();
+    res.json({ message: 'Module assignments updated' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -2720,6 +2786,9 @@ app.delete('/api/promotions/:promotionId/collaborators/:teacherId', verifyToken,
     if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Only owner can remove collaborators' });
 
     promotion.collaborators = (promotion.collaborators || []).filter(id => id !== req.params.teacherId);
+    promotion.collaboratorModules = (promotion.collaboratorModules || []).filter(m => m.teacherId !== req.params.teacherId);
+    promotion.markModified('collaborators');
+    promotion.markModified('collaboratorModules');
     await promotion.save();
     res.json({ message: 'Collaborator removed' });
   } catch (error) {

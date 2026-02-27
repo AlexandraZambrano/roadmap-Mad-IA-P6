@@ -518,7 +518,7 @@
                     <div class="d-flex justify-content-between align-items-center my-4">
                         <h2>Program Collaborators</h2>
                         <button class="btn btn-primary" onclick="openCollaboratorModal()">
-                            <i class="bi bi-person-plus me-2"></i>Add Teacher
+                            <i class="bi bi-person-plus me-2"></i>Add Collaborator
                         </button>
                     </div>
 
@@ -655,6 +655,7 @@
                                                     <th>Name</th>
                                                     <th>Role</th>
                                                     <th>Email</th>
+                                                    <th>Module</th>
                                                     <th>LinkedIn</th>
                                                     <th>Action</th>
                                                 </tr>
@@ -837,7 +838,9 @@
                                     <thead>
                                         <tr>
                                             <th>Name</th>
+                                            <th>Role</th>
                                             <th>Email</th>
+                                            <th>Módulos</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -1323,16 +1326,30 @@
                 <div class="modal-body">
                     <form id="team-form">
                         <div class="mb-3">
+                            <label class="form-label">Import from Collaborators <span class="text-muted small">(optional)</span></label>
+                            <select class="form-select" id="team-from-collaborator" onchange="fillTeamFromCollaborator()">
+                                <option value="">— Fill manually —</option>
+                            </select>
+                            <div class="form-text">Select a collaborator to auto-fill name, email and role.</div>
+                        </div>
+                        <hr>
+                        <div class="mb-3">
                             <label class="form-label">Name</label>
                             <input type="text" class="form-control" id="team-name" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Role</label>
-                            <input type="text" class="form-control" id="team-role" placeholder="e.g. Module 1 Lead">
+                            <input type="text" class="form-control" id="team-role" placeholder="e.g. Formador/a">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
                             <input type="email" class="form-control" id="team-email">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Module</label>
+                            <select class="form-select" id="team-module">
+                                <option value="">— No specific module —</option>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">LinkedIn URL</label>
@@ -1389,8 +1406,7 @@
     </div>
 
     <!-- Collaborator Selection Modal -->
-    <div class="modal fade" id="collaboratorModal" tabindex="-1">
-        <div class="modal-dialog">
+    <div class="modal fade" id="collaboratorModal" tabindex="-1">        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Add Collaborator</h5>
@@ -1398,17 +1414,56 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="collaborator-select" class="form-label">Select Teacher</label>
-                        <select class="form-select" id="collaborator-select">
-                            <option value="">Loading teachers...</option>
+                        <label for="collaborator-select" class="form-label">Select User</label>
+                        <select class="form-select" id="collaborator-select" onchange="onCollaboratorSelected()">
+                            <option value="">Loading users...</option>
                         </select>
-                        <div class="form-text">Newly registered teachers must log in at least once to appear here.</div>
+                        <div class="form-text">Newly registered users must log in at least once to appear here.</div>
+                    </div>
+                    <div id="collaborator-info-preview" class="d-none">
+                        <div class="alert alert-light border d-flex align-items-center gap-3 mb-3">
+                            <i class="bi bi-person-badge fs-4 text-primary"></i>
+                            <div>
+                                <div class="fw-semibold" id="collab-preview-name"></div>
+                                <div class="text-muted small" id="collab-preview-email"></div>
+                                <span class="badge mt-1" id="collab-preview-role-badge"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Module Assignment <span class="text-muted small">(optional)</span></label>
+                        <div id="collaborator-module-checklist" class="d-flex flex-column gap-2 border rounded p-2" style="max-height:180px; overflow-y:auto;">
+                            <span class="text-muted small">Loading modules...</span>
+                        </div>
+                        <div class="form-text">Selecciona los módulos en los que estará presente. Puede ser más de uno o todos.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" onclick="addCollaboratorById()">Add
                         Collaborator</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collaborator Module Assignment Modal -->
+    <div class="modal fade" id="collaboratorModulesModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Asignar Módulos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Selecciona los módulos en los que estará presente <strong id="collab-modules-name"></strong>. Puede ser más de uno o todos.</p>
+                    <div id="collab-modules-checklist" class="d-flex flex-column gap-2">
+                        <!-- Checkboxes generated dynamically -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCollaboratorModules()">Guardar</button>
                 </div>
             </div>
         </div>

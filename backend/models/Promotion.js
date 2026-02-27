@@ -40,7 +40,9 @@ const PromotionSchema = new mongoose.Schema({
         duration: { type: Number, default: 1 }
     }],
     teacherId: { type: String, required: true },
+    ownerModules: [{ type: String }],
     collaborators: [{ type: String }],
+    collaboratorModules: [{ teacherId: { type: String }, moduleIds: [{ type: String }] }],
     accessPassword: { type: String }, // Password for students to access promotion
     passwordChangeHistory: [{
         oldPassword: String,
