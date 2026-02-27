@@ -239,8 +239,16 @@ function setupPromotionForm() {
             });
 
             if (response.ok) {
-                promotionModal.hide();
-                loadPromotions();
+                const saved = await response.json();
+                if (!currentPromotionId) {
+                    // New promotion created → redirect to detail page and auto-open Acta de Inicio
+                    const newId = saved._id || saved.id;
+                    window.location.href = `promotion-detail.html?id=${newId}&openActa=1`;
+                } else {
+                    // Editing existing → stay on dashboard
+                    promotionModal.hide();
+                    loadPromotions();
+                }
             } else {
                 alert('Error saving promotion');
             }

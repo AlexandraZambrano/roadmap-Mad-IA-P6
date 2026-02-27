@@ -220,6 +220,11 @@ Evaluación Global al Final del Bootcamp
             if (window.ProgramCompetences) {
                 window.ProgramCompetences.init(extendedInfoData.competences || []);
             }
+
+            // Auto-open Acta de Inicio modal when redirected from new promotion creation
+            if (new URLSearchParams(window.location.search).get('openActa') === '1') {
+                setTimeout(() => openActaModal(), 400);
+            }
         }
     } catch (error) {
         console.error('Error loading extended info:', error);
