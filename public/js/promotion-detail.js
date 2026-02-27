@@ -1229,6 +1229,8 @@ async function saveExtendedInfo() {
 // ── Acta de Inicio modal ─────────────────────────────────────────────────────
 
 const WEEKDAYS = ['lunes','martes','miércoles','jueves','viernes'];
+// Map each weekday to its checkbox id suffix (avoids issues with accented chars in substring)
+const WEEKDAY_IDS = { 'lunes':'lun', 'martes':'mar', 'miércoles':'mie', 'jueves':'jue', 'viernes':'vie' };
 
 /** Build a weekday <select> with given id and optional selected value */
 function _actaDaySelect(id, selected) {
@@ -1362,7 +1364,7 @@ function openActaModal() {
     // Presential days checkboxes
     const storedDays = (d.presentialDays || '').toLowerCase();
     WEEKDAYS.forEach(day => {
-        const cb = document.getElementById(`pd-${day.substring(0,3)}`);
+        const cb = document.getElementById(`pd-${WEEKDAY_IDS[day]}`);
         if (cb) cb.checked = storedDays.includes(day);
     });
 
@@ -1459,7 +1461,7 @@ async function saveActaData() {
 
     // Presential days + location
     const checkedDays = WEEKDAYS.filter(day => {
-        const cb = document.getElementById(`pd-${day.substring(0,3)}`);
+        const cb = document.getElementById(`pd-${WEEKDAY_IDS[day]}`);
         return cb && cb.checked;
     });
     const location = document.getElementById('acta-presential-location').value;
