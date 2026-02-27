@@ -99,7 +99,7 @@
                 <ul class="nav flex-column">
                     <li class="nav-item">
                         <a class="nav-link active" href="admin.html">
-                            <i class="bi bi-people me-2"></i>Teachers Management
+                            <i class="bi bi-people me-2"></i>Users Management
                         </a>
                     </li>
                     <li class="nav-item">
@@ -114,10 +114,10 @@
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div
                     class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">Teacher Accounts</h1>
+                    <h1 class="h2">User Accounts</h1>
                     <div class="btn-toolbar mb-2 mb-md-0">
                         <button type="button" class="btn btn-primary" onclick="openCreateTeacherModal()">
-                            <i class="bi bi-person-plus me-2"></i>New Teacher
+                            <i class="bi bi-person-plus me-2"></i>New User
                         </button>
                     </div>
                 </div>
@@ -135,12 +135,12 @@
         </div>
     </div>
 
-    <!-- Create Teacher Modal -->
+    <!-- Create User Modal -->
     <div class="modal fade" id="createTeacherModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-0 bg-primary text-white">
-                    <h5 class="modal-title">Create New Teacher</h5>
+                    <h5 class="modal-title">Create New User</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="create-teacher-form">
@@ -155,6 +155,14 @@
                                 placeholder="john@example.com">
                             <div class="form-text">An email with a provisional password will be generated.</div>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Rol</label>
+                            <select class="form-select" id="teacher-userrole" required>
+                                <option value="Formador/a">Formador/a</option>
+                                <option value="CoFormador/a">CoFormador/a</option>
+                                <option value="Coordinador/a">Coordinador/a</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer border-0">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -165,12 +173,12 @@
         </div>
     </div>
 
-    <!-- Edit Teacher Modal -->
+    <!-- Edit User Modal -->
     <div class="modal fade" id="editTeacherModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-0 bg-warning text-dark">
-                    <h5 class="modal-title">Edit Teacher Info</h5>
+                    <h5 class="modal-title">Edit User Info</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="edit-teacher-form">
@@ -183,6 +191,14 @@
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Email Address</label>
                             <input type="email" class="form-control" id="edit-teacher-email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Rol</label>
+                            <select class="form-select" id="edit-teacher-userrole">
+                                <option value="Formador/a">Formador/a</option>
+                                <option value="CoFormador/a">CoFormador/a</option>
+                                <option value="Coordinador/a">Coordinador/a</option>
+                            </select>
                         </div>
                     </div>
                     <div class="modal-footer border-0">
@@ -205,12 +221,12 @@
                 <div class="modal-body p-4 text-center">
                     <div class="mb-3"><i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i></div>
                     <h4>Success!</h4>
-                    <p>The teacher account for <strong id="success-email"></strong> has been created.</p>
+                    <p>The user account for <strong id="success-email"></strong> has been created.</p>
                     <div class="alert alert-info py-3 shadow-sm border-0">
                         <p class="mb-2">Provisional Password:</p>
                         <h2 class="mb-0 user-select-all font-monospace" id="provisional-password"></h2>
                     </div>
-                    <p class="small text-muted">Please share this password with the teacher. They should change it upon
+                    <p class="small text-muted">Please share this password with the user. They should change it upon
                         login.</p>
                 </div>
                 <div class="modal-footer border-0">

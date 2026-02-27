@@ -13,6 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('create-teacher-form').addEventListener('submit', handleCreateTeacher);
     document.getElementById('edit-teacher-form').addEventListener('submit', handleUpdateTeacher);
 
+    // Delegated click for edit buttons (avoids inline onclick encoding issues)
+    document.getElementById('teachers-list').addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-edit-user');
+        if (btn) {
+            openEditModal(btn.dataset.id, btn.dataset.name, btn.dataset.email, btn.dataset.userrole);
+        }
+    });
+
     loadTeachers();
 });
 
@@ -61,11 +69,19 @@ function displayTeachers(teachers) {
     listElement.innerHTML = '';
 
     if (teachers.length === 0) {
-        listElement.innerHTML = '<div class="col-12 text-center text-muted py-5">No teachers found.</div>';
+        listElement.innerHTML = '<div class="col-12 text-center text-muted py-5">No users found.</div>';
         return;
     }
 
+    const roleColors = {
+        'Formador/a': 'primary',
+        'CoFormador/a': 'success',
+        'Coordinador/a': 'warning'
+    };
+
     teachers.forEach(teacher => {
+        const userRole = teacher.userRole || 'Formador/a';
+        const badgeColor = roleColors[userRole] || 'secondary';
         const card = document.createElement('div');
         card.className = 'col-md-6 col-lg-4 mb-4';
         card.innerHTML = `
@@ -77,14 +93,18 @@ function displayTeachers(teachers) {
                         </div>
                         <div>
                             <h5 class="card-title mb-0">${escapeHtml(teacher.name)}</h5>
-                            <small class="text-muted">Teacher ID: ${teacher.id.substring(0, 8)}...</small>
+                            <span class="badge bg-${badgeColor} mt-1">${escapeHtml(userRole)}</span>
                         </div>
                     </div>
                     <p class="card-text">
                         <i class="bi bi-envelope me-2 text-primary"></i>${escapeHtml(teacher.email)}
                     </p>
                     <div class="d-flex gap-2 mt-4">
-                        <button class="btn btn-sm btn-outline-warning w-100" onclick="openEditModal('${teacher.id}', '${escapeHtml(teacher.name)}', '${escapeHtml(teacher.email)}')">
+                        <button class="btn btn-sm btn-outline-warning w-100 btn-edit-user"
+                            data-id="${teacher.id}"
+                            data-name="${escapeHtml(teacher.name)}"
+                            data-email="${escapeHtml(teacher.email)}"
+                            data-userrole="${escapeHtml(userRole)}">
                             <i class="bi bi-pencil me-1"></i> Edit
                         </button>
                         <button class="btn btn-sm btn-outline-danger w-100" onclick="deleteTeacher('${teacher.id}')">
@@ -111,6 +131,7 @@ async function handleCreateTeacher(e) {
     const token = localStorage.getItem('token');
     const name = document.getElementById('teacher-name').value;
     const email = document.getElementById('teacher-email').value;
+    const userRole = document.getElementById('teacher-userrole').value;
 
     try {
         const response = await fetch(`${API_URL}/api/admin/teachers`, {
@@ -119,7 +140,7 @@ async function handleCreateTeacher(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ name, email })
+            body: JSON.stringify({ name, email, userRole })
         });
 
         const data = await response.json();
@@ -127,20 +148,21 @@ async function handleCreateTeacher(e) {
         if (response.ok) {
             createModal.hide();
             // Show success message
-            alert(`Teacher created successfully! A welcome email with login credentials has been sent to ${email}`);
+            alert(`User created successfully! A welcome email with login credentials has been sent to ${email}`);
             loadTeachers();
         } else {
-            alert(data.error || data.message || 'Failed to create teacher');
+            alert(data.error || data.message || 'Failed to create user');
         }
     } catch (error) {
-        alert('Error creating teacher');
+        alert('Error creating user');
     }
 }
 
-function openEditModal(id, name, email) {
+function openEditModal(id, name, email, userRole) {
     document.getElementById('edit-teacher-id').value = id;
     document.getElementById('edit-teacher-name').value = name;
     document.getElementById('edit-teacher-email').value = email;
+    document.getElementById('edit-teacher-userrole').value = userRole || 'Formador/a';
     editModal.show();
 }
 
@@ -150,6 +172,7 @@ async function handleUpdateTeacher(e) {
     const id = document.getElementById('edit-teacher-id').value;
     const name = document.getElementById('edit-teacher-name').value;
     const email = document.getElementById('edit-teacher-email').value;
+    const userRole = document.getElementById('edit-teacher-userrole').value;
 
     try {
         const response = await fetch(`${API_URL}/api/admin/teachers/${id}`, {
@@ -158,7 +181,7 @@ async function handleUpdateTeacher(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ name, email })
+            body: JSON.stringify({ name, email, userRole })
         });
 
         if (response.ok) {
@@ -166,15 +189,15 @@ async function handleUpdateTeacher(e) {
             loadTeachers();
         } else {
             const data = await response.json();
-            alert(data.error || 'Failed to update teacher');
+            alert(data.error || 'Failed to update user');
         }
     } catch (error) {
-        alert('Error updating teacher');
+        alert('Error updating user');
     }
 }
 
 async function deleteTeacher(id) {
-    if (!confirm('Are you sure you want to delete this teacher? This action cannot be undone.')) return;
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
 
     const token = localStorage.getItem('token');
     try {

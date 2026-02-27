@@ -17,7 +17,7 @@ function toggleForm() {
     } else {
         loginForm.classList.remove('hidden');
         registerForm.classList.add('hidden');
-        authTitle.textContent = 'Teacher Login';
+        authTitle.textContent = 'Login';
         toggleText.innerHTML = 'Don\'t have an account? <a onclick="toggleForm()">Register</a>';
         isLoginForm = true;
     }
@@ -77,9 +77,15 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
         if (response.ok) {
             localStorage.setItem('token', data.token);
-            localStorage.setItem('teacher', JSON.stringify(data.teacher));
+            localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('role', data.user.role);
+            if (data.user.userRole) localStorage.setItem('userRole', data.user.userRole);
             showAlert('Login successful! Redirecting...', 'success');
-            setTimeout(() => window.location.href = 'dashboard.html', 1500);
+            if (data.user.role === 'admin') {
+                setTimeout(() => window.location.href = 'admin.html', 1500);
+            } else {
+                setTimeout(() => window.location.href = 'dashboard.html', 1500);
+            }
         } else {
             showAlert(data.error || 'Login failed', 'danger');
         }
@@ -125,6 +131,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
             localStorage.setItem('role', 'teacher');
+            if (data.user.userRole) localStorage.setItem('userRole', data.user.userRole);
             showAlert('Account created successfully! Redirecting...', 'success');
             setTimeout(() => window.location.href = 'dashboard.html', 1500);
         } else {

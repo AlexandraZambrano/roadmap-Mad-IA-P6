@@ -8,8 +8,9 @@ const TeacherSchema = new mongoose.Schema({
     password: { type: String, required: true },
     location: { type: String, default: '' },
     provisional: { type: Boolean, default: false },
+    userRole: { type: String, enum: ['Formador/a', 'CoFormador/a', 'Coordinador/a'], default: 'Formador/a' },
     passwordChangedAt: { type: Date },
     createdAt: { type: Date, default: Date.now }
 });
 
-export default mongoose.model('Teacher', TeacherSchema);
+export default mongoose.model('User', TeacherSchema, 'teachers');

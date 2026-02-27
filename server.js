@@ -660,7 +660,10 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (user && userRole) {
       const token = jwt.sign({ id: user.id, email: user.email, role: userRole }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ message: 'Login successful', token, user: { id: user.id, name: user.name, email: user.email, role: userRole } });
+      // Include userRole (Formador/a, CoFormador/a, Coordinador/a) for teacher accounts
+      const userData = { id: user.id, name: user.name, email: user.email, role: userRole };
+      if (userRole === 'teacher' && user.userRole) userData.userRole = user.userRole;
+      return res.json({ message: 'Login successful', token, user: userData });
     }
 
     return res.status(401).json({ error: 'Invalid email or password' });
@@ -697,6 +700,7 @@ app.get('/api/profile', verifyToken, async (req, res) => {
       email: user.email,
       location: user.location || '',
       role: role,
+      userRole: role === 'teacher' ? (user.userRole || 'Formador/a') : undefined,
       createdAt: user.createdAt
     };
 
@@ -2741,7 +2745,7 @@ app.get('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
 
 app.post('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
   try {
-    const { email, name } = req.body;
+    const { email, name, userRole } = req.body;
     if (!email || !name) return res.status(400).json({ error: 'Email and name are required' });
 
     const existing = await Teacher.findOne({ email });
@@ -2750,7 +2754,10 @@ app.post('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
     const provisionalPassword = Math.random().toString(36).slice(-10) + 'A1!';
     const hashedPassword = await bcrypt.hash(provisionalPassword, 10);
 
-    const teacher = await Teacher.create({ id: uuidv4(), name, email, password: hashedPassword, provisional: true });
+    const validUserRoles = ['Formador/a', 'CoFormador/a', 'Coordinador/a'];
+    const resolvedUserRole = validUserRoles.includes(userRole) ? userRole : 'Formador/a';
+
+    const teacher = await Teacher.create({ id: uuidv4(), name, email, password: hashedPassword, provisional: true, userRole: resolvedUserRole });
 
     // Send password to email
     const emailSent = await sendPasswordEmail(email, name, provisionalPassword);
@@ -2775,7 +2782,17 @@ app.post('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
 
 app.put('/api/admin/teachers/:id', verifyToken, verifyAdmin, async (req, res) => {
   try {
-    const teacher = await Teacher.findOneAndUpdate({ id: req.params.id }, { ...req.body }, { returnDocument: 'after' });
+    const validUserRoles = ['Formador/a', 'CoFormador/a', 'Coordinador/a'];
+    const { name, email, userRole } = req.body;
+    const updates = {};
+    if (name) updates.name = name;
+    if (email) updates.email = email;
+    if (userRole && validUserRoles.includes(userRole)) updates.userRole = userRole;
+    const teacher = await Teacher.findOneAndUpdate(
+      { id: req.params.id },
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
     res.json(teacher);
   } catch (error) {
