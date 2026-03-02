@@ -3,9 +3,36 @@
     padding: 0;
     box-sizing: border-box;
 }
+:root {
+    --principal-1: #FF4700;
+    --principal-2: #020100;
+    --principal-3: #FFFFFF;
+    --complementario-1: #9c9c9c;
+    --complementario-2: #FFA37F;
+    ;
+
+
+    /* colores fuera de la paleta oficial */
+    --complementario-1-light: #f9dccd;
+    --complementario-1-extra-light: #f5f2f2;
+    --green-f5: #9af6c2;
+    --purple-f5: #6f42c1;
+    --purple-light-f5: #d1c4e9;
+    --blue-light-f5: #345253;
+
+
+    --grey-f5: #897d7c;
+    --grey-light-f5: #e2d2cd;
+    --bs-nav-link-hover-color: #FFFFFF;
+
+    /*crok default colors*/
+    --green-crok: #0a8950;
+     --green-light-crok:#0a8950a6;
+}
 
 body {
- background-color: #f19976;
+    background-color: var(--green-crok);
+ /* background-color: #f19976; */
  height: 100%;
  /* background-image: url("../img/Fondo-factoria-f5-color.png"); */
  background-size: 150px 150px;
@@ -61,7 +88,7 @@ main {
 }
 .container-promotions{
    padding:2rem;
-   background-color: rgba(244, 166, 150, 0.559);
+   /* background-color: rgba(244, 166, 150, 0.559); */
 }
 
 .btn-new {

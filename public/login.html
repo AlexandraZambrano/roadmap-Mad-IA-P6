@@ -14,9 +14,10 @@
 
     <style>
         body {
-            background-image: url("./img/Fondo-factoria-f5-color.png");
-            background-size: 150px 150px;
-            background-repeat: repeat;
+            /* background-image: url("./img/Fondo-factoria-f5-color.png");
+            background-size: 150px 150px; */
+            /* background-repeat: repeat; */
+            background-color: var(--green-light-crok);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -36,7 +37,7 @@
 
         .logo-section {
             text-align: center;
-            background: #FF4700;
+            background:var(--green-crok);
             padding: 20px 20px;
             color: white;
         }
@@ -58,7 +59,7 @@
         }
 
         .logo-section h2 {
-            color: #FF4700;
+            color:var(--green-crok);
             font-size: 1.2rem;
             font-weight: 700;
             margin: 0;
@@ -96,12 +97,12 @@
         }
 
         .form-control:focus {
-            border-color: #ff4700;
+            border-color:var(--green-crok);
             box-shadow: 0 0 0 0.2rem rgba(255, 71, 0, 0.25);
         }
 
         .btn-login {
-            background: linear-gradient(135deg, #ff4700 0%, #d63900 100%);
+            background: linear-gradient(135deg, var(--green-crok) 0%, #087544 100%);
             border: none;
             color: white;
             padding: 12px 20px;
@@ -116,7 +117,7 @@
         .btn-login:hover {
             opacity: 0.9;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 71, 0, 0.4);
+            box-shadow: 0 5px 15px #087544;
         }
 
         .btn-login:disabled {
@@ -198,7 +199,7 @@
         }
 
         .password-toggle:hover {
-            color: #ff4700;
+            color: var(--green-crok);
         }
     </style>
 </head>
