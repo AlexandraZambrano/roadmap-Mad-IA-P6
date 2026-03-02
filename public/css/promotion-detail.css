@@ -32,9 +32,44 @@ body {
 
 .page-title {
     color: #ffffff;
-    margin-inline-start: 2rem;
+    margin-inline-start: 0;
     font-family: 'Pacifico', serif;
     font-size: 50px;
+    margin-bottom: 0;
+}
+
+/* Navbar styling for promotion-detail */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 101;
+    background-color: var(--green-crok, #0a8950) !important;
+    border-bottom: 2px solid var(--green-crok, #0a8950);
+    padding: 0.75rem 0 !important;
+}
+
+.navbar .container-fluid {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    min-height: 70px;
+    padding: 0.75rem 1rem !important;
+}
+
+.navbar-brand {
+    margin: 0 !important;
+    padding: 0 !important;
+    flex: 0 0 auto;
+}
+
+.navbar .navbar-toggler {
+    order: 2;
+}
+
+.navbar img[alt="FactoriaF5"] {
+    flex: 0 0 auto;
+    order: 3;
+    margin-bottom: 0;
 }
 
 .sidebar {
