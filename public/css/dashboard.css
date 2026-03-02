@@ -31,8 +31,7 @@
 }
 
 body {
-    background-color: var(--green-light-crok);
- /* background-color: #f19976; */
+ background-color: #f19976;
  height: 100%;
  /* background-image: url("../img/Fondo-factoria-f5-color.png"); */
  background-size: 150px 150px;
@@ -88,7 +87,7 @@ main {
 }
 .container-promotions{
    padding:2rem;
-   /* background-color: rgba(244, 166, 150, 0.559); */
+    background-color: rgba(244, 166, 150, 0.559); 
 }
 
 .btn-new {
@@ -114,9 +113,9 @@ main {
     position: sticky;
     top: 0;
     z-index: 101;
-    background-color: var(--green-crok) !important;
-    border-bottom: 2px solid var(--green-crok);
-    padding: 0.75rem 0 !important;
+    background-image: url("../img/Fondo-factoria-f5-color.png");
+    background-size: 150px 150px;
+    padding: 0.20rem 0 !important;
 }
 
 .navbar .container-fluid {
@@ -127,6 +126,13 @@ main {
     padding: 0.75rem 1rem !important;
 }
 
+.navbar  .container-session {
+    margin:auto;
+    display: flex;
+    align-items: right;
+    justify-content: flex-end;
+    min-height: 80px;
+}
 .navbar-brand {
     font-weight: 600;
     color: #ff4700 !important;

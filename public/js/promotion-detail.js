@@ -371,7 +371,16 @@ document.addEventListener('DOMContentLoaded', () => {
     initEmployabilityModal();
 
     if (userRole === 'teacher') {
-        loadExtendedInfo();
+        // Overlay gates only on ExtendedInfo (Acta data) — students load independently in the background
+        _showExtendedInfoLoading(true);
+        loadExtendedInfo().finally(() => {
+            _showExtendedInfoLoading(false);
+            // Open Acta modal AFTER overlay finishes fading (320ms fade + buffer)
+            if (new URLSearchParams(window.location.search).get('openActa') === '1') {
+                setTimeout(() => openActaModal(), 400);
+            }
+        });
+        loadStudents(); // runs independently, no overlay dependency
         loadCollaborators();
     } else {
         // Remove preview button for students
@@ -387,8 +396,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (userRole === 'teacher') {
         setupForms();
-        // Load students after a short delay to let the promotion be fully available
-        setTimeout(() => loadStudents(), 800);
     }
 
     // Set overview as active tab on initial load
@@ -403,10 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadExtendedInfo() {
     const token = localStorage.getItem('token');
-
-    // Show loading overlay while fetching
-    _showExtendedInfoLoading(true);
-
     try {
         // Ensure Schedule tab is active on load
         const scheduleTab = document.getElementById('program-details-schedule-tab');
@@ -487,15 +490,9 @@ Evaluación Global al Final del Bootcamp
                 window.ProgramCompetences.init(extendedInfoData.competences || []);
             }
 
-            // Auto-open Acta de Inicio modal when redirected from new promotion creation
-            if (new URLSearchParams(window.location.search).get('openActa') === '1') {
-                setTimeout(() => openActaModal(), 400);
-            }
         }
     } catch (error) {
         console.error('Error loading extended info:', error);
-    } finally {
-        _showExtendedInfoLoading(false);
     }
 }
 
@@ -3321,7 +3318,7 @@ async function debugStudentEndpoints() {
 }
 
 // Load and display students for the promotion
-async function loadStudents() {
+async function loadStudents(retryCount = 0) {
     try {
         const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students`, {
@@ -3329,27 +3326,33 @@ async function loadStudents() {
         });
 
         if (!response.ok) {
-            // For brand-new promotions (404) just show empty list silently
-            if (response.status === 404) {
-                window.currentStudents = [];
-                displayStudents([]);
-                return;
+            // On a brand-new promotion the server may not have committed the record yet — retry once with short backoff
+            if (response.status === 404 && retryCount < 1) {
+                await new Promise(resolve => setTimeout(resolve, 600));
+                return loadStudents(retryCount + 1);
             }
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // For any other error just log silently — don't block the page with an alert
+            console.warn(`loadStudents: HTTP ${response.status}`);
+            const studentsContainer = document.getElementById('students-list');
+            if (studentsContainer) {
+                studentsContainer.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar la lista de estudiantes.</td></tr>';
+            }
+            return;
         }
 
         const students = await response.json();
         console.log('Loaded students:', students);
 
         // Store students data globally for multi-select operations
+        // Backend already normalizes the ID field, so we can use it directly
         window.currentStudents = students;
         displayStudents(window.currentStudents);
     } catch (error) {
         console.error('Error loading students:', error);
-        // Show error silently in the students container — never alert()
+        // Never show a blocking alert during page load — just display inline message
         const studentsContainer = document.getElementById('students-list');
         if (studentsContainer) {
-            studentsContainer.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3"><i class="bi bi-exclamation-triangle me-2"></i>Error al cargar estudiantes. <a href="#" onclick="loadStudents();return false;">Reintentar</a></td></tr>`;
+            studentsContainer.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Error al cargar estudiantes.</td></tr>';
         }
     }
 }

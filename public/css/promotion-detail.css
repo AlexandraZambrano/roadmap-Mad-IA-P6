@@ -43,8 +43,11 @@ body {
     position: sticky;
     top: 0;
     z-index: 101;
-    background-color: var(--green-crok, #0a8950) !important;
-    border-bottom: 2px solid var(--green-crok, #0a8950);
+    background-image: url("../img/Fondo-factoria-f5-color.png");
+    background-size: 150px 150px;
+    background-repeat: repeat;
+    /* background-color: var(--green-crok, #0a8950) !important;
+    border-bottom: 2px solid var(--green-crok, #0a8950); */
     padding: 0.75rem 0 !important;
 }
 
@@ -186,14 +189,15 @@ body {
 
 /* Promotions button - orange style */
 .nav-link-promotions {
-    background-color: var(--principal-1) !important;
+    background-color: var(--principal-1)!important;
     color: white !important;
+    box-shadow: #3e19014a 2px 2px 6px ;
 }
 
 
 
 .nav-link-promotions:hover {
-    background-color: #e63a00 !important;
+    background-color: #e63a00  !important;
     color: white !important;
     border-left: none !important;
 }
