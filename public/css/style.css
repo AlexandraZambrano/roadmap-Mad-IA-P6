@@ -19,12 +19,16 @@
     --green-f5: #9af6c2;
     --purple-f5: #6f42c1;
     --purple-light-f5: #d1c4e9;
-    --blue-light-f5: #c0f6f8;
+    --blue-light-f5: #345253;
 
 
     --grey-f5: #897d7c;
     --grey-light-f5: #e2d2cd;
     --bs-nav-link-hover-color: #FFFFFF;
+
+    /*crok default colors*/
+    --green-crok: #0a8950;
+    --green-light-crok:#0a8950a6;
 }
 
 body {
@@ -52,7 +56,7 @@ body {
 
 .nav {
     /* ¿porqué da prioridad a el color de bootstrap? */
-    /* color:var(--principal-3) !important; */
+     color:var(--principal-3) !important; 
     --bs-nav-link-color-hover: var(--principal-3);
 }
 

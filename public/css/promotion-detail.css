@@ -38,14 +38,124 @@ body {
 
 .page-title {
     color: #ffffff;
-    margin-inline-start: 2rem;
+    margin-inline-start: 0;
     font-family: 'Pacifico', serif;
     font-size: 50px;
+    margin-bottom: 0;
+}
+
+/* Navbar styling for promotion-detail */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 101;
+    background-image: url("../img/Fondo-factoria-f5-color.png");
+    background-size: 150px 150px;
+    background-repeat: repeat;
+    /* background-color: var(--green-crok, #0a8950) !important;
+    border-bottom: 2px solid var(--green-crok, #0a8950); */
+    padding: 0.75rem 0 !important;
+}
+
+.navbar .container-fluid {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    min-height: 80px;
+    padding: 0.75rem 1rem !important;
+}
+
+.navbar-brand {
+    font-weight: 600;
+    color: #ff4700 !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex: 0 0 auto;
+}
+
+.navbar .page-title {
+    color: #ffffff;
+    margin-right: 0;
+    font-size: 50px;
+    margin-bottom: 0;
+}
+
+/* Center icons section */
+.navbar::after {
+    content: '';
+    flex: 1;
+    order: 2;
+}
+
+.navbar .navbar-toggler {
+    order: 3;
+}
+
+/* Position F5 logo */
+.navbar img[alt="FactoriaF5"] {
+    flex: 0 0 auto;
+    order: 4;
+    margin-bottom: 0;
+}
+
+/* Position user menu */
+#navbarNav {
+    flex: 0 0 auto;
+    order: 4;
+    margin-left: 1.5rem !important;
+}
+
+.navbar-collapse {
+    margin-bottom: 0 !important;
+}
+
+#userMenu  {
+    color:#ffffff;
+}
+
+#userMenu::after {
+    display: inline-block;
+    margin-left: 0.5rem;
+}
+
+/* Position Factoria logo at the end */
+.navbar-f5-logo {
+    flex: 0 0 auto;
+    order: 5;
+    margin-bottom: 0;
+    margin-left: 2rem;
+}
+
+.navbar-nav .dropdown-menu {
+    position: absolute;
+    top: 100% !important;
+    bottom: auto !important;
+    margin-top: 0.5rem !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.navbar-nav .dropdown-menu.show {
+    animation: slideDownIn 0.2s ease-out;
+}
+
+@keyframes slideDownIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .sidebar {
     position: fixed;
-    top: 56px;
+    top: 80px;
     bottom: 0;
     left: 0;
     z-index: 100;
@@ -55,7 +165,6 @@ body {
     background-repeat: repeat;
     border-right: 2px solid #ff4700;
     overflow-y: auto;
-    margin-top: 1rem;
 }
 
 .sidebar-sticky {
@@ -86,20 +195,21 @@ body {
 
 /* Promotions button - orange style */
 .nav-link-promotions {
-    background-color: var(--principal-1) !important;
+    background-color: var(--principal-1)!important;
     color: white !important;
+    box-shadow: #3e19014a 2px 2px 6px ;
 }
 
 
 
 .nav-link-promotions:hover {
-    background-color: #e63a00 !important;
+    background-color: #e63a00  !important;
     color: white !important;
     border-left: none !important;
 }
 
 main {
-    margin-top: 56px;
+    margin-top: 80px;
     padding: 20px;
 }
 
@@ -177,30 +287,6 @@ main {
   color: #000;
 border-color: #c1aee6;
 
-}
-
-.navbar {
-    position: sticky;
-    top: 0;
-    z-index: 101;
-    /*background-color: #ffffff !important;
-    border-bottom: 2px solid #ff4700 ;*/
-    background-image: url("../img/Fondo-factoria-f5-color.png") !important;
-    background-size: 150px 150px;
-    background-repeat: repeat;
-    border-bottom: 2px solid #ff4700
-}
-
-.navbar-brand {
-    font-weight: 600;
-    color: #ff4700 !important;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.page-title {
-    color: #ffffff;
 }
 
 .form-control,
@@ -610,10 +696,10 @@ border-color: #c1aee6;
 @media (max-width: 992px) {
     .sidebar {
         position: fixed;
-        top: 56px;
+        top: 80px;
         left: -100%;
         width: 250px;
-        height: calc(100vh - 56px);
+        height: calc(100vh - 80px);
         transition: left 0.3s ease;
         overflow-y: auto;
         z-index: 1000;
@@ -629,7 +715,7 @@ border-color: #c1aee6;
     }
 
     main {
-        margin-top: 56px;
+        margin-top: 0;
         padding: 20px;
         width: 100%;
     }
@@ -652,7 +738,7 @@ border-color: #c1aee6;
     /* Add overlay when sidebar is open */
     .sidebar-overlay {
         position: fixed;
-        top: 56px;
+        top: 80px;
         left: 0;
         right: 0;
         bottom: 0;
@@ -766,7 +852,7 @@ border-color: #c1aee6;
 /* Sidebar and Overlay Mobile Styles */
 .sidebar-overlay {
     position: fixed;
-    top: 0;
+    top: 80px;
     left: 0;
     right: 0;
     bottom: 0;
@@ -786,9 +872,9 @@ border-color: #c1aee6;
     .sidebar {
         position: fixed;
         left: -100%;
-        top: 56px;
+        top: 80px;
         width: 250px;
-        height: calc(100vh - 56px);
+        height: calc(100vh - 80px);
         transform: translateX(-250px);
         transition: all 0.3s ease;
         z-index: 100;
