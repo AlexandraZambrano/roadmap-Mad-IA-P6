@@ -3028,37 +3028,77 @@ async function importStudentsFromExcel(input) {
 
     const token = localStorage.getItem('token');
 
-    // Show loading state or disable button if possible, but let's keep it simple first
-    const originalBtnContent = document.querySelector('button[onclick*="students-excel-input"]').innerHTML;
     const btn = document.querySelector('button[onclick*="students-excel-input"]');
+    const originalBtnContent = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importando...';
 
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/upload-excel`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
 
+        const result = await response.json();
+
         if (response.ok) {
-            const result = await response.json();
-            alert(result.message || 'Students imported successfully');
-            loadStudents(); // Reload the student list
+            let msg = result.message || 'Importación completada';
+            if (result.errors && result.errors.length) {
+                msg += '\n\nErrores:\n' + result.errors.join('\n');
+            }
+            if (result.skipped && result.skipped.length) {
+                msg += '\n\nOmitidos (ya existían):\n' + result.skipped.join('\n');
+            }
+            alert(msg);
+            loadStudents();
         } else {
-            const error = await response.json();
-            alert(`Error importing students: ${error.error || 'Unknown error'}`);
+            alert(`Error al importar: ${result.error || 'Error desconocido'}`);
         }
     } catch (error) {
         console.error('Error importing students:', error);
-        alert('Error importing students from Excel');
+        alert('Error al importar estudiantes desde Excel');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalBtnContent;
-        input.value = ''; // Reset input
+        input.value = '';
     }
+}
+
+// Download a blank Excel template with the correct column headers for student import
+function downloadStudentsExcelTemplate() {
+    const headers = [
+        'Nombre', 'Apellidos', 'Email', 'Teléfono', 'Edad',
+        'Situación Administrativa', 'Nacionalidad', 'Documento',
+        'Sexo', 'Nivel Inglés', 'Nivel Educativo', 'Profesión', 'Comunidad'
+    ];
+    // Add a hint row showing accepted values for enum columns
+    const hints = [
+        '(requerido)', '(requerido)', '(requerido)', '(requerido)', '(requerido, número)',
+        'nacional | solicitante_asilo | ciudadano_europeo | permiso_trabajo | no_permiso_trabajo | otro',
+        '', 'DNI / NIE / Pasaporte',
+        'mujer | hombre | no_binario | no_especifica',
+        'A1 | A2 | B1 | B2 | C1 | C2',
+        'sin_estudios | eso | bachillerato | fp_medio | fp_superior | grado | postgrado | doctorado',
+        '', 'Comunidad Autónoma'
+    ];
+
+    // Build CSV content (no XLSX library on the client side — CSV opens fine in Excel)
+    const escape = v => `"${String(v).replace(/"/g, '""')}"`;
+    const rows = [
+        headers.map(escape).join(','),
+        hints.map(escape).join(',')
+    ];
+    const csvContent = rows.join('\r\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel UTF-8
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'plantilla_importar_estudiantes.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 

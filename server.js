@@ -1341,7 +1341,11 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const { name, lastname, email, age, nationality, profession, address } = req.body;
+    const {
+      name, lastname, email, phone, age, administrativeSituation,
+      nationality, identificationDocument, gender, englishLevel, educationLevel,
+      profession, community
+    } = req.body;
 
     if (!email || !name || !lastname) return res.status(400).json({ error: 'Email, name, and lastname are required' });
 
@@ -1354,10 +1358,16 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
       name,
       lastname,
       email,
+      phone: phone || '',
       age: age || null,
+      administrativeSituation: administrativeSituation || '',
       nationality: nationality || '',
+      identificationDocument: identificationDocument || '',
+      gender: gender || '',
+      englishLevel: englishLevel || '',
+      educationLevel: educationLevel || '',
       profession: profession || '',
-      address: address || '',
+      community: community || '',
       promotionId: req.params.promotionId,
       isManuallyAdded: true,
       notes: ''
@@ -1370,13 +1380,137 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
         name: student.name,
         lastname: student.lastname,
         email: student.email,
+        phone: student.phone,
         age: student.age,
+        administrativeSituation: student.administrativeSituation,
         nationality: student.nationality,
+        identificationDocument: student.identificationDocument,
+        gender: student.gender,
+        englishLevel: student.englishLevel,
+        educationLevel: student.educationLevel,
         profession: student.profession,
-        address: student.address
+        community: student.community
       }
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Import students from Excel
+// Expected columns (Spanish headers matching the student form):
+//   Nombre*, Apellidos*, Email*, Teléfono*, Edad*, Situación Administrativa*,
+//   Nacionalidad, Documento (DNI/NIE/Pasaporte), Sexo,
+//   Nivel Inglés, Nivel Educativo, Profesión, Comunidad
+// (* = required)
+app.post('/api/promotions/:promotionId/students/upload-excel', verifyToken, upload.single('excelFile'), async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    if (!req.file) return res.status(400).json({ error: 'No Excel file provided' });
+
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet, { defval: '' });
+
+    if (data.length === 0) return res.status(400).json({ error: 'El archivo Excel está vacío' });
+
+    // Column name aliases (Spanish headers as defined in the template)
+    const col = (row, ...keys) => {
+      for (const k of keys) {
+        if (row[k] !== undefined && row[k] !== '') return String(row[k]).trim();
+      }
+      return '';
+    };
+
+    const ADMIN_SITUATIONS = ['nacional', 'solicitante_asilo', 'ciudadano_europeo', 'permiso_trabajo', 'no_permiso_trabajo', 'otro'];
+    const GENDER_VALUES    = ['mujer', 'hombre', 'no_binario', 'no_especifica'];
+    const ENGLISH_LEVELS   = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    const EDUCATION_LEVELS = ['sin_estudios', 'eso', 'bachillerato', 'fp_medio', 'fp_superior', 'grado', 'postgrado', 'doctorado'];
+
+    const created = [], skipped = [], errors = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowNum = i + 2; // 1-based + header row
+
+      const name     = col(row, 'Nombre');
+      const lastname = col(row, 'Apellidos');
+      const email    = col(row, 'Email');
+      const phone    = col(row, 'Teléfono', 'Telefono');
+      const ageRaw   = col(row, 'Edad');
+      const adminSit = col(row, 'Situación Administrativa', 'Situacion Administrativa');
+      const nationality         = col(row, 'Nacionalidad');
+      const identificationDocument = col(row, 'Documento', 'DNI/NIE/Pasaporte');
+      const gender              = col(row, 'Sexo');
+      const englishLevel        = col(row, 'Nivel Inglés', 'Nivel Ingles');
+      const educationLevel      = col(row, 'Nivel Educativo');
+      const profession          = col(row, 'Profesión', 'Profesion');
+      const community           = col(row, 'Comunidad');
+
+      // Required field validation
+      if (!name || !lastname || !email) {
+        errors.push(`Fila ${rowNum}: Nombre, Apellidos y Email son obligatorios`);
+        continue;
+      }
+
+      // Duplicate check
+      const existing = await Student.findOne({ email, promotionId: req.params.promotionId });
+      if (existing) {
+        skipped.push(`Fila ${rowNum}: ${email} ya existe en esta promoción`);
+        continue;
+      }
+
+      const age = ageRaw ? parseInt(ageRaw) || null : null;
+
+      // Normalise enum values (case-insensitive)
+      const normalise = (val, allowed) => {
+        const v = val.toLowerCase().replace(/\s+/g, '_');
+        return allowed.find(a => a === v) || val || '';
+      };
+
+      try {
+        const student = await Student.create({
+          id: uuidv4(),
+          name,
+          lastname,
+          email,
+          phone,
+          age,
+          administrativeSituation: normalise(adminSit, ADMIN_SITUATIONS),
+          nationality,
+          identificationDocument,
+          gender:       normalise(gender, GENDER_VALUES),
+          englishLevel: ENGLISH_LEVELS.includes(englishLevel) ? englishLevel : (englishLevel || ''),
+          educationLevel: normalise(educationLevel, EDUCATION_LEVELS),
+          profession,
+          community,
+          promotionId: req.params.promotionId,
+          isManuallyAdded: true,
+          notes: ''
+        });
+        created.push({ id: student.id, name: student.name, lastname: student.lastname, email: student.email });
+      } catch (e) {
+        errors.push(`Fila ${rowNum}: ${e.message}`);
+      }
+    }
+
+    const parts = [];
+    if (created.length) parts.push(`${created.length} estudiante(s) importado(s)`);
+    if (skipped.length) parts.push(`${skipped.length} omitido(s) (ya existían)`);
+    if (errors.length)  parts.push(`${errors.length} error(es)`);
+
+    res.json({
+      message: parts.join(', '),
+      created,
+      skipped,
+      errors
+    });
+  } catch (error) {
+    console.error('Error importing students from Excel:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1402,8 +1536,10 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const { name, lastname, email, age, nationality, profession, address } = req.body;
-    console.log('Updating student with data:', { name, lastname, email, age, nationality, profession, address });
+    const { name, lastname, email, phone, age, administrativeSituation,
+            nationality, identificationDocument, gender, englishLevel, educationLevel,
+            profession, community } = req.body;
+    console.log('Updating student with data:', { name, lastname, email, phone, age, administrativeSituation, nationality, profession });
 
     if (!email || !name || !lastname) return res.status(400).json({ error: 'Email, name, and lastname are required' });
 
@@ -1451,10 +1587,16 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
         name,
         lastname,
         email,
+        phone: phone || '',
         age: age || null,
+        administrativeSituation: administrativeSituation || '',
         nationality: nationality || '',
+        identificationDocument: identificationDocument || '',
+        gender: gender || '',
+        englishLevel: englishLevel || '',
+        educationLevel: educationLevel || '',
         profession: profession || '',
-        address: address || ''
+        community: community || ''
       },
       { returnDocument: 'after' }
     );
@@ -1468,10 +1610,16 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
         name: student.name,
         lastname: student.lastname,
         email: student.email,
+        phone: student.phone,
         age: student.age,
+        administrativeSituation: student.administrativeSituation,
         nationality: student.nationality,
+        identificationDocument: student.identificationDocument,
+        gender: student.gender,
+        englishLevel: student.englishLevel,
+        educationLevel: student.educationLevel,
         profession: student.profession,
-        address: student.address
+        community: student.community
       }
     });
   } catch (error) {
