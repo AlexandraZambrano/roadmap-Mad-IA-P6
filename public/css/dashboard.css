@@ -125,7 +125,6 @@ main {
     justify-content: space-between;
     min-height: 80px;
     padding: 0.75rem 1rem !important;
-    gap: 1rem;
 }
 
 .navbar-brand {
@@ -142,11 +141,11 @@ main {
 .navbar .page-title {
     color: #ffffff;
     margin-right: 0;
-    font-size: 50px;
+    font-size: 2rem;
     margin-bottom: 0;
 }
 
-/* Center icons section - expands to fill space */
+/* Center icons section */
 .navbar::after {
     content: '';
     flex: 1;
@@ -155,27 +154,32 @@ main {
 
 .navbar .navbar-toggler {
     order: 3;
-    flex: 0 0 auto;
 }
 
-/* Position F5 logo to the right */
+/* Position F5 logo */
 .navbar img[alt="FactoriaF5"] {
     flex: 0 0 auto;
     order: 4;
     margin-bottom: 0;
-    margin-left: auto;
 }
 
 /* Position user menu */
 #navbarNav {
     flex: 0 0 auto;
-    order: 5;
-    margin-left: 1rem !important;
-    margin-right: 1rem !important;
+    order: 4;
+    margin-left: 1.5rem !important;
 }
 
 .navbar-collapse {
     margin-bottom: 0 !important;
+}
+
+/* Position Factoria logo at the end */
+.navbar-f5-logo {
+    flex: 0 0 auto;
+    order: 5;
+    margin-bottom: 0;
+    margin-left: 2rem;
 }
 #userMenu  {
         color:#ffffff;
@@ -209,10 +213,16 @@ main {
         transform: translateY(0);
     }
 }
-.page-title{
-    color:#ffffff;
-    margin-right: 2rem;
-    font-size: 50px;
+.navbar .page-title {
+    color: #ffffff;
+    margin-right: 0;
+    font-size: 2rem;
+    margin-bottom: 0;
+}
+
+.page-title {
+    color: #ffffff;
+    font-size: 2.5rem;
 }
 .form-control,
 .form-select {
