@@ -487,6 +487,11 @@ border-color: #c1aee6;
     color: var(--principal-2) !important;
 }
 
+.attendance-early-leave {
+    background-color: #e9d8fd !important;
+    color: #5b21b6 !important;
+}
+
 .attendance-dot {
     display: inline-block;
     width: 12px;

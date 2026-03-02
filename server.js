@@ -1269,6 +1269,7 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
               case 'Ausente': status = 'A'; break;
               case 'Con retraso': status = 'T'; break;
               case 'Justificado': status = 'J'; break;
+              case 'Sale antes': status = 'S'; break;
               default: status = '';
             }
           }
@@ -1287,6 +1288,7 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
       worksheetData.push(['A = Ausente']);
       worksheetData.push(['T = Con retraso']);
       worksheetData.push(['J = Justificado']);
+      worksheetData.push(['S = Sale antes']);
 
       // Create worksheet
       const worksheet = xlsx.utils.aoa_to_sheet(worksheetData);

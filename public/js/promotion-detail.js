@@ -4717,6 +4717,7 @@ function renderAttendanceTable() {
             else if (status === 'Ausente') statusClass = 'attendance-absent';
             else if (status === 'Con retraso') statusClass = 'attendance-late';
             else if (status === 'Justificado') statusClass = 'attendance-justified';
+            else if (status === 'Sale antes') statusClass = 'attendance-early-leave';
 
             const td = document.createElement('td');
             td.className = `attendance-cell ${statusClass} ${note ? 'attendance-has-note' : ''}`;
@@ -4729,6 +4730,7 @@ function renderAttendanceTable() {
             else if (status === 'Ausente') td.innerHTML = '<i class="bi bi-x-lg"></i>';
             else if (status === 'Con retraso') td.innerHTML = '<i class="bi bi-clock"></i>';
             else if (status === 'Justificado') td.innerHTML = '<i class="bi bi-info-circle"></i>';
+            else if (status === 'Sale antes') td.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
             else td.innerHTML = '';
 
             td.onclick = (e) => {
@@ -4756,22 +4758,25 @@ function updateAttendanceStats() {
         ...currentAttendanceMonth.split('-').map(Number), 0
     ).getDate();
 
-    let present = 0, absent = 0, late = 0, justified = 0;
+    let present = 0, absent = 0, late = 0, justified = 0, earlyLeave = 0;
 
     attendanceData.forEach(record => {
         if (record.status === 'Presente') present++;
         else if (record.status === 'Ausente') absent++;
         else if (record.status === 'Con retraso') late++;
         else if (record.status === 'Justificado') justified++;
+        else if (record.status === 'Sale antes') earlyLeave++;
     });
 
     document.getElementById('stat-present-total').textContent = present;
     document.getElementById('stat-absent-total').textContent = absent;
     document.getElementById('stat-late-total').textContent = late;
     document.getElementById('stat-justified-total').textContent = justified;
+    const earlyLeaveEl = document.getElementById('stat-early-leave-total');
+    if (earlyLeaveEl) earlyLeaveEl.textContent = earlyLeave;
 
-    const totalMarked = present + absent + late + justified;
-    const avg = totalMarked > 0 ? Math.round(((present + late + justified) / totalMarked) * 100) : 0;
+    const totalMarked = present + absent + late + justified + earlyLeave;
+    const avg = totalMarked > 0 ? Math.round(((present + late + justified + earlyLeave) / totalMarked) * 100) : 0;
     document.getElementById('stat-attendance-avg').textContent = `${avg}%`;
 }
 
@@ -4780,13 +4785,14 @@ function cycleAttendanceStatus(cell) {
     const date = cell.dataset.date;
     const currentStatus = cell.dataset.status;
 
-    // Cycle: "" -> "Presente" -> "Ausente" -> "Con retraso" -> "Justificado" -> ""
+    // Cycle: "" -> "Presente" -> "Ausente" -> "Con retraso" -> "Justificado" -> "Sale antes" -> ""
     let nextStatus = "";
     if (currentStatus === "") nextStatus = "Presente";
     else if (currentStatus === "Presente") nextStatus = "Ausente";
     else if (currentStatus === "Ausente") nextStatus = "Con retraso";
     else if (currentStatus === "Con retraso") nextStatus = "Justificado";
-    else if (currentStatus === "Justificado") nextStatus = "";
+    else if (currentStatus === "Justificado") nextStatus = "Sale antes";
+    else if (currentStatus === "Sale antes") nextStatus = "";
 
     updateAttendance(studentId, date, nextStatus, null, cell);
 }
@@ -4839,6 +4845,9 @@ async function updateAttendance(studentId, date, status, note, cell) {
                 } else if (status === 'Justificado') {
                     cell.classList.add('attendance-justified');
                     cell.innerHTML = '<i class="bi bi-info-circle"></i>';
+                } else if (status === 'Sale antes') {
+                    cell.classList.add('attendance-early-leave');
+                    cell.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
                 } else {
                     cell.innerHTML = '';
                 }
