@@ -319,8 +319,8 @@ function _showExtendedInfoLoading(show) {
                 gap: 1rem;
             `;
             overlay.innerHTML = `
-                <div class="spinner-border text-primary" style="width:3rem;height:3rem;" role="status"></div>
-                <p class="text-primary fw-semibold mb-0" style="font-size:1.1rem;">Cargando información de la promoción…</p>
+                <div class="spinner-border" style="width:3rem;height:3rem;color:#FF6B35;" role="status"></div>
+                <p class="fw-semibold mb-0" style="font-size:1.1rem;color:#FF6B35;">Cargando información de la promoción…</p>
             `;
             document.body.appendChild(overlay);
         }

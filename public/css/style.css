@@ -1,3 +1,9 @@
+/* Override Bootstrap blue spinners → brand orange */
+.spinner-border,
+.spinner-grow {
+    color: #FF6B35 !important;
+}
+
 :root {
     --principal-1: #FF4700;
     --principal-2: #020100;
