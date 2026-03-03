@@ -5570,7 +5570,8 @@ function switchProgramDetailsTab(tabName) {
         'pildoras': { tabId: 'program-details-pildoras', buttonId: 'program-details-pildoras-tab', label: 'Píldoras' },
         'evaluation': { tabId: 'program-details-evaluation', buttonId: 'program-details-evaluation-tab', label: 'Evaluation' },
         'quicklinks': { tabId: 'program-details-quicklinks', buttonId: 'program-details-quicklinks-tab', label: 'Quick Links' },
-        'sections': { tabId: 'program-details-sections', buttonId: 'program-details-sections-tab', label: 'Sections' }
+        'sections': { tabId: 'program-details-sections', buttonId: 'program-details-sections-tab', label: 'Sections' },
+        'competences': { tabId: 'program-details-competences', buttonId: 'program-details-competences-tab', label: 'Competencias' }
     };
 
     const tab = tabNameMap[tabName];

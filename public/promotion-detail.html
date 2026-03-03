@@ -611,6 +611,10 @@
                             onclick="switchProgramDetailsTab('quicklinks')">
                             <i class="bi bi-lightning me-2"></i>Quick Links
                         </button>
+                        <button class="nav-link" id="program-details-competences-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('competences')">
+                            <i class="bi bi-award me-2"></i>Competencias
+                        </button>
                         <button class="nav-link" id="program-details-sections-tab" type="button" role="tab" aria-selected="false"
                             onclick="switchProgramDetailsTab('sections')">
                             <i class="bi bi-file-text me-2"></i>Sections
@@ -856,6 +860,42 @@
                                 <div class="card-body">
                                     <div id="sections-list">
                                         <!-- Sections will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Competencias Tab -->
+                        <div class="tab-pane fade" id="program-details-competences" role="tabpanel" aria-labelledby="program-details-competences-tab">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h6 class="mb-0"><i class="bi bi-award me-2"></i>Competencias del Programa</h6>
+                                            <span class="badge bg-warning text-dark d-none" id="competences-unsaved-badge">
+                                                <i class="bi bi-exclamation-circle me-1"></i>Sin guardar
+                                            </span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <select class="form-select form-select-sm w-auto" id="competences-area-filter"
+                                                onchange="window.ProgramCompetences?.filterByArea()">
+                                                <option value="">Todas las áreas</option>
+                                            </select>
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                onclick="window.ProgramCompetences?.openAddCompetenceModal()">
+                                                <i class="bi bi-plus me-1"></i>Añadir Competencia
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Selecciona las competencias que se evaluarán en este programa. Se mostrarán en la página pública del bootcamp.
+                                        Recuerda guardar con el botón <strong>"Save All Changes"</strong> para persistir los cambios.
+                                    </p>
+                                    <div id="competences-list-container">
+                                        <!-- Rendered by program-competences.js -->
                                     </div>
                                 </div>
                             </div>
