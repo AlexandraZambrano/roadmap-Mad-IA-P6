@@ -498,6 +498,16 @@ border-color: #c1aee6;
     color: #aaa !important;
 }
 
+.attendance-blocked {
+    pointer-events: none;
+    user-select: none;
+}
+
+.attendance-holiday {
+    background-color: #f0e8ff !important;
+    color: #7c3aed !important;
+}
+
 .attendance-dot {
     display: inline-block;
     width: 12px;

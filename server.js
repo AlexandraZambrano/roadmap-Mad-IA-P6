@@ -1336,6 +1336,33 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
   }
 });
 
+// ── Holidays (festivos) for a promotion ──────────────────────────────────────
+// GET — return the holiday list for the promotion
+app.get('/api/promotions/:promotionId/holidays', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    res.json({ holidays: promotion.holidays || [] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT — replace the full holiday list for the promotion
+app.put('/api/promotions/:promotionId/holidays', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+    const { holidays } = req.body; // array of YYYY-MM-DD strings
+    if (!Array.isArray(holidays)) return res.status(400).json({ error: 'holidays must be an array' });
+    await Promotion.findOneAndUpdate({ id: req.params.promotionId }, { holidays });
+    res.json({ holidays });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Add student manually (teacher adds student for tracking)
 app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) => {
   try {

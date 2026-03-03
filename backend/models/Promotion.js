@@ -50,6 +50,7 @@ const PromotionSchema = new mongoose.Schema({
         changedAt: { type: Date, default: Date.now }
     }],
     teachingContentUrl: { type: String }, // URL to teaching content (for "Contenido Docente" button)
+    holidays: [{ type: String }], // Array of YYYY-MM-DD strings marking non-working days (festivos)
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });

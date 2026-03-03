@@ -227,6 +227,7 @@ let extendedInfoData = {
 let currentAttendanceMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
 let attendanceData = []; // Store attendance records for the current month
 let studentsForAttendance = []; // Local copy of students for rendering current view
+let promotionHolidays = new Set(); // Set of YYYY-MM-DD strings for festivos
 
 
 // Utility function to escape HTML to prevent XSS
@@ -4671,6 +4672,19 @@ async function loadAttendance() {
         });
         attendanceData = await attendanceRes.json();
 
+        // Load holidays (only once per page load; refresh when promotionId changes)
+        if (promotionHolidays.size === 0) {
+            try {
+                const holRes = await fetch(`${API_URL}/api/promotions/${promotionId}/holidays`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (holRes.ok) {
+                    const { holidays } = await holRes.json();
+                    promotionHolidays = new Set(holidays || []);
+                }
+            } catch (_) {}
+        }
+
         renderAttendanceTable();
     } catch (error) {
         console.error('Error loading attendance:', error);
@@ -4702,14 +4716,41 @@ function renderAttendanceTable() {
     // Generate headers (weekday row + day number row)
     for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${day < 10 ? '0' : ''}${day}`;
+        const dateKey = `${currentAttendanceMonth}-${dateStr}`;
         const dayOfWeek = new Date(year, month - 1, day).getDay(); // 0=Sun, 6=Sat
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        const weekendStyle = isWeekend ? ' background-color:#e5e5e5; color:#888;' : '';
+        const isHoliday = promotionHolidays.has(dateKey);
+        const isBlocked = isWeekend || isHoliday;
+
+        const weekendStyle = isBlocked ? ' background-color:#e5e5e5; color:#888;' : '';
+        const holidayMark = isHoliday ? ' title="Festivo – clic derecho para quitar"' : (!isWeekend ? ' title="Clic derecho para marcar como festivo"' : '');
 
         if (weekdayRow) {
-            weekdayRow.innerHTML += `<th class="text-center" style="font-size:0.7rem; font-weight:500; padding:2px 4px;${weekendStyle}">${WEEKDAY_ABBR[dayOfWeek]}</th>`;
+            const th = document.createElement('th');
+            th.className = 'text-center';
+            th.style.cssText = `font-size:0.7rem; font-weight:500; padding:2px 4px;${weekendStyle}`;
+            th.textContent = WEEKDAY_ABBR[dayOfWeek];
+            weekdayRow.appendChild(th);
         }
-        headerRow.innerHTML += `<th class="text-center" style="${weekendStyle}">${dateStr}</th>`;
+
+        const thDay = document.createElement('th');
+        thDay.className = 'text-center';
+        thDay.style.cssText = weekendStyle;
+        thDay.dataset.date = dateKey;
+        if (isHoliday) {
+            thDay.innerHTML = `<span style="font-size:0.65rem;">🎉</span><br><small>${dateStr}</small>`;
+        } else {
+            thDay.textContent = dateStr;
+        }
+        // Right-click on weekday header (not on weekends) to toggle holiday
+        if (!isWeekend) {
+            thDay.style.cursor = 'context-menu';
+            thDay.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                toggleHoliday(dateKey);
+            });
+        }
+        headerRow.appendChild(thDay);
     }
 
     // Generate rows
@@ -4732,6 +4773,21 @@ function renderAttendanceTable() {
 
             const dayOfWeek = new Date(year, month - 1, day).getDay();
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isHoliday = promotionHolidays.has(dateKey);
+            const isBlocked = isWeekend || isHoliday;
+
+            const td = document.createElement('td');
+
+            if (isBlocked) {
+                // Non-working day: grey, no click, no status shown
+                td.className = 'attendance-cell attendance-blocked';
+                td.style.backgroundColor = isHoliday ? '#f0e8ff' : '#e5e5e5';
+                td.style.color = isHoliday ? '#7c3aed' : '#aaa';
+                td.style.cursor = 'default';
+                td.innerHTML = isHoliday ? '<i class="bi bi-balloon" style="font-size:0.75rem;"></i>' : '';
+                tr.appendChild(td);
+                continue;
+            }
 
             let statusClass = '';
             if (status === 'Presente') statusClass = 'attendance-present';
@@ -4740,8 +4796,7 @@ function renderAttendanceTable() {
             else if (status === 'Justificado') statusClass = 'attendance-justified';
             else if (status === 'Sale antes') statusClass = 'attendance-early-leave';
 
-            const td = document.createElement('td');
-            td.className = `attendance-cell ${statusClass} ${note ? 'attendance-has-note' : ''} ${isWeekend && !statusClass ? 'attendance-weekend' : ''}`;
+            td.className = `attendance-cell ${statusClass} ${note ? 'attendance-has-note' : ''}`;
             td.dataset.studentId = student.id;
             td.dataset.date = dateKey;
             td.dataset.status = status;
@@ -4774,8 +4829,26 @@ function renderAttendanceTable() {
     updateAttendanceStats();
 }
 
-function updateAttendanceStats() {
-    const totalDays = studentsForAttendance.length * new Date(
+// ── Holiday toggle ───────────────────────────────────────────────────────────
+async function toggleHoliday(dateKey) {
+    const token = localStorage.getItem('token');
+    if (promotionHolidays.has(dateKey)) {
+        promotionHolidays.delete(dateKey);
+    } else {
+        promotionHolidays.add(dateKey);
+    }
+    // Persist to server
+    try {
+        await fetch(`${API_URL}/api/promotions/${promotionId}/holidays`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ holidays: [...promotionHolidays] })
+        });
+    } catch (_) {}
+    renderAttendanceTable();
+}
+
+function updateAttendanceStats() {    const totalDays = studentsForAttendance.length * new Date(
         ...currentAttendanceMonth.split('-').map(Number), 0
     ).getDate();
 
