@@ -4934,7 +4934,10 @@ function openAttendanceModal(studentId, date) {
     modal.show();
 }
 
+let _summaryStudentId = null; // tracks which student is open in the summary modal
+
 function openStudentSummary(studentId) {
+    _summaryStudentId = studentId;
     const student = studentsForAttendance.find(s => s.id === studentId);
     if (!student) return;
 
@@ -4978,6 +4981,351 @@ function openStudentSummary(studentId) {
 
     const summaryModal = new bootstrap.Modal(document.getElementById('studentSummaryModal'));
     summaryModal.show();
+}
+
+/**
+ * Genera y descarga un PDF con el resumen de asistencia de un estudiante.
+ * @param {'month'|'all'} mode  - 'month' = solo el mes visible; 'all' = todos los meses con registro
+ */
+async function exportStudentAttendancePdf(mode) {
+    const studentId = _summaryStudentId;
+    const student = studentsForAttendance.find(s => s.id === studentId);
+    if (!student) return;
+
+    const MONTH_NAMES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                            'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const STATUS_LABELS = {
+        'Presente':    'Presente',
+        'Ausente':     'Ausente',
+        'Con retraso': 'Con retraso',
+        'Justificado': 'Justificado',
+        'Sale antes':  'Sale antes'
+    };
+    const STATUS_COLORS = {
+        'Presente':    [154, 246, 194],   // --green-f5
+        'Ausente':     [255, 71, 0],      // --principal-1
+        'Con retraso': [255, 163, 127],   // --complementario-2
+        'Justificado': [192, 246, 248],   // --blue-light-f5
+        'Sale antes':  [233, 216, 253]    // purple pastel
+    };
+
+    // ── 1. Recopilar registros ───────────────────────────────────────────────
+    let records = [];
+
+    if (mode === 'month') {
+        records = attendanceData
+            .filter(a => a.studentId === studentId && a.date.startsWith(currentAttendanceMonth))
+            .sort((a, b) => a.date.localeCompare(b.date));
+    } else {
+        // Fetch ALL attendance for this promotion (reuses existing export endpoint data)
+        const btn = document.getElementById('summary-pdf-all-btn');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generando…';
+        try {
+            const token = localStorage.getItem('token');
+            // Use the generic attendance endpoint month by month, or pull all via the export
+            // The export endpoint returns xlsx — instead query month by month for all months with data
+            // First get the promotion to know start/end
+            const promoRes = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const promo = promoRes.ok ? await promoRes.json() : {};
+
+            // Build list of YYYY-MM from promotion start to end (or ±12 months fallback)
+            const start = promo.startDate ? new Date(promo.startDate) : new Date(new Date().getFullYear(), 0, 1);
+            const end   = promo.endDate   ? new Date(promo.endDate)   : new Date();
+            const months = [];
+            const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+            while (cur <= end) {
+                months.push(`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`);
+                cur.setMonth(cur.getMonth() + 1);
+            }
+            if (!months.length) months.push(currentAttendanceMonth);
+
+            // Fetch each month in parallel
+            const fetched = await Promise.all(months.map(m =>
+                fetch(`${API_URL}/api/promotions/${promotionId}/attendance?month=${m}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(r => r.ok ? r.json() : [])
+            ));
+            records = fetched.flat()
+                .filter(a => a.studentId === studentId)
+                .sort((a, b) => a.date.localeCompare(b.date));
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+    }
+
+    if (!records.length) {
+        alert('No hay registros de asistencia para este estudiante' + (mode === 'month' ? ' en este mes.' : '.'));
+        return;
+    }
+
+    // ── 2. Construir PDF con jsPDF ───────────────────────────────────────────
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const ORANGE  = [255, 107, 53];   // #FF6B35
+    const DARK    = [2, 1, 0];
+    const LIGHT_BG = [245, 242, 242]; // complementario-1-extra-light approx
+    const PAGE_W  = 210;
+    const MARGIN  = 14;
+    const COL_W   = PAGE_W - MARGIN * 2;
+
+    // ── Header ───────────────────────────────────────────────────────────────
+    doc.setFillColor(...ORANGE);
+    doc.rect(0, 0, PAGE_W, 22, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumen de Asistencia', MARGIN, 10);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(studentFullName(student), MARGIN, 17);
+
+    const scope = mode === 'month'
+        ? (() => { const [y,m] = currentAttendanceMonth.split('-'); return `${MONTH_NAMES_ES[parseInt(m)-1]} ${y}`; })()
+        : 'Todos los meses';
+    doc.text(scope, PAGE_W - MARGIN, 17, { align: 'right' });
+
+    // ── Global totals (used in header summary + final summary) ───────────────
+    let y = 30;
+    const globalCounts = { 'Presente':0,'Ausente':0,'Con retraso':0,'Justificado':0,'Sale antes':0 };
+    records.forEach(r => { if (globalCounts[r.status] !== undefined) globalCounts[r.status]++; });
+    const totalRecords  = records.length;
+    const totalAttended = globalCounts['Presente'] + globalCounts['Con retraso'] + globalCounts['Justificado'] + globalCounts['Sale antes'];
+    const totalAbsent   = globalCounts['Ausente'];
+    const globalPct     = totalRecords > 0 ? Math.round((totalAttended / totalRecords) * 100) : 0;
+    const absentPct     = totalRecords > 0 ? Math.round((totalAbsent   / totalRecords) * 100) : 0;
+
+    // ── Header summary strip (days attended / absent + %) ────────────────────
+    doc.setFillColor(...LIGHT_BG);
+    doc.roundedRect(MARGIN, y, COL_W, 16, 2, 2, 'F');
+
+    // Left: attended
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40, 140, 80);
+    doc.text(String(totalAttended), MARGIN + 10, y + 9, { align: 'center' });
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.text(`días asistidos (${globalPct}%)`, MARGIN + 10, y + 14, { align: 'center' });
+
+    // Center divider
+    doc.setDrawColor(200, 200, 200);
+    doc.line(MARGIN + COL_W / 2, y + 2, MARGIN + COL_W / 2, y + 14);
+
+    // Right: absent
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(200, 50, 10);
+    doc.text(String(totalAbsent), MARGIN + COL_W - 10, y + 9, { align: 'center' });
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.text(`días faltados (${absentPct}%)`, MARGIN + COL_W - 10, y + 14, { align: 'center' });
+
+    y += 22;
+
+    // ── Table — group by month ───────────────────────────────────────────────
+    const byMonth = {};
+    records.forEach(r => {
+        const mo = r.date.substring(0, 7);
+        if (!byMonth[mo]) byMonth[mo] = [];
+        byMonth[mo].push(r);
+    });
+
+    const ROW_H = 7;
+    const COL_DATE = 28, COL_STATUS = 42, COL_NOTE = COL_W - COL_DATE - COL_STATUS;
+    const col1 = MARGIN, col2 = MARGIN + COL_DATE, col3 = MARGIN + COL_DATE + COL_STATUS;
+
+    const ensureSpace = (needed) => {
+        if (y + needed > 280) {
+            doc.addPage();
+            y = 14;
+        }
+    };
+
+    Object.entries(byMonth).forEach(([mo, recs]) => {
+        const [my, mm] = mo.split('-');
+        const monthLabel = `${MONTH_NAMES_ES[parseInt(mm)-1]} ${my}`;
+
+        ensureSpace(ROW_H + recs.length * ROW_H + 4);
+
+        // Month header
+        doc.setFillColor(...ORANGE);
+        doc.rect(MARGIN, y, COL_W, ROW_H, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.text(monthLabel, MARGIN + 2, y + 5);
+        const monthAttended = recs.filter(r => r.status === 'Presente' || r.status === 'Con retraso' || r.status === 'Justificado' || r.status === 'Sale antes').length;
+        const monthAbsent   = recs.filter(r => r.status === 'Ausente').length;
+        const monthPct = recs.length > 0 ? Math.round((monthAttended / recs.length) * 100) : 0;
+        doc.text(`${monthAttended} asistidos · ${monthAbsent} faltas · ${monthPct}%`, PAGE_W - MARGIN - 2, y + 5, { align: 'right' });
+        y += ROW_H;
+
+        // Column headers
+        doc.setFillColor(...LIGHT_BG);
+        doc.rect(MARGIN, y, COL_W, ROW_H - 1, 'F');
+        doc.setTextColor(80, 80, 80);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Fecha', col1 + 2, y + 4.5);
+        doc.text('Estado', col2 + 2, y + 4.5);
+        doc.text('Nota', col3 + 2, y + 4.5);
+        y += ROW_H - 1;
+
+        // Data rows
+        recs.forEach((r, idx) => {
+            ensureSpace(ROW_H);
+            const rowBg = idx % 2 === 0 ? [255,255,255] : [250, 249, 248];
+            doc.setFillColor(...rowBg);
+            doc.rect(MARGIN, y, COL_W, ROW_H, 'F');
+
+            // Status badge color as left border stripe
+            const sc = STATUS_COLORS[r.status] || [220, 220, 220];
+            doc.setFillColor(...sc);
+            doc.rect(col2, y, 3, ROW_H, 'F');
+
+            doc.setTextColor(...DARK);
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'normal');
+
+            // Date: day/month
+            const [, rmo, rd] = r.date.split('-');
+            doc.text(`${rd}/${rmo}`, col1 + 2, y + 5);
+
+            // Status text
+            doc.setFont('helvetica', 'bold');
+            doc.text(STATUS_LABELS[r.status] || r.status || '—', col2 + 5, y + 5);
+
+            // Note (truncated)
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
+            const noteText = r.note ? doc.splitTextToSize(r.note, COL_NOTE - 4)[0] : '—';
+            doc.text(noteText, col3 + 2, y + 5);
+
+            y += ROW_H;
+        });
+
+        y += 4; // gap between months
+    });
+
+    // ── Global summary at the end ────────────────────────────────────────────
+    if (mode === 'all' || Object.keys(byMonth).length >= 1) {
+        ensureSpace(38);
+        y += 4;
+
+        // Section title
+        doc.setFillColor(...ORANGE);
+        doc.rect(MARGIN, y, COL_W, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Resumen Global', MARGIN + 2, y + 5.5);
+        y += 8;
+
+        // Big numbers row
+        doc.setFillColor(...LIGHT_BG);
+        doc.rect(MARGIN, y, COL_W, 22, 'F');
+
+        // ── Asistió
+        const col_A = MARGIN + COL_W * 0.15;
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(40, 140, 80);
+        doc.text(String(totalAttended), col_A, y + 12, { align: 'center' });
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+        doc.text('días asistidos', col_A, y + 18, { align: 'center' });
+
+        // ── % asistencia
+        const col_B = MARGIN + COL_W * 0.38;
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(40, 140, 80);
+        doc.text(`${globalPct}%`, col_B, y + 12, { align: 'center' });
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+        doc.text('% asistencia', col_B, y + 18, { align: 'center' });
+
+        // Vertical divider
+        doc.setDrawColor(200, 200, 200);
+        doc.line(MARGIN + COL_W * 0.52, y + 2, MARGIN + COL_W * 0.52, y + 20);
+
+        // ── Faltó
+        const col_C = MARGIN + COL_W * 0.65;
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(200, 50, 10);
+        doc.text(String(totalAbsent), col_C, y + 12, { align: 'center' });
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+        doc.text('días faltados', col_C, y + 18, { align: 'center' });
+
+        // ── % ausencia
+        const col_D = MARGIN + COL_W * 0.86;
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(200, 50, 10);
+        doc.text(`${absentPct}%`, col_D, y + 12, { align: 'center' });
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+        doc.text('% ausencia', col_D, y + 18, { align: 'center' });
+
+        y += 22;
+
+        // Detail row: retraso / justificado / sale antes
+        doc.setFillColor(255, 255, 255);
+        doc.rect(MARGIN, y, COL_W, 10, 'F');
+        doc.setDrawColor(220, 220, 220);
+        doc.rect(MARGIN, y, COL_W, 10);
+
+        const detailItems = [
+            { label: 'Con retraso',  count: globalCounts['Con retraso'], color: [220, 100, 20] },
+            { label: 'Justificado',  count: globalCounts['Justificado'],  color: [20, 120, 160] },
+            { label: 'Sale antes',   count: globalCounts['Sale antes'],   color: [100, 50, 180] },
+            { label: 'Total registros', count: totalRecords,             color: [80, 80, 80]   }
+        ];
+        const dW = COL_W / detailItems.length;
+        detailItems.forEach((item, i) => {
+            const dx = MARGIN + i * dW + dW / 2;
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...item.color);
+            doc.text(String(item.count), dx, y + 5.5, { align: 'center' });
+            doc.setFontSize(5.5);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 100, 100);
+            doc.text(item.label, dx, y + 9, { align: 'center' });
+        });
+
+        y += 10;
+    }
+    const totalPages = doc.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        doc.setFillColor(...LIGHT_BG);
+        doc.rect(0, 288, PAGE_W, 9, 'F');
+        doc.setFontSize(7);
+        doc.setTextColor(140, 140, 140);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Bootcamp Manager · ${studentFullName(student)}`, MARGIN, 293);
+        doc.text(`Pág. ${p} / ${totalPages}`, PAGE_W - MARGIN, 293, { align: 'right' });
+    }
+
+    // ── Download ─────────────────────────────────────────────────────────────
+    const safeName = studentFullName(student).replace(/\s+/g, '_');
+    const fileSuffix = mode === 'month' ? currentAttendanceMonth : 'todos';
+    doc.save(`asistencia_${safeName}_${fileSuffix}.pdf`);
 }
 
 function saveAttendanceFromModal() {

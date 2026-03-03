@@ -668,6 +668,11 @@
                                 onclick="window.Reports?.printProjectReport(${i}, window.StudentTracking._getCurrentStudentId(), window.StudentTracking._getPromotionId())">
                                 <i class="bi bi-file-earmark-pdf" style="font-size:.85rem;"></i>
                             </button>
+                            <button class="btn btn-sm btn-outline-primary py-0 px-1"
+                                title="Editar proyecto"
+                                onclick="window.StudentTracking._openTeamEdit(${i})">
+                                <i class="bi bi-pencil" style="font-size:.85rem;"></i>
+                            </button>
                             <button class="btn btn-sm btn-link text-danger p-0"
                                 onclick="window.StudentTracking._removeTeam(${i})">
                                 <i class="bi bi-trash"></i>
@@ -1051,6 +1056,209 @@
         _teams.splice(i, 1);
         _markUnsaved('technical');
         _renderTeams();
+    }
+
+    function _openTeamEdit(i) {
+        const t = _teams[i];
+        if (!t) return;
+
+        // Build the same form as _openTeamForm but pre-filled
+        const projectOptions = _promotionProjects.length
+            ? _promotionProjects.map((p, pi) => `<option value="${pi}" ${p.name === t.teamName ? 'selected' : ''}>${_esc(p.name)}</option>`).join('')
+            : '';
+        const projectField = _promotionProjects.length
+            ? `<select class="form-select form-select-sm" id="team-project-select">
+                <option value="">Seleccionar proyecto...</option>
+                ${projectOptions}
+               </select>`
+            : `<input type="text" class="form-control form-control-sm" id="team-project-select" placeholder="Nombre del proyecto" value="${_esc(t.teamName || '')}">`;
+
+        const allStudents = (window.currentStudents || []).filter(s => s.id !== _currentStudentId);
+        // Pre-select existing members (excluding current student)
+        const existingMemberIds = new Set((t.members || []).map(m => String(m.id)));
+        const studentItems = allStudents.length
+            ? allStudents.map(s => {
+                const fullName = _esc(s.name + (s.lastname ? ' ' + s.lastname : ''));
+                const checked = existingMemberIds.has(String(s.id)) ? 'checked' : '';
+                return `<li class="team-member-option px-3 py-1" style="cursor:pointer;"
+                    data-id="${_esc(s.id)}" data-name="${fullName}">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input team-member-check" type="checkbox"
+                            value="${_esc(s.id)}" data-name="${fullName}" id="tm-${_esc(s.id)}" ${checked}>
+                        <label class="form-check-label small w-100" style="cursor:pointer;" for="tm-${_esc(s.id)}">${fullName}</label>
+                    </div>
+                </li>`;
+            }).join('')
+            : `<li class="px-3 py-2 text-muted small">No hay más estudiantes en la promoción.</li>`;
+
+        const compOptions = _catalogCompetences.length
+            ? _catalogCompetences.map(c => `<option value="${_esc(c.name)}" data-id="${c.id}" data-tools='${_esc(JSON.stringify((c.tools||[]).map(t=>t.name)))}'>${_esc(c.name)}</option>`).join('')
+            : '<option value="">Sin competencias en catálogo</option>';
+
+        _showInlineForm('ficha-teams-list', `
+            <div class="card border-primary mb-2">
+                <div class="card-header py-1 px-3 bg-light d-flex align-items-center gap-2">
+                    <i class="bi bi-pencil-square text-primary"></i>
+                    <span class="small fw-semibold text-primary">Editando: ${_esc(t.teamName || 'Proyecto')}</span>
+                </div>
+                <div class="card-body py-2 px-3">
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="form-label small fw-semibold">Proyecto del roadmap</label>
+                            ${projectField}
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label small fw-semibold">Tipo</label>
+                            <select class="form-select form-select-sm" id="team-project-type"
+                                onchange="window.StudentTracking._toggleTeamMembersSection(this.value)">
+                                <option value="grupal" ${t.projectType !== 'individual' ? 'selected' : ''}>Grupal</option>
+                                <option value="individual" ${t.projectType === 'individual' ? 'selected' : ''}>Individual</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12" id="team-members-section" ${t.projectType === 'individual' ? 'class="d-none"' : ''}>
+                            <label class="form-label small fw-semibold">
+                                <i class="bi bi-people me-1"></i>Compañeros de equipo
+                            </label>
+                            <div class="form-control form-control-sm d-flex flex-wrap gap-1 align-items-center"
+                                id="team-members-display" style="min-height:34px; cursor:text;"
+                                onclick="document.getElementById('team-member-search').focus()">
+                                <input type="text" id="team-member-search" class="border-0 flex-grow-1"
+                                    placeholder="Buscar estudiante..." autocomplete="off"
+                                    style="min-width:120px; outline:none;"
+                                    oninput="window.StudentTracking._filterTeamMemberDropdown(this.value)"
+                                    onfocus="document.getElementById('team-member-list').classList.remove('d-none')"
+                                    onblur="setTimeout(()=>document.getElementById('team-member-list')?.classList.add('d-none'),300)">
+                            </div>
+                            <ul id="team-member-list" class="list-unstyled border rounded bg-white w-100 d-none mt-0"
+                                style="max-height:160px; overflow-y:auto;">
+                                ${studentItems}
+                            </ul>
+                            <div id="team-members-selected-pills" class="d-flex flex-wrap gap-1 mt-1"></div>
+                        </div>
+
+                        <div class="col-12 mt-1">
+                            <div class="border rounded p-2 bg-light">
+                                <div class="small fw-semibold text-primary mb-2">
+                                    <i class="bi bi-award me-1"></i>Competencias trabajadas en este proyecto
+                                </div>
+                                <div class="row g-2 align-items-end mb-2" id="comp-add-row">
+                                    <div class="col-md-5">
+                                        <label class="form-label small mb-1">Competencia</label>
+                                        <select class="form-select form-select-sm" id="proj-comp-select"
+                                            onchange="window.StudentTracking._onProjectCompetenceChange()">
+                                            <option value="">Seleccionar...</option>
+                                            ${compOptions}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-1">Nivel (0–3)</label>
+                                        <select class="form-select form-select-sm" id="proj-comp-level">
+                                            <option value="0">0 – Sin nivel</option>
+                                            <option value="1">1 – Básico</option>
+                                            <option value="2" selected>2 – Medio</option>
+                                            <option value="3">3 – Avanzado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button class="btn btn-sm btn-outline-primary w-100"
+                                            onclick="window.StudentTracking._addProjectCompetence()">
+                                            <i class="bi bi-plus-lg me-1"></i>Añadir
+                                        </button>
+                                    </div>
+                                    <div class="col-12">
+                                        <div id="proj-comp-tools-preview" class="d-flex flex-wrap gap-1 mt-1"></div>
+                                    </div>
+                                </div>
+                                <div id="proj-comp-list"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">
+                                <i class="bi bi-chat-left-quote me-1 text-info"></i>Nota del profesor
+                                <span class="fw-normal text-muted">(opcional)</span>
+                            </label>
+                            <textarea class="form-control form-control-sm" id="team-teacher-note" rows="2"
+                                placeholder="Valoración, observaciones, feedback...">${_esc(t.teacherNote || '')}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-2">
+                        <button class="btn btn-sm btn-secondary" onclick="window.StudentTracking._cancelInlineForm('ficha-teams-list')">Cancelar</button>
+                        <button class="btn btn-sm btn-primary" onclick="window.StudentTracking._saveTeamEdit(${i})">
+                            <i class="bi bi-floppy me-1"></i>Guardar cambios
+                        </button>
+                    </div>
+                </div>
+            </div>`, true);
+
+        // Init selected members Map from existing members
+        window._selectedTeamMembers = new Map();
+        (t.members || []).forEach(m => {
+            window._selectedTeamMembers.set(String(m.id), m.name);
+        });
+
+        // Wire checkbox events
+        document.querySelectorAll('.team-member-option').forEach(li => {
+            const cb = li.querySelector('.team-member-check');
+            li.addEventListener('mousedown', e => e.preventDefault());
+            li.addEventListener('click', e => {
+                if (e.target !== cb) cb.checked = !cb.checked;
+                if (cb.checked) window._selectedTeamMembers.set(cb.value, cb.dataset.name);
+                else window._selectedTeamMembers.delete(cb.value);
+                window.StudentTracking._updateTeamMemberPills();
+            });
+            cb.addEventListener('change', () => {
+                if (cb.checked) window._selectedTeamMembers.set(cb.value, cb.dataset.name);
+                else window._selectedTeamMembers.delete(cb.value);
+                window.StudentTracking._updateTeamMemberPills();
+            });
+        });
+
+        // Init pending competences from existing entry
+        window._pendingProjectCompetences = JSON.parse(JSON.stringify(t.competences || []));
+        _renderPendingProjectCompetences();
+        _updateTeamMemberPills();
+
+        // Hide members section if individual
+        if (t.projectType === 'individual') {
+            document.getElementById('team-members-section')?.classList.add('d-none');
+        }
+    }
+
+    async function _saveTeamEdit(i) {
+        const t = _teams[i];
+        if (!t) return;
+
+        const selectEl = document.getElementById('team-project-select');
+        let teamName = t.teamName, moduleName = t.moduleName, moduleId = t.moduleId;
+
+        if (selectEl) {
+            if (selectEl.tagName === 'SELECT') {
+                const idx = parseInt(selectEl.value);
+                if (!isNaN(idx) && _promotionProjects[idx]) {
+                    teamName   = _promotionProjects[idx].name;
+                    moduleName = _promotionProjects[idx].moduleName;
+                    moduleId   = _promotionProjects[idx].moduleId || '';
+                }
+            } else {
+                teamName = selectEl.value.trim() || teamName;
+            }
+        }
+
+        const projectType = document.getElementById('team-project-type')?.value || t.projectType;
+        const selectedMap = window._selectedTeamMembers || new Map();
+        const members = [...selectedMap.entries()].map(([id, name]) => ({ id, name }));
+        const competences = window._pendingProjectCompetences || [];
+        const teacherNote = document.getElementById('team-teacher-note')?.value?.trim() ?? t.teacherNote ?? '';
+
+        _teams[i] = { ...t, teamName, projectType, moduleName, moduleId, members, competences, teacherNote };
+        window._pendingProjectCompetences = [];
+        _renderTeams();
+        _cancelInlineForm('ficha-teams-list');
+        // Persist immediately — same behaviour as the "Guardar Seguimiento Técnico" button
+        await _saveTechnical();
     }
 
     // ─── Renderizado: Competencias ────────────────────────────────────────────
@@ -1783,7 +1991,7 @@
         _getCurrentStudent: () => _currentStudent,
         // Exponer internos necesarios por onclick en HTML generado dinámicamente
         _openNoteForm, _saveNote, _removeNote,
-        _openTeamForm, _saveTeam, _removeTeam,
+        _openTeamForm, _saveTeam, _removeTeam, _openTeamEdit, _saveTeamEdit,
         _filterTeamMemberDropdown, _updateTeamMemberPills, _toggleTeamMembersSection,
         _onProjectCompetenceChange, _addProjectCompetence, _removePendingCompetence,
         _openCompetenceForm, _saveCompetence, _removeCompetence,
