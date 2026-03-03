@@ -438,6 +438,9 @@ async function loadExtendedInfo() {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`); // Public endpoint
         if (response.ok) {
             extendedInfoData = await response.json();
+            // Expose competences globally so the project competence picker can access them
+            // even before ProgramCompetences.init() runs
+            window._extendedInfoCompetences = extendedInfoData.competences || [];
 
             // Populate Schedule
             const sched = extendedInfoData.schedule || {};
@@ -2491,7 +2494,8 @@ async function editModule(moduleId) {
                     const projectUrl = isObj ? (project.url || '') : '';
                     const projectDur = isObj ? (Number(project.duration) || 1) : 1;
                     const projectOff = isObj ? (Number(project.startOffset) || 0) : 0;
-                    addProjectField(projectName, projectUrl, projectDur, projectOff);
+                    const projectCompIds = isObj ? (project.competenceIds || []) : [];
+                    addProjectField(projectName, projectUrl, projectDur, projectOff, projectCompIds);
                 });
             }
 
@@ -2812,7 +2816,7 @@ function removeCoursField(button) {
     button.closest('.course-item').remove();
 }
 
-function addProjectField(projectName = '', projectUrl = '', projectDuration = 1, projectOffset = 0) {
+function addProjectField(projectName = '', projectUrl = '', projectDuration = 1, projectOffset = 0, projectCompetenceIds = []) {
     const container = document.getElementById('projects-container');
     const projectItem = document.createElement('div');
     projectItem.className = 'project-item mb-3 p-2 border rounded bg-white';
@@ -2845,12 +2849,136 @@ function addProjectField(projectName = '', projectUrl = '', projectDuration = 1,
                 </button>
             </div>
         </div>
+        <div class="mt-2">
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-xs btn-outline-warning py-0 px-2" style="font-size:0.75rem;"
+                    onclick="openProjectCompetencePicker(this)">
+                    <i class="bi bi-award me-1"></i>Competencias
+                    <span class="badge bg-warning text-dark ms-1 project-comp-badge">${projectCompetenceIds.length || 0}</span>
+                </button>
+                <small class="text-muted project-comp-labels fst-italic"></small>
+            </div>
+            <input type="hidden" class="project-competence-ids" value="${escapeHtml(JSON.stringify(projectCompetenceIds))}">
+        </div>
     `;
     container.appendChild(projectItem);
+
+    // If we already have competence IDs, render the labels
+    if (projectCompetenceIds.length) {
+        _updateProjectCompetenceLabels(projectItem, projectCompetenceIds);
+    }
 }
 
 function removeProjectField(button) {
     button.closest('.project-item').remove();
+}
+
+// ─── Helper: update the competence labels shown next to a project row ────────
+function _updateProjectCompetenceLabels(projectItem, competenceIds) {
+    const labelEl = projectItem.querySelector('.project-comp-labels');
+    const badgeEl = projectItem.querySelector('.project-comp-badge');
+    if (!labelEl || !badgeEl) return;
+
+    const programComps = window.ProgramCompetences ? window.ProgramCompetences.getCompetences() : (window._extendedInfoCompetences || []);
+    if (!competenceIds.length) {
+        labelEl.textContent = '';
+        badgeEl.textContent = '0';
+        return;
+    }
+    const names = competenceIds.map(id => {
+        const c = programComps.find(c => c.id == id);
+        return c ? c.name : `#${id}`;
+    });
+    badgeEl.textContent = competenceIds.length;
+    labelEl.textContent = names.join(', ');
+}
+
+// ─── Opens the competence picker popover for a project row ───────────────────
+function openProjectCompetencePicker(btn) {
+    const projectItem = btn.closest('.project-item');
+    const hiddenInput = projectItem.querySelector('.project-competence-ids');
+    let currentIds = [];
+    try { currentIds = JSON.parse(hiddenInput.value || '[]'); } catch (e) { currentIds = []; }
+
+    // Remove any existing picker
+    document.getElementById('project-comp-picker')?.remove();
+
+    const programComps = window.ProgramCompetences ? window.ProgramCompetences.getCompetences() : (window._extendedInfoCompetences || []);
+
+    if (!programComps.length) {
+        alert('No hay competencias añadidas al programa. Ve a Contenido del Programa → Competencias para añadirlas primero.');
+        return;
+    }
+
+    const checkboxes = programComps.map((c, i) => {
+        const checked = currentIds.includes(c.id) ? 'checked' : '';
+        const safeId = `pcp-${i}`;
+        return `<div class="form-check py-1 border-bottom">
+            <input class="form-check-input pcp-check" type="checkbox" value="${escapeHtml(String(c.id))}" id="${safeId}" ${checked}>
+            <label class="form-check-label small" for="${safeId}">
+                <span class="badge bg-secondary me-1" style="font-size:.65rem;">${escapeHtml(c.area || '')}</span>
+                ${escapeHtml(c.name)}
+            </label>
+        </div>`;
+    }).join('');
+
+    const picker = document.createElement('div');
+    picker.id = 'project-comp-picker';
+    picker.className = 'card shadow border position-absolute';
+    picker.style.cssText = 'z-index:9999; min-width:320px; max-width:400px; max-height:320px; overflow-y:auto;';
+    picker.innerHTML = `
+        <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center bg-light">
+            <strong class="small"><i class="bi bi-award me-1"></i>Competencias de este proyecto</strong>
+            <button type="button" class="btn-close btn-sm" onclick="document.getElementById('project-comp-picker')?.remove()"></button>
+        </div>
+        <div class="card-body py-2 px-3">
+            <p class="text-muted small mb-2">Selecciona las competencias que se evaluarán en este proyecto:</p>
+            ${checkboxes}
+        </div>
+        <div class="card-footer py-2 px-3 d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-primary flex-grow-1" onclick="saveProjectCompetencePicker()">
+                <i class="bi bi-check-lg me-1"></i>Aplicar
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('project-comp-picker')?.remove()">Cancelar</button>
+        </div>`;
+
+    // Store reference to projectItem for save
+    picker._targetProjectItem = projectItem;
+    document.body.appendChild(picker);
+
+    // Position near the button
+    const rect = btn.getBoundingClientRect();
+    const pickerH = 320;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > pickerH ? rect.bottom + window.scrollY + 4 : rect.top + window.scrollY - pickerH - 4;
+    picker.style.top = `${top}px`;
+    picker.style.left = `${Math.min(rect.left + window.scrollX, window.innerWidth - 420)}px`;
+
+    // Close on outside click
+    setTimeout(() => {
+        document.addEventListener('click', _closePicker, { once: true });
+    }, 50);
+}
+
+function _closePicker(e) {
+    const picker = document.getElementById('project-comp-picker');
+    if (picker && !picker.contains(e.target)) picker.remove();
+}
+
+function saveProjectCompetencePicker() {
+    const picker = document.getElementById('project-comp-picker');
+    if (!picker || !picker._targetProjectItem) return;
+
+    const selectedIds = [...picker.querySelectorAll('.pcp-check:checked')].map(cb => {
+        const n = parseInt(cb.value);
+        return isNaN(n) ? cb.value : n;
+    });
+
+    const projectItem = picker._targetProjectItem;
+    const hiddenInput = projectItem.querySelector('.project-competence-ids');
+    hiddenInput.value = JSON.stringify(selectedIds);
+    _updateProjectCompetenceLabels(projectItem, selectedIds);
+    picker.remove();
 }
 
 // Píldoras UI
@@ -2926,8 +3054,11 @@ function setupForms() {
             const startOffset = Math.max(0, semanaInicio - 1);
             const duration = Math.max(1, semanaFinal - semanaInicio + 1);
 
+            let competenceIds = [];
+            try { competenceIds = JSON.parse(item.querySelector('.project-competence-ids')?.value || '[]'); } catch (e) { competenceIds = []; }
+
             if (projectName) {
-                projects.push({ name: projectName, url: projectUrl, duration: Number(duration), startOffset: Number(startOffset) });
+                projects.push({ name: projectName, url: projectUrl, duration: Number(duration), startOffset: Number(startOffset), competenceIds });
             }
         });
 

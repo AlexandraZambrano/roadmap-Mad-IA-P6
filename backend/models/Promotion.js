@@ -14,7 +14,8 @@ const ModuleSchema = new mongoose.Schema({
         name: { type: String },
         url: { type: String },
         duration: { type: Number, default: 1 },
-        startOffset: { type: Number, default: 0 }
+        startOffset: { type: Number, default: 0 },
+        competenceIds: [{ type: mongoose.Schema.Types.Mixed }]
     }],
     pildoras: [{
         id: { type: String, required: true },

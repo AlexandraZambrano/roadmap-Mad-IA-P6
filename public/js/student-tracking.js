@@ -17,10 +17,11 @@
     let _currentStudent = null;
     let _promotionModules = [];
     let _promotionPildoras = [];
-    let _promotionProjects = [];      // [{name, moduleId, moduleName}]
+    let _promotionProjects = [];      // [{name, moduleId, moduleName, competenceIds:[]}]
     let _promotionEmployability = []; // [{name, url}]
     let _modulesPildarasExtended = []; // ExtendedInfo modulesPildoras con status/fecha
     let _catalogCompetences = [];      // [{id, name, description}] from DB competences collection
+    let _promotionCompetences = [];    // program-level competences from extendedInfo [{id, name, area, ...}]
     let _hasUnsavedTechnical = false;
     let _hasUnsavedTransversal = false;
 
@@ -73,8 +74,8 @@
     async function _loadPromotionModules() {
         try {
             const token = localStorage.getItem('token');
-            // Fetch promotion data (modules, projects, employability) + competences catalog
-            const [promoRes, pildarasRes, competencesRes] = await Promise.all([
+            // Fetch promotion data (modules, projects, employability) + competences catalog + program competences
+            const [promoRes, pildarasRes, competencesRes, extInfoRes] = await Promise.all([
                 fetch(`${API_URL}/api/promotions/${_promotionId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
@@ -83,7 +84,8 @@
                 }),
                 fetch(`${API_URL}/api/competences`, {
                     headers: { 'Authorization': `Bearer ${token}` }
-                })
+                }),
+                fetch(`${API_URL}/api/promotions/${_promotionId}/extended-info`)
             ]);
             if (promoRes.ok) {
                 const promo = await promoRes.json();
@@ -95,7 +97,7 @@
                         _promotionPildoras.push({ ...p, moduleName: m.name, moduleId: m.id });
                     });
                     (m.projects || []).forEach(p => {
-                        _promotionProjects.push({ name: p.name, url: p.url, moduleId: m.id, moduleName: m.name });
+                        _promotionProjects.push({ name: p.name, url: p.url, moduleId: m.id, moduleName: m.name, competenceIds: p.competenceIds || [] });
                     });
                 });
                 _promotionEmployability = promo.employability || [];
@@ -106,6 +108,10 @@
             }
             if (competencesRes.ok) {
                 _catalogCompetences = await competencesRes.json();
+            }
+            if (extInfoRes.ok) {
+                const extInfo = await extInfoRes.json();
+                _promotionCompetences = extInfo.competences || [];
             }
         } catch (e) {
             console.error('[StudentTracking] Error cargando módulos:', e);
@@ -690,7 +696,8 @@
             ? _promotionProjects.map((p, i) => `<option value="${i}">${_esc(p.name)}</option>`).join('')
             : '';
         const projectField = _promotionProjects.length
-            ? `<select class="form-select form-select-sm" id="team-project-select">
+            ? `<select class="form-select form-select-sm" id="team-project-select"
+                onchange="window.StudentTracking._onProjectSelectChange()">
                 <option value="">Seleccionar proyecto...</option>
                 ${projectOptions}
               </select>`
@@ -712,10 +719,8 @@
             }).join('')
             : `<li class="px-3 py-2 text-muted small">No hay más estudiantes en la promoción.</li>`;
 
-        // Competences dropdown options
-        const compOptions = _catalogCompetences.length
-            ? _catalogCompetences.map(c => `<option value="${_esc(c.name)}" data-id="${c.id}" data-tools='${_esc(JSON.stringify((c.tools||[]).map(t=>t.name)))}'>${_esc(c.name)}</option>`).join('')
-            : '<option value="">Sin competencias en catálogo</option>';
+        // Competences dropdown options — initially show all (no project selected yet)
+        const compOptions = _buildCompetenceOptions(null);
 
         _showInlineForm('ficha-teams-list', `
             <div class="card border-success mb-2">
@@ -1067,11 +1072,15 @@
             ? _promotionProjects.map((p, pi) => `<option value="${pi}" ${p.name === t.teamName ? 'selected' : ''}>${_esc(p.name)}</option>`).join('')
             : '';
         const projectField = _promotionProjects.length
-            ? `<select class="form-select form-select-sm" id="team-project-select">
+            ? `<select class="form-select form-select-sm" id="team-project-select"
+                onchange="window.StudentTracking._onProjectSelectChange()">
                 <option value="">Seleccionar proyecto...</option>
                 ${projectOptions}
                </select>`
             : `<input type="text" class="form-control form-control-sm" id="team-project-select" placeholder="Nombre del proyecto" value="${_esc(t.teamName || '')}">`;
+
+        // Determine current project index (for pre-filtering competences)
+        const currentProjIdx = _promotionProjects.findIndex(p => p.name === t.teamName);
 
         const allStudents = (window.currentStudents || []).filter(s => s.id !== _currentStudentId);
         // Pre-select existing members (excluding current student)
@@ -1091,9 +1100,8 @@
             }).join('')
             : `<li class="px-3 py-2 text-muted small">No hay más estudiantes en la promoción.</li>`;
 
-        const compOptions = _catalogCompetences.length
-            ? _catalogCompetences.map(c => `<option value="${_esc(c.name)}" data-id="${c.id}" data-tools='${_esc(JSON.stringify((c.tools||[]).map(t=>t.name)))}'>${_esc(c.name)}</option>`).join('')
-            : '<option value="">Sin competencias en catálogo</option>';
+        // Competences dropdown — pre-filtered to current project's assigned competences
+        const compOptions = _buildCompetenceOptions(currentProjIdx >= 0 ? currentProjIdx : null);
 
         _showInlineForm('ficha-teams-list', `
             <div class="card border-primary mb-2">
@@ -1262,6 +1270,78 @@
     }
 
     // ─── Renderizado: Competencias ────────────────────────────────────────────
+
+    // Builds <option> tags for the competence selector filtered by selected project.
+    // If the project has assigned competenceIds, only those are shown.
+    // Falls back to all catalog competences if none assigned or no project selected.
+    function _buildCompetenceOptions(projectIdx) {
+        let pool = [];
+        const proj = (projectIdx !== null && projectIdx !== undefined && !isNaN(parseInt(projectIdx)))
+            ? _promotionProjects[parseInt(projectIdx)]
+            : null;
+
+        const assignedIds = proj?.competenceIds || [];
+
+        if (assignedIds.length && _promotionCompetences.length) {
+            // Filter promotion-level competences to only those assigned to this project
+            pool = _promotionCompetences.filter(c => assignedIds.map(id => String(id)).includes(String(c.id)));
+        }
+
+        // Fall back to full catalog if pool is empty
+        if (!pool.length) {
+            if (_promotionCompetences.length) {
+                pool = _promotionCompetences;
+            } else {
+                pool = _catalogCompetences.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    area: (c.areas && c.areas[0]?.name) || '',
+                    tools: (c.tools || []).map(t => t.name)
+                }));
+            }
+        }
+
+        if (!pool.length) return '<option value="">Sin competencias en el programa</option>';
+
+        // Group by area
+        const byArea = {};
+        pool.forEach(c => {
+            const area = c.area || 'Sin área';
+            if (!byArea[area]) byArea[area] = [];
+            byArea[area].push(c);
+        });
+
+        // Build tools JSON from promotionCompetences or catalog
+        const getTools = (c) => {
+            const fromCatalog = _catalogCompetences.find(cc => String(cc.id) === String(c.id));
+            if (fromCatalog) return JSON.stringify((fromCatalog.tools || []).map(t => t.name));
+            return JSON.stringify(c.tools || c.selectedTools || []);
+        };
+
+        if (Object.keys(byArea).length === 1) {
+            // No grouping needed
+            return pool.map(c =>
+                `<option value="${_esc(c.name)}" data-id="${c.id}" data-tools='${_esc(getTools(c))}'>${_esc(c.name)}</option>`
+            ).join('');
+        }
+
+        return Object.entries(byArea).map(([area, comps]) => `
+            <optgroup label="${_esc(area)}">
+                ${comps.map(c => `<option value="${_esc(c.name)}" data-id="${c.id}" data-tools='${_esc(getTools(c))}'>${_esc(c.name)}</option>`).join('')}
+            </optgroup>`).join('');
+    }
+
+    // Called when a project is selected in add/edit team form — refreshes competence dropdown
+    function _onProjectSelectChange() {
+        const sel = document.getElementById('team-project-select');
+        const compSel = document.getElementById('proj-comp-select');
+        if (!compSel) return;
+        const idx = sel?.tagName === 'SELECT' ? parseInt(sel.value) : null;
+        const opts = _buildCompetenceOptions(isNaN(idx) ? null : idx);
+        compSel.innerHTML = `<option value="">Seleccionar...</option>${opts}`;
+        // Also refresh tools preview
+        _onProjectCompetenceChange();
+    }
 
     function _renderCompetences() {
         const container = document.getElementById('ficha-competences-list');
@@ -2032,7 +2112,7 @@
         _openNoteForm, _saveNote, _removeNote,
         _openTeamForm, _saveTeam, _removeTeam, _openTeamEdit, _saveTeamEdit,
         _filterTeamMemberDropdown, _updateTeamMemberPills, _toggleTeamMembersSection,
-        _onProjectCompetenceChange, _addProjectCompetence, _removePendingCompetence,
+        _onProjectSelectChange, _onProjectCompetenceChange, _addProjectCompetence, _removePendingCompetence,
         _openCompetenceForm, _saveCompetence, _removeCompetence,
         _openModuleForm, _saveModule, _removeModule,
         _openEmpSessionForm, _saveEmpSession, _removeEmpSession,
