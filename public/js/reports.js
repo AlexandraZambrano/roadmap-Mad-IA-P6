@@ -408,22 +408,6 @@
                 _today()
             );
 
-            // ── Datos personales resumidos ──
-            html += `<div class="section-box accent row2">
-                <div>
-                    <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                    <div class="kv"><strong>Teléfono:</strong> ${_esc(s.phone || '—')}</div>
-                    <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
-                    <div class="kv"><strong>Sit. Administrativa:</strong> ${_esc(s.administrativeSituation || '—')}</div>
-                </div>
-                <div>
-                    <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-                    <div class="kv"><strong>Nivel Inglés:</strong> ${_esc(s.englishLevel || '—')}</div>
-                    <div class="kv"><strong>Nivel Educativo:</strong> ${_esc(s.educationLevel || '—')}</div>
-                    <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-                </div>
-            </div>`;
-
             // ── Notas del profesor ──
             html += `<h3><span style="color:${PRIMARY}">✦</span> Notas del Profesor</h3>`;
             const notes = tt.teacherNotes || [];
@@ -573,22 +557,6 @@
                 promo.name,
                 _today()
             );
-
-            // ── Datos personales resumidos ──
-            html += `<div class="section-box accent row2">
-                <div>
-                    <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                    <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
-                    <div class="kv"><strong>Género:</strong> ${_esc(s.gender || '—')}</div>
-                    <div class="kv"><strong>Sit. Administrativa:</strong> ${_esc(s.administrativeSituation || '—')}</div>
-                </div>
-                <div>
-                    <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-                    <div class="kv"><strong>Nivel Educativo:</strong> ${_esc(s.educationLevel || '—')}</div>
-                    <div class="kv"><strong>Comunidad:</strong> ${_esc(s.community || '—')}</div>
-                    <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-                </div>
-            </div>`;
 
             // ── Sesiones empleabilidad ──
             html += `<h3><span style="color:${PRIMARY}">✦</span> Sesiones de Empleabilidad</h3>`;
@@ -1403,17 +1371,6 @@ async function printActaInicio(promotionId) {
         const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
         let html = _header('Ficha de Seguimiento Técnico', fullName, promo.name, _today());
 
-        html += `<div class="section-box accent row2">
-            <div>
-                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-            </div>
-            <div>
-                <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
-                <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-            </div>
-        </div>`;
-
         html += `<h3>✦ Notas del Profesor</h3>`;
         const notes = tt.teacherNotes || [];
         if (notes.length) {
@@ -1471,17 +1428,6 @@ async function printActaInicio(promotionId) {
         const tr2 = s.transversalTracking || {};
         const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
         let html = _header('Ficha de Seguimiento Transversal', fullName, promo.name, _today());
-
-        html += `<div class="section-box accent row2">
-            <div>
-                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-            </div>
-            <div>
-                <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
-                <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-            </div>
-        </div>`;
 
         html += `<h3>✦ Sesiones de Empleabilidad</h3>`;
         const emp = tr2.employabilitySessions || [];
