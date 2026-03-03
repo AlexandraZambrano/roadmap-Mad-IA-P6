@@ -373,7 +373,7 @@
                                     <!-- Píldoras completadas -->
                                     <div class="tracking-section mb-4">
                                         <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-lightning-charge me-1"></i> Píldoras Presentadas</h6>
+                                            <h6 class="text-primary mb-0"><i class="bi bi-lightning-charge me-1"></i> Píldoras</h6>
                                             <span class="badge bg-secondary rounded-pill" id="ficha-pildoras-count">Automático</span>
                                         </div>
                                         <div id="ficha-pildoras-list"></div>
@@ -1470,55 +1470,94 @@
         const container = document.getElementById('ficha-pildoras-list');
         if (!container) return;
 
-        // Debug: log raw data to console so we can inspect in DevTools
         console.log('[StudentTracking] _modulesPildarasExtended:', JSON.stringify(_modulesPildarasExtended));
         console.log('[StudentTracking] _currentStudentId:', _currentStudentId);
 
-        // Las píldoras de ExtendedInfo tienen: students[{id, name, lastname}], status, title, date, mode
-        // Una píldora aparece si: status === 'Presentada' Y students[].id incluye el studentId actual
         const presented = [];
+        const pending   = [];
+
         _modulesPildarasExtended.forEach(mp => {
             (mp.pildoras || []).forEach(p => {
-                if (p.status !== 'Presentada') return;
                 const studentIds = (p.students || []).map(s => String(s.id));
-                if (studentIds.includes(String(_currentStudentId))) {
-                    presented.push({
-                        pildoraName: p.title || '—',
-                        moduleName: mp.moduleName || '—',
-                        date: p.date || null,
-                        mode: p.mode || null
-                    });
+                if (!studentIds.includes(String(_currentStudentId))) return; // not assigned to this student
+
+                const entry = {
+                    pildoraName: p.title || '—',
+                    moduleName:  mp.moduleName || '—',
+                    date:        p.date || null,
+                    mode:        p.mode || null,
+                    status:      p.status || ''
+                };
+
+                if (p.status === 'Presentada') {
+                    presented.push(entry);
+                } else {
+                    pending.push(entry);
                 }
             });
         });
 
         // Update count badge
         const countBadge = document.getElementById('ficha-pildoras-count');
-        if (countBadge) countBadge.textContent = presented.length ? `${presented.length} presentada${presented.length !== 1 ? 's' : ''}` : 'Automático';
+        const total = presented.length + pending.length;
+        if (countBadge) {
+            countBadge.textContent = total
+                ? `${presented.length} presentada${presented.length !== 1 ? 's' : ''} · ${pending.length} pendiente${pending.length !== 1 ? 's' : ''}`
+                : 'Automático';
+        }
 
-        if (!presented.length) {
-            container.innerHTML = _emptyState('lightning-charge', 'No hay píldoras con estado "Presentada" vinculadas a este coder');
+        if (!total) {
+            container.innerHTML = _emptyState('lightning-charge', 'No hay píldoras asignadas a este coder');
             return;
         }
 
-        container.innerHTML = presented.map(p => `
-            <div class="card mb-2 border-start border-4 border-info">
-                <div class="card-body py-2 px-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-semibold">
-                                <i class="bi bi-lightning-charge-fill text-info me-1"></i>${_esc(p.pildoraName)}
+        let html = '';
+
+        if (presented.length) {
+            html += `<div class="small fw-semibold text-success mb-1 mt-2"><i class="bi bi-check-circle-fill me-1"></i>Presentadas (${presented.length})</div>`;
+            html += presented.map(p => `
+                <div class="card mb-2 border-start border-4 border-success">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-semibold">
+                                    <i class="bi bi-lightning-charge-fill text-success me-1"></i>${_esc(p.pildoraName)}
+                                </div>
+                                <small class="text-muted">
+                                    Módulo: <strong>${_esc(p.moduleName)}</strong>
+                                    ${p.date ? `&nbsp;|&nbsp;<i class="bi bi-calendar3 me-1"></i>${_fmtDate(p.date)}` : ''}
+                                    ${p.mode ? `&nbsp;|&nbsp;<i class="bi bi-display me-1"></i>${_esc(p.mode)}` : ''}
+                                </small>
                             </div>
-                            <small class="text-muted">
-                                Módulo: <strong>${_esc(p.moduleName)}</strong>
-                                ${p.date ? `&nbsp;|&nbsp;<i class="bi bi-calendar3 me-1"></i>${_fmtDate(p.date)}` : ''}
-                                ${p.mode ? `&nbsp;|&nbsp;<i class="bi bi-display me-1"></i>${_esc(p.mode)}` : ''}
-                            </small>
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Presentada</span>
                         </div>
-                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Presentada</span>
                     </div>
-                </div>
-            </div>`).join('');
+                </div>`).join('');
+        }
+
+        if (pending.length) {
+            html += `<div class="small fw-semibold text-danger mb-1 mt-3"><i class="bi bi-x-circle-fill me-1"></i>No presentadas / Pendientes (${pending.length})</div>`;
+            html += pending.map(p => `
+                <div class="card mb-2 border-start border-4 border-danger">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-semibold">
+                                    <i class="bi bi-lightning-charge text-danger me-1"></i>${_esc(p.pildoraName)}
+                                </div>
+                                <small class="text-muted">
+                                    Módulo: <strong>${_esc(p.moduleName)}</strong>
+                                    ${p.date ? `&nbsp;|&nbsp;<i class="bi bi-calendar3 me-1"></i>${_fmtDate(p.date)}` : ''}
+                                    ${p.mode ? `&nbsp;|&nbsp;<i class="bi bi-display me-1"></i>${_esc(p.mode)}` : ''}
+                                </small>
+                            </div>
+                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>${_esc(p.status || 'Pendiente')}</span>
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+
+        container.innerHTML = html;
     }
 
     // (helper no longer needed — kept as no-op to avoid errors if called)

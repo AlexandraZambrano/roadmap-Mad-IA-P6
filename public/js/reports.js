@@ -388,13 +388,16 @@
     async function printTechnical(studentId, promotionId) {
         const token = localStorage.getItem('token');
         try {
-            const [stuRes, promoRes] = await Promise.all([
+            const [stuRes, promoRes, pildarasRes] = await Promise.all([
                 fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${API_URL}/api/promotions/${promotionId}`,                       { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`${API_URL}/api/promotions/${promotionId}`,                       { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/promotions/${promotionId}/modules-pildoras`,      { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
             if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
             const s   = await stuRes.json();
             const promo = promoRes.ok ? await promoRes.json() : {};
+            const pildarasData = pildarasRes.ok ? await pildarasRes.json() : {};
+            const modulesPildarasExtended = pildarasData.modulesPildoras || [];
             const tt  = s.technicalTracking || {};
             const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
 
@@ -485,21 +488,56 @@
                 html += `<p class="empty-note">Sin módulos completados.</p>`;
             }
 
-            // ── Píldoras presentadas ──
+            // ── Píldoras: presentadas y no presentadas ──
+            // Compute both groups from live ExtendedInfo data
+            const _pilPresentadas = [];
+            const _pilPendientes  = [];
+            modulesPildarasExtended.forEach(mp => {
+                (mp.pildoras || []).forEach(p => {
+                    const studentIds = (p.students || []).map(s2 => String(s2.id));
+                    if (!studentIds.includes(String(studentId))) return;
+                    const entry = {
+                        pildoraTitle: p.title || '—',
+                        moduleName:   mp.moduleName || '—',
+                        date:         p.date || null,
+                        mode:         p.mode || null,
+                        status:       p.status || ''
+                    };
+                    if (p.status === 'Presentada') _pilPresentadas.push(entry);
+                    else                            _pilPendientes.push(entry);
+                });
+            });
+
             html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras Presentadas</h3>`;
-            const pildoras = tt.completedPildoras || [];
-            if (pildoras.length) {
-                html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th></tr></thead><tbody>`;
-                pildoras.forEach(p => {
+            if (_pilPresentadas.length) {
+                html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
+                _pilPresentadas.forEach(p => {
                     html += `<tr>
-                        <td>${_esc(p.pildoraTitle || '—')}</td>
-                        <td>${_esc(p.moduleName || '—')}</td>
+                        <td>${_esc(p.pildoraTitle)}</td>
+                        <td>${_esc(p.moduleName)}</td>
                         <td>${_fmtDate(p.date)}</td>
+                        <td>${_esc(p.mode || '—')}</td>
                     </tr>`;
                 });
                 html += `</tbody></table>`;
             } else {
                 html += `<p class="empty-note">Sin píldoras presentadas.</p>`;
+            }
+
+            html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras No Presentadas / Pendientes</h3>`;
+            if (_pilPendientes.length) {
+                html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
+                _pilPendientes.forEach(p => {
+                    html += `<tr>
+                        <td>${_esc(p.pildoraTitle)}</td>
+                        <td>${_esc(p.moduleName)}</td>
+                        <td>${_fmtDate(p.date)}</td>
+                        <td><span style="color:#dc3545; font-weight:600;">${_esc(p.status || 'Pendiente')}</span></td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+            } else {
+                html += `<p class="empty-note">Todas las píldoras asignadas han sido presentadas.</p>`;
             }
 
             const filename = `tecnico_${(fullName).replace(/\s+/g,'-')}.pdf`;
