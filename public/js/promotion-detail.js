@@ -415,9 +415,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setupForms();
     }
 
-    // Set overview as active tab on initial load
-    window.location.hash = 'overview';
-    switchTab('overview');
+    // Restore last active tab (or default to overview)
+    const savedTab = sessionStorage.getItem(`activeTab_${promotionId}`) || 'overview';
+    window.location.hash = savedTab;
+    switchTab(savedTab);
 
     // Inicializar módulo de Fichas de Seguimiento (independiente)
     if (typeof window.StudentTracking !== 'undefined') {
@@ -1450,8 +1451,7 @@ async function saveEmployabilityItem() {
 
         if (updateResponse.ok) {
             employabilityModal.hide();
-            loadPromotion();
-            loadModules();
+            location.reload();
         } else {
             alert('Error saving employability item');
         }
@@ -1491,8 +1491,7 @@ async function deleteEmployabilityItem(index) {
             });
 
             if (updateResponse.ok) {
-                loadPromotion();
-                loadModules();
+                location.reload();
             } else {
                 alert('Error deleting employability item');
             }
@@ -1635,7 +1634,7 @@ async function saveExtendedInfo() {
         if (response.ok) {
             const savedData = await response.json();
             console.log('Data saved successfully:', savedData);
-            alert('Program info saved successfully!');
+            location.reload();
         } else {
             try {
                 const errorData = await response.json();
@@ -1929,7 +1928,7 @@ async function saveActaData() {
         });
         if (response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('actaInicioModal'))?.hide();
-            alert('Datos del Acta de Inicio guardados correctamente.');
+            location.reload();
         } else {
             const err = await response.json().catch(() => ({}));
             alert(`Error al guardar: ${response.status} - ${err.error || 'Error desconocido'}`);
@@ -1978,6 +1977,9 @@ function checkAuth() {
 }
 
 function switchTab(tabId) {
+    // Persist active tab so page reloads land on the same section
+    sessionStorage.setItem(`activeTab_${promotionId}`, tabId);
+
     document.querySelectorAll('.section-content').forEach(section => {
         section.classList.add('hidden');
     });
@@ -4065,7 +4067,7 @@ async function saveCollaboratorModules() {
         });
         if (response.ok) {
             collaboratorModulesModal.hide();
-            loadCollaborators();
+            location.reload();
         } else {
             const data = await response.json();
             alert(data.error || 'Error guardando módulos');
@@ -4186,8 +4188,7 @@ async function addCollaboratorById() {
 
         if (response.ok) {
             collaboratorModal.hide();
-            loadCollaborators();
-            alert('Collaborator added successfully');
+            location.reload();
         } else {
             const data = await response.json();
             alert(data.error || 'Failed to add collaborator');
@@ -4209,8 +4210,7 @@ async function removeCollaborator(teacherId) {
         });
 
         if (response.ok) {
-            loadCollaborators();
-            alert('Collaborator removed successfully');
+            location.reload();
         } else {
             const data = await response.json();
             alert(data.error || 'Failed to remove collaborator');
