@@ -6102,11 +6102,23 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
 
     // Build a set of all student IDs already assigned to any group
     const assignedIds = new Set(groups.flatMap(g => g.studentIds || []));
+    const unassignedCount = students.filter(st => !assignedIds.has(String(st.id || st._id))).length;
 
+    // ── Top bar: unassigned count alert + add button ──────────────────────────
     let html = `
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <p class="text-muted small mb-0">Define los grupos para este proyecto. Cada estudiante puede pertenecer a un solo grupo.</p>
-        <button class="btn btn-sm btn-outline-primary" onclick="_addGroupInline()">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
+        <div class="flex-grow-1">
+            ${unassignedCount > 0
+                ? `<div class="alert alert-warning py-2 mb-0 small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>${unassignedCount} estudiante${unassignedCount !== 1 ? 's' : ''} sin grupo asignado.</strong>
+                   </div>`
+                : `<div class="alert alert-success py-2 mb-0 small">
+                    <i class="bi bi-check-circle me-1"></i>Todos los estudiantes tienen grupo.
+                   </div>`
+            }
+        </div>
+        <button class="btn btn-sm btn-outline-primary flex-shrink-0" onclick="_addGroupInline()">
             <i class="bi bi-plus-circle me-1"></i>Añadir grupo
         </button>
     </div>`;
@@ -6116,63 +6128,86 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
             No hay grupos todavía. Pulsa "Añadir grupo" para crear el primero.</div>`;
     }
 
-    groups.forEach((grp, gIdx) => {
-        const memberNames = (grp.studentIds || []).map(sid => {
-            const st = students.find(s => String(s.id || s._id) === String(sid));
-            return st ? ((st.name || '') + ' ' + (st.lastname || '')).trim() : sid;
+    // ── Accordion: one item per group ─────────────────────────────────────────
+    if (groups.length > 0) {
+        html += `<div class="accordion" id="grp-accordion">`;
+
+        groups.forEach((grp, gIdx) => {
+            const memberIds = grp.studentIds || [];
+            const memberNames = memberIds.map(sid => {
+                const st = students.find(s => String(s.id || s._id) === String(sid));
+                return st ? ((st.name || '') + ' ' + (st.lastname || '')).trim() : sid;
+            });
+
+            // Students available for this group = current members + unassigned
+            const availableStudents = students.filter(st => {
+                const stId = String(st.id || st._id);
+                return memberIds.includes(stId) || !assignedIds.has(stId);
+            });
+
+            const collapseId = `grp-collapse-${gIdx}`;
+
+            html += `
+            <div class="accordion-item mb-2 border rounded" id="grp-card-${gIdx}">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed fw-semibold py-2 px-3" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false">
+                        <i class="bi bi-people-fill text-info me-2"></i>
+                        <span id="grp-label-${gIdx}">${escapeHtml(grp.groupName)}</span>
+                        <span class="badge bg-secondary ms-2">${memberIds.length} miembro${memberIds.length !== 1 ? 's' : ''}</span>
+                        ${memberNames.length
+                            ? `<span class="text-muted fw-normal fst-italic ms-2 small d-none d-md-inline text-truncate" style="max-width:220px;">
+                                ${memberNames.map(n => escapeHtml(n)).join(' · ')}
+                               </span>`
+                            : `<span class="text-muted fw-normal fst-italic ms-2 small">Sin miembros</span>`
+                        }
+                        <button class="btn btn-sm btn-outline-danger ms-auto me-2" style="font-size:.75rem; padding:1px 7px;"
+                            onclick="event.stopPropagation(); _removeGroupInline(${gIdx})"
+                            title="Eliminar grupo">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </button>
+                </h2>
+                <div id="${collapseId}" class="accordion-collapse collapse">
+                    <div class="accordion-body pt-2 pb-3 px-3">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-muted mb-1">Nombre del grupo</label>
+                            <input type="text" class="form-control form-control-sm"
+                                style="max-width:240px;" id="grp-name-inp-${gIdx}"
+                                value="${escapeHtml(grp.groupName)}" placeholder="Nombre del grupo"
+                                oninput="_updateGroupNameInline(${gIdx}, this.value)">
+                        </div>
+                        <label class="form-label small fw-semibold text-muted mb-1">
+                            <i class="bi bi-person-check me-1"></i>Seleccionar miembros
+                            <span class="text-muted fw-normal">(solo estudiantes sin grupo aparecen aquí)</span>
+                        </label>
+                        <ul class="list-group list-group-flush">
+                            ${availableStudents.map(st => {
+                                const stId = String(st.id || st._id);
+                                const checked = memberIds.includes(stId);
+                                const inputId = `grp-${gIdx}-st-${stId}`;
+                                return `<li class="list-group-item py-1 px-2">
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input" type="checkbox"
+                                            id="${inputId}"
+                                            ${checked ? 'checked' : ''}
+                                            onchange="_toggleGroupMemberInline(${gIdx}, '${stId}', this.checked)">
+                                        <label class="form-check-label small" for="${inputId}">
+                                            ${escapeHtml(((st.name || '') + ' ' + (st.lastname || '')).trim())}
+                                        </label>
+                                    </div>
+                                </li>`;
+                            }).join('')}
+                            ${availableStudents.length === 0
+                                ? `<li class="list-group-item py-1 px-2 text-muted small fst-italic">No hay estudiantes disponibles.</li>`
+                                : ''}
+                        </ul>
+                    </div>
+                </div>
+            </div>`;
         });
 
-        html += `
-        <div class="card mb-3" id="grp-card-${gIdx}">
-            <div class="card-header d-flex align-items-center gap-2 py-2">
-                <i class="bi bi-people-fill text-info"></i>
-                <input type="text" class="form-control form-control-sm fw-semibold"
-                    style="max-width:200px;" id="grp-name-inp-${gIdx}"
-                    value="${escapeHtml(grp.groupName)}" placeholder="Nombre del grupo"
-                    onchange="_updateGroupNameInline(${gIdx}, this.value)">
-                <span class="badge bg-secondary ms-1">${(grp.studentIds || []).length} miembro${(grp.studentIds || []).length !== 1 ? 's' : ''}</span>
-                <button class="btn btn-sm btn-outline-danger ms-auto" onclick="_removeGroupInline(${gIdx})">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-            <div class="card-body py-2">
-                <p class="small fw-semibold mb-2 text-muted">Miembros del grupo:</p>
-                <div class="row g-1">
-                    ${students.map(st => {
-                        const stId = String(st.id || st._id);
-                        const checked = (grp.studentIds || []).includes(stId);
-                        // Disable if assigned to another group
-                        const otherGroup = groups.findIndex((g, i) => i !== gIdx && (g.studentIds || []).includes(stId));
-                        const disabled = otherGroup >= 0;
-                        const disabledTitle = disabled ? `title="Ya está en ${escapeHtml(groups[otherGroup].groupName)}"` : '';
-                        return `<div class="col-sm-6 col-md-4">
-                            <div class="form-check py-1 ${disabled ? 'opacity-50' : ''}">
-                                <input class="form-check-input" type="checkbox"
-                                    id="grp-${gIdx}-st-${stId}"
-                                    ${checked ? 'checked' : ''} ${disabled && !checked ? 'disabled' : ''}
-                                    onchange="_toggleGroupMemberInline(${gIdx}, '${stId}', this.checked)"
-                                    ${disabledTitle}>
-                                <label class="form-check-label small" for="grp-${gIdx}-st-${stId}">
-                                    ${escapeHtml(((st.name || '') + ' ' + (st.lastname || '')).trim())}
-                                    ${disabled ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">(${escapeHtml(groups[otherGroup].groupName)})</span>` : ''}
-                                </label>
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>
-            </div>
-        </div>`;
-    });
-
-    // Unassigned students summary
-    const unassigned = students.filter(st => !assignedIds.has(String(st.id || st._id)));
-    if (unassigned.length > 0) {
-        html += `
-        <div class="alert alert-warning py-2 small mt-2">
-            <i class="bi bi-exclamation-triangle me-1"></i>
-            <strong>${unassigned.length} estudiante${unassigned.length !== 1 ? 's' : ''} sin grupo:</strong>
-            ${unassigned.map(st => escapeHtml(((st.name || '') + ' ' + (st.lastname || '')).trim())).join(', ')}
-        </div>`;
+        html += `</div>`;
     }
 
     container.innerHTML = html;
@@ -6182,8 +6217,12 @@ function _addGroupInline() {
     const saved = window._evalCurrentSaved;
     if (!saved) return;
     if (!saved.groups) saved.groups = [];
-    saved.groups.push({ groupName: `Grupo ${saved.groups.length + 1}`, studentIds: [] });
+    const newIdx = saved.groups.length;
+    saved.groups.push({ groupName: `Grupo ${newIdx + 1}`, studentIds: [] });
     _renderGroupsModalBody(saved, window._evalState.students);
+    // Auto-open the new group's accordion
+    const collapseEl = document.getElementById(`grp-collapse-${newIdx}`);
+    if (collapseEl) new bootstrap.Collapse(collapseEl, { toggle: false }).show();
 }
 
 function _removeGroupInline(gIdx) {
@@ -6202,6 +6241,9 @@ function _updateGroupNameInline(gIdx, newName) {
     (saved.evaluations || []).forEach(e => {
         if (e.targetId === oldName) { e.targetId = newName; e.targetName = newName; }
     });
+    // Update the accordion header label without re-rendering (avoids collapsing the panel)
+    const label = document.getElementById(`grp-label-${gIdx}`);
+    if (label) label.textContent = newName;
 }
 
 function _toggleGroupMemberInline(gIdx, studentId, checked) {
@@ -6210,7 +6252,7 @@ function _toggleGroupMemberInline(gIdx, studentId, checked) {
     if (!saved.groups[gIdx].studentIds) saved.groups[gIdx].studentIds = [];
 
     if (checked) {
-        // Remove from any other group first
+        // Remove from any other group first (safety)
         saved.groups.forEach((g, i) => {
             if (i !== gIdx) g.studentIds = (g.studentIds || []).filter(id => id !== studentId);
         });
@@ -6221,8 +6263,13 @@ function _toggleGroupMemberInline(gIdx, studentId, checked) {
         saved.groups[gIdx].studentIds = saved.groups[gIdx].studentIds.filter(id => id !== studentId);
     }
 
-    // Re-render so disabled states update
+    // Re-render so available-student lists and the unassigned counter update
+    // Preserve which accordion panel is open
+    const openCollapseId = `grp-collapse-${gIdx}`;
     _renderGroupsModalBody(saved, window._evalState.students);
+    // Re-open the same accordion panel after re-render
+    const collapseEl = document.getElementById(openCollapseId);
+    if (collapseEl) new bootstrap.Collapse(collapseEl, { toggle: false }).show();
 }
 
 async function saveGroups() {

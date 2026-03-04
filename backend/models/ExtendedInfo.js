@@ -20,10 +20,13 @@ const ExtendedInfoSchema = new mongoose.Schema({
         notes: String
     },
     team: [{
+        collaboratorId: String,
         name: String,
         role: String,
         email: String,
-        linkedin: String
+        linkedin: String,
+        moduleId: String,
+        moduleName: String
     }],
     resources: [{
         title: String,
