@@ -478,10 +478,11 @@
 
         const token = localStorage.getItem('token');
         try {
-            const [stuRes, promoRes, pildarasRes] = await Promise.all([
+            const [stuRes, promoRes, pildarasRes, extRes] = await Promise.all([
                 fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${API_URL}/api/promotions/${promotionId}`,                       { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${API_URL}/api/promotions/${promotionId}/modules-pildoras`,      { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`${API_URL}/api/promotions/${promotionId}/modules-pildoras`,      { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`)
             ]);
             if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
             const s   = await stuRes.json();
@@ -489,6 +490,46 @@
             const pildarasData = pildarasRes.ok ? await pildarasRes.json() : {};
             const modulesPildarasExtended = pildarasData.modulesPildoras || [];
             const tt  = s.technicalTracking || {};
+
+            // ── Overlay evaluations from ExtendedInfo into teams (same logic as openFicha) ──
+            if (extRes.ok) {
+                const ext = await extRes.json();
+                const projectEvaluations = ext.projectEvaluations || [];
+                const teamsFromDb = tt.teams || [];
+                for (const projEval of projectEvaluations) {
+                    let evalEntry = null;
+                    if (projEval.type === 'grupal') {
+                        const group = (projEval.groups || []).find(g => (g.studentIds || []).includes(String(studentId)));
+                        if (group) {
+                            evalEntry = (projEval.evaluations || []).find(e => e.targetId === group.groupName);
+                        }
+                    } else {
+                        evalEntry = (projEval.evaluations || []).find(e => String(e.targetId) === String(studentId));
+                    }
+                    if (!evalEntry) continue;
+                    if (!(evalEntry.competences || []).length && !evalEntry.feedback) continue;
+                    const alreadyIn = teamsFromDb.some(
+                        t => t.teamName === projEval.projectName && t.moduleId === projEval.moduleId
+                    );
+                    if (alreadyIn) continue;
+                    teamsFromDb.push({
+                        teamName:     projEval.projectName || '',
+                        projectType:  projEval.type || 'individual',
+                        moduleName:   projEval.moduleName || '',
+                        moduleId:     projEval.moduleId || '',
+                        assignedDate: evalEntry.evaluatedAt ? evalEntry.evaluatedAt.split('T')[0] : '',
+                        teacherNote:  evalEntry.feedback || '',
+                        members:      [],
+                        competences:  (evalEntry.competences || []).map(ce => ({
+                            competenceId:   ce.competenceId,
+                            competenceName: ce.competenceName,
+                            level:          ce.level,
+                            toolsUsed:      ce.toolsUsed || []
+                        }))
+                    });
+                }
+                tt.teams = teamsFromDb;
+            }
             const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
 
             // ── Format bootcamp date range ──
@@ -535,7 +576,7 @@
                 }
                 if (razonInforme) {
                     html += `<div>
-                        <span style="color:${SECONDARY}; font-weight:600;">Razón del informe:&nbsp;</span>
+                        <span style="color:${SECONDARY}; font-weight:600;">Motivo del informe:&nbsp;</span>
                         <span style="color:#222;">${_esc(razonInforme)}</span>
                     </div>`;
                 }

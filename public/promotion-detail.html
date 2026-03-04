@@ -980,10 +980,12 @@
                 <div class="modal-body" id="eval-modal-body">
                     <!-- Dynamic content injected by JS -->
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveProjectEvaluation()" style="background:#E85D26;border-color:#E85D26;">
-                        <i class="bi bi-save me-1"></i>Guardar Evaluación
+                <div class="modal-footer" id="eval-modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <!-- Save button shown only for grupal projects; individual uses the sub-modal -->
+                    <button type="button" class="btn btn-primary d-none" id="eval-modal-save-btn"
+                        onclick="saveProjectEvaluation()" style="background:#E85D26;border-color:#E85D26;">
+                        <i class="bi bi-save me-1"></i>Guardar Evaluación Grupal
                     </button>
                 </div>
             </div>

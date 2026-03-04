@@ -17,7 +17,8 @@ function studentFullName(student) {
 let profileModal;
 
 function initProfileModal() {
-    profileModal = new bootstrap.Modal(document.getElementById('profileModal'));
+    const el = document.getElementById('profileModal');
+    if (el) profileModal = new bootstrap.Modal(el);
 }
 
 window.openProfileModal = async function () {
@@ -176,10 +177,7 @@ window.changePassword = async function () {
     }
 };
 
-// Initialize profile modal on page load
-document.addEventListener('DOMContentLoaded', () => {
-    initProfileModal();
-});
+// (initProfileModal is called inside the main DOMContentLoaded block)
 
 // Toggle password visibility
 function togglePasswordVisibility(inputId) {
@@ -386,6 +384,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (collaboratorModalEl) collaboratorModal = new bootstrap.Modal(collaboratorModalEl);
 
     initEmployabilityModal();
+    initProfileModal();
+
+    // Wire funder Enter key
+    document.getElementById('acta-funder-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); actaAddFunder(); }
+    });
+
+    // Apply student-role view restrictions
+    setTimeout(() => {
+        const role = localStorage.getItem('role');
+        if (role === 'student') {
+            document.body.classList.add('student-view');
+            const previewBtn = document.querySelector('button[onclick="previewPromotion()"]');
+            if (previewBtn) previewBtn.remove();
+            const style = document.createElement('style');
+            style.innerHTML = `
+                .btn-primary, .btn-danger, .btn-outline-danger,
+                a[href="#students"] { display: none !important; }
+                #students-tab { display: none !important; }
+            `;
+            document.head.appendChild(style);
+            const studentsLink = document.querySelector('a[href="#students"]');
+            if (studentsLink && studentsLink.parentElement) {
+                studentsLink.parentElement.style.display = 'none';
+            }
+        }
+    }, 100);
 
     if (userRole === 'teacher') {
         // Overlay gates only on ExtendedInfo (Acta data) — students load independently in the background
@@ -429,11 +454,15 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadExtendedInfo() {
     const token = localStorage.getItem('token');
     try {
-        // Ensure Schedule tab is active on load
-        const scheduleTab = document.getElementById('program-details-schedule-tab');
-        if (scheduleTab) {
-            const tab = new bootstrap.Tab(scheduleTab);
-            tab.show();
+        // Ensure Schedule tab is active on load (wrapped so a Bootstrap error doesn't abort the whole load)
+        try {
+            const scheduleTab = document.getElementById('program-details-schedule-tab');
+            if (scheduleTab && window.bootstrap) {
+                const tab = bootstrap.Tab.getOrCreateInstance(scheduleTab);
+                tab.show();
+            }
+        } catch (tabErr) {
+            console.warn('[loadExtendedInfo] Could not activate schedule tab:', tabErr);
         }
 
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`); // Public endpoint
@@ -445,21 +474,22 @@ async function loadExtendedInfo() {
 
             // Populate Schedule
             const sched = extendedInfoData.schedule || {};
+            const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
             if (sched.online) {
-                document.getElementById('sched-online-entry').value = sched.online.entry || '';
-                document.getElementById('sched-online-start').value = sched.online.start || '';
-                document.getElementById('sched-online-break').value = sched.online.break || '';
-                document.getElementById('sched-online-lunch').value = sched.online.lunch || '';
-                document.getElementById('sched-online-finish').value = sched.online.finish || '';
+                _set('sched-online-entry',  sched.online.entry);
+                _set('sched-online-start',  sched.online.start);
+                _set('sched-online-break',  sched.online.break);
+                _set('sched-online-lunch',  sched.online.lunch);
+                _set('sched-online-finish', sched.online.finish);
             }
             if (sched.presential) {
-                document.getElementById('sched-presential-entry').value = sched.presential.entry || '';
-                document.getElementById('sched-presential-start').value = sched.presential.start || '';
-                document.getElementById('sched-presential-break').value = sched.presential.break || '';
-                document.getElementById('sched-presential-lunch').value = sched.presential.lunch || '';
-                document.getElementById('sched-presential-finish').value = sched.presential.finish || '';
+                _set('sched-presential-entry',  sched.presential.entry);
+                _set('sched-presential-start',  sched.presential.start);
+                _set('sched-presential-break',  sched.presential.break);
+                _set('sched-presential-lunch',  sched.presential.lunch);
+                _set('sched-presential-finish', sched.presential.finish);
             }
-            document.getElementById('sched-notes').value = sched.notes || '';
+            _set('sched-notes', sched.notes);
 
             // Populate Additional Lists
             displayTeam();
@@ -495,7 +525,7 @@ Evaluación Global al Final del Bootcamp
 • Valoración de las píldoras realizadas
 • Valoración de competencias transversales`;
 
-            document.getElementById('evaluation-text').value = extendedInfoData.evaluation || defaultEvaluation;
+            _set('evaluation-text', extendedInfoData.evaluation || defaultEvaluation);
 
             // Acta de Inicio fields are loaded into extendedInfoData and populated
             // into the modal on demand when openActaModal() is called.
@@ -513,7 +543,7 @@ Evaluación Global al Final del Bootcamp
 
         }
     } catch (error) {
-        console.error('Error loading extended info:', error);
+        console.error('Error in loadExtendedInfo:', error);
     }
 }
 
@@ -549,6 +579,7 @@ function _showExtendedInfoLoading(show) {
 
 function displayTeam() {
     const tbody = document.getElementById('team-list-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
     (extendedInfoData.team || []).forEach((member, index) => {
         const tr = document.createElement('tr');
@@ -574,6 +605,7 @@ function displayTeam() {
 
 function displayResources() {
     const tbody = document.getElementById('resources-list-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
     (extendedInfoData.resources || []).forEach((res, index) => {
         const tr = document.createElement('tr');
@@ -1855,12 +1887,7 @@ function openActaModal() {
     modal.show();
 }
 
-// Handle Enter key in funder input
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('acta-funder-input')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { e.preventDefault(); actaAddFunder(); }
-    });
-});
+// (funder Enter key is wired inside the main DOMContentLoaded block)
 
 async function saveActaData() {
     const token = localStorage.getItem('token');
@@ -2026,12 +2053,13 @@ async function loadPromotion() {
         if (response.ok) {
             const promotion = await response.json();
             window.currentPromotion = promotion; // Store globally for editing
-            document.getElementById('promotion-title').textContent = promotion.name;
-            document.getElementById('promotion-desc').textContent = promotion.description || '';
-            document.getElementById('promotion-weeks').textContent = promotion.weeks || '-';
-            document.getElementById('promotion-start').textContent = promotion.startDate || '-';
-            document.getElementById('promotion-end').textContent = promotion.endDate || '-';
-            document.getElementById('modules-count').textContent = (promotion.modules || []).length;
+            const _setTC = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            _setTC('promotion-title', promotion.name);
+            _setTC('promotion-desc', promotion.description || '');
+            _setTC('promotion-weeks', promotion.weeks || '-');
+            _setTC('promotion-start', promotion.startDate || '-');
+            _setTC('promotion-end', promotion.endDate || '-');
+            _setTC('modules-count', (promotion.modules || []).length);
 
             // Load teaching content button
             if (promotion.teachingContentUrl) {
@@ -2650,7 +2678,8 @@ async function loadQuickLinks() {
         if (response.ok) {
             const links = await response.json();
             displayQuickLinks(links);
-            document.getElementById('quicklinks-count').textContent = links.length;
+            const el = document.getElementById('quicklinks-count');
+            if (el) el.textContent = links.length;
         }
     } catch (error) {
         console.error('Error loading quick links:', error);
@@ -2705,7 +2734,8 @@ async function loadSections() {
         if (response.ok) {
             const sections = await response.json();
             displaySections(sections);
-            document.getElementById('sections-count').textContent = sections.length;
+            const el = document.getElementById('sections-count');
+            if (el) el.textContent = sections.length;
         }
     } catch (error) {
         console.error('Error loading sections:', error);
@@ -3912,33 +3942,7 @@ async function previewPromotion() {
     window.open(previewLink, '_blank');
 }
 
-// Check role on load to hide elements if actual student
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        const role = localStorage.getItem('role');
-        if (role === 'student') {
-            document.body.classList.add('student-view');
-            // Remove the preview button
-            const previewBtn = document.querySelector('button[onclick="previewPromotion()"]');
-            if (previewBtn) previewBtn.remove();
-
-            // Hide Add buttons and Students tab via CSS
-            const style = document.createElement('style');
-            style.innerHTML = `
-                .btn-primary, .btn-danger, .btn-outline-danger, 
-                a[href="#students"] { display: none !important; }
-                #students-tab { display: none !important; } 
-            `;
-            document.head.appendChild(style);
-
-            // Hide the students nav item specifically
-            const studentsLink = document.querySelector('a[href="#students"]');
-            if (studentsLink && studentsLink.parentElement) {
-                studentsLink.parentElement.style.display = 'none';
-            }
-        }
-    }, 100);
-});
+// (student role view logic is applied inside the main DOMContentLoaded block)
 
 // ==================== COLLABORATORS ====================
 
@@ -6453,23 +6457,34 @@ function openEvaluationModal(mIdx, pIdx) {
             </div>`;
         }
 
-        bodyHtml += `${existingEvalsHtml}
-        <div class="mb-3">
+        bodyHtml += `
+        <div class="mb-4">
             <label class="form-label fw-semibold"><i class="bi bi-person me-1"></i>Evaluar estudiante</label>
-            <select class="form-select" id="eval-student-select" onchange="onEvalStudentChange()">
-                <option value="">— Seleccionar estudiante —</option>
-                ${students.map(st => {
-                    const alreadyDone = doneEvals.some(e => String(e.targetId) === String(st.id || st._id));
-                    return `<option value="${escapeHtml(String(st.id || st._id))}" ${alreadyDone ? 'style="color:#198754;font-weight:600;"' : ''}>
-                        ${escapeHtml((st.name || '') + ' ' + (st.lastname || ''))}${alreadyDone ? ' ✓' : ''}
-                    </option>`;
-                }).join('')}
-            </select>
+            <div class="input-group">
+                <select class="form-select" id="eval-student-select">
+                    <option value="">— Seleccionar estudiante —</option>
+                    ${students.map(st => {
+                        const alreadyDone = doneEvals.some(e => String(e.targetId) === String(st.id || st._id));
+                        return `<option value="${escapeHtml(String(st.id || st._id))}" ${alreadyDone ? 'style="color:#198754;font-weight:600;"' : ''}>
+                            ${escapeHtml((st.name || '') + ' ' + (st.lastname || ''))}${alreadyDone ? ' ✓' : ''}
+                        </option>`;
+                    }).join('')}
+                </select>
+                <button class="btn btn-primary" type="button" onclick="openStudentEvalSubModal()"
+                    style="background:#E85D26;border-color:#E85D26;">
+                    <i class="bi bi-clipboard-check me-1"></i>Evaluar
+                </button>
+            </div>
+            <div class="text-muted small mt-1"><i class="bi bi-info-circle me-1"></i>Selecciona un estudiante y pulsa "Evaluar" para abrir el formulario de evaluación.</div>
         </div>
-        <div id="eval-individual-content"></div>`;
+        ${existingEvalsHtml}`;
     }
 
     document.getElementById('eval-modal-body').innerHTML = bodyHtml;
+
+    // Show "Guardar" button only for grupal evaluations; individual uses sub-modal
+    const saveBtn = document.getElementById('eval-modal-save-btn');
+    if (saveBtn) saveBtn.classList.toggle('d-none', saved.type !== 'grupal');
 
     // Store saved reference so JS functions can access it
     window._evalCurrentSaved = saved;
@@ -6479,31 +6494,41 @@ function openEvaluationModal(mIdx, pIdx) {
     modal.show();
 }
 
-function onEvalStudentChange() {
+function openStudentEvalSubModal() {
     const sel = document.getElementById('eval-student-select');
-    const studentId = sel.value;
-    const { students } = window._evalState;
-    const saved = window._evalCurrentSaved;
-    const projCompetences = window._evalCurrentProjectCompetences;
-    const LEVEL_LABELS = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
-    const LEVEL_COLORS = ['secondary', 'danger', 'warning', 'success'];
-    const container = document.getElementById('eval-individual-content');
-    if (!container) return;
-
+    const studentId = sel ? sel.value : '';
     if (!studentId) {
-        container.innerHTML = '';
+        showToast('Selecciona un estudiante primero', 'danger');
         return;
     }
+    _openStudentEvalSubModalFor(studentId);
+}
+
+function _openStudentEvalSubModalFor(studentId) {
+    const { students } = window._evalState;
+    const saved = window._evalCurrentSaved;
+    const projCompetences = window._evalCurrentProjectCompetences || [];
+    const LEVEL_LABELS = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
+    const LEVEL_COLORS = ['secondary', 'danger', 'warning', 'success'];
+
+    const student = students.find(s => String(s.id || s._id) === String(studentId));
+    const studentName = student ? `${student.name || ''} ${student.lastname || ''}`.trim() : studentId;
+
+    // Restore any previously removed competences for this target
+    if (window._evalRemovedComps) delete window._evalRemovedComps[String(studentId)];
+    // Track removed tools per competence in the sub-modal (per-target per-comp)
+    if (!window._evalRemovedTools) window._evalRemovedTools = {};
+    if (!window._evalRemovedTools[String(studentId)]) window._evalRemovedTools[String(studentId)] = {};
 
     const savedEval = (saved.evaluations || []).find(e => e.targetId === studentId);
     const savedFeedback = savedEval ? savedEval.feedback || '' : '';
 
-    function buildCompetencesHtml(targetId, savedEval) {
+    function buildSubModalCompetencesHtml(targetId, savedEval) {
         if (!projCompetences.length) {
             return `<p class="text-muted small">No hay competencias asociadas a este proyecto.</p>`;
         }
-        const removedIds = window._evalRemovedComps?.[String(targetId)] || [];
-        const visibleComps = projCompetences.filter(c => !removedIds.includes(String(c.id)));
+        const removedCompIds = window._evalRemovedComps?.[String(targetId)] || [];
+        const visibleComps = projCompetences.filter(c => !removedCompIds.includes(String(c.id)));
 
         if (!visibleComps.length) {
             return `<p class="text-muted small fst-italic">Todas las competencias han sido eliminadas de esta evaluación.</p>`;
@@ -6513,7 +6538,9 @@ function onEvalStudentChange() {
         visibleComps.forEach(comp => {
             const savedLevel = savedEval ? (savedEval.competences || []).find(c => String(c.competenceId) === String(comp.id)) : null;
             const currentLevel = savedLevel ? savedLevel.level : 0;
-            const tools = (comp.selectedTools && comp.selectedTools.length) ? comp.selectedTools : (comp.allTools || []);
+            const allTools = (comp.selectedTools && comp.selectedTools.length) ? comp.selectedTools : (comp.allTools || []);
+            const removedToolsForComp = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
+            const visibleTools = allTools.filter(t => !removedToolsForComp.includes(t));
             const levelDescs = (comp.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
 
             html += `<div class="eval-comp-card card mb-2 border" data-comp-id="${escapeHtml(String(comp.id))}" data-target-id="${escapeHtml(String(targetId))}">
@@ -6524,8 +6551,14 @@ function onEvalStudentChange() {
                             ${comp.area ? `<span class="badge bg-secondary" style="font-size:.65rem;">${escapeHtml(comp.area)}</span>` : ''}
                         </div>
                         ${comp.description ? `<div class="text-muted small mt-1 fst-italic">${escapeHtml(comp.description)}</div>` : ''}
-                        ${tools.length ? `<div class="mt-1 d-flex flex-wrap gap-1">
-                            ${tools.map(t => `<span class="badge bg-light text-dark border" style="font-size:.65rem;"><i class="bi bi-tools me-1"></i>${escapeHtml(t)}</span>`).join('')}
+                        ${allTools.length ? `<div class="mt-1 d-flex flex-wrap gap-1" id="submodal-tools-${escapeHtml(String(comp.id))}-${escapeHtml(String(targetId))}">
+                            ${visibleTools.map(t =>
+                                `<span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1" style="font-size:.65rem;">
+                                    <i class="bi bi-tools opacity-50" style="font-size:.6em;"></i>${escapeHtml(t)}
+                                    <button type="button" class="btn-close ms-1" style="font-size:.45em;" aria-label="Eliminar herramienta"
+                                        onclick="removeEvalTool('${escapeHtml(String(targetId))}','${escapeHtml(String(comp.id))}','${t.replace(/'/g,"\\'")}')"></button>
+                                </span>`
+                            ).join('')}
                         </div>` : ''}
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" style="font-size:.7rem; padding:2px 6px;"
@@ -6560,17 +6593,126 @@ function onEvalStudentChange() {
         return html;
     }
 
-    container.innerHTML = `
-        <div class="mb-2">
+    const bodyHtml = `
+        <div class="mb-3">
             <label class="form-label small fw-semibold"><i class="bi bi-award me-1"></i>Competencias</label>
-            ${buildCompetencesHtml(studentId, savedEval)}
+            ${buildSubModalCompetencesHtml(studentId, savedEval)}
         </div>
         <div class="mt-3">
             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback</label>
             <textarea class="form-control form-control-sm" rows="2" placeholder="Comentarios de feedback para el informe..."
-                id="eval-feedback-individual"
                 data-target-type="individual" data-target-id="${escapeHtml(studentId)}">${escapeHtml(savedFeedback)}</textarea>
         </div>`;
+
+    // Create or reuse sub-modal
+    let subModalEl = document.getElementById('studentEvalSubModal');
+    if (!subModalEl) {
+        subModalEl = document.createElement('div');
+        subModalEl.className = 'modal fade';
+        subModalEl.id = 'studentEvalSubModal';
+        subModalEl.tabIndex = -1;
+        subModalEl.setAttribute('data-bs-backdrop', 'static');
+        subModalEl.innerHTML = `
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,#E85D26,#f97316);color:#fff;">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-person-check me-2"></i>
+                        <span id="student-eval-sub-modal-title">Evaluación individual</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="student-eval-sub-modal-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveIndividualStudentEval()"
+                        style="background:#E85D26;border-color:#E85D26;">
+                        <i class="bi bi-save me-1"></i>Guardar evaluación
+                    </button>
+                </div>
+            </div>
+        </div>`;
+        document.body.appendChild(subModalEl);
+    }
+
+    document.getElementById('student-eval-sub-modal-title').textContent = `Evaluando: ${studentName}`;
+    document.getElementById('student-eval-sub-modal-body').innerHTML = bodyHtml;
+
+    // Store the current student id on the sub-modal element
+    subModalEl.dataset.targetStudentId = studentId;
+
+    new bootstrap.Modal(subModalEl).show();
+}
+
+function removeEvalTool(targetId, compId, toolName) {
+    if (!window._evalRemovedTools) window._evalRemovedTools = {};
+    if (!window._evalRemovedTools[String(targetId)]) window._evalRemovedTools[String(targetId)] = {};
+    if (!window._evalRemovedTools[String(targetId)][String(compId)]) window._evalRemovedTools[String(targetId)][String(compId)] = [];
+
+    const arr = window._evalRemovedTools[String(targetId)][String(compId)];
+    if (!arr.includes(toolName)) arr.push(toolName);
+
+    // Remove the badge from the DOM
+    const container = document.getElementById(`submodal-tools-${CSS.escape(String(compId))}-${CSS.escape(String(targetId))}`);
+    if (container) {
+        const badges = container.querySelectorAll('.badge');
+        badges.forEach(badge => {
+            if (badge.textContent.trim().replace('×','').trim() === toolName || badge.textContent.includes(toolName)) {
+                badge.style.transition = 'opacity .2s';
+                badge.style.opacity = '0';
+                setTimeout(() => badge.remove(), 200);
+            }
+        });
+    }
+}
+
+async function saveIndividualStudentEval() {
+    const subModalEl = document.getElementById('studentEvalSubModal');
+    const studentId = subModalEl ? subModalEl.dataset.targetStudentId : null;
+    if (!studentId) return;
+
+    const saved = window._evalCurrentSaved;
+    if (!saved) return;
+
+    // Collect feedback from the sub-modal textarea
+    const ta = subModalEl.querySelector('textarea[data-target-id]');
+    const feedback = ta ? ta.value : '';
+
+    let evalEntry = (saved.evaluations || []).find(e => e.targetId === studentId);
+    if (!evalEntry) {
+        if (!saved.evaluations) saved.evaluations = [];
+        evalEntry = { targetId: studentId, targetName: _resolveTargetName(studentId), competences: [], feedback: '' };
+        saved.evaluations.push(evalEntry);
+    }
+    evalEntry.feedback = feedback;
+    evalEntry.evaluatedAt = new Date().toISOString();
+
+    // Persist
+    const { modules, savedEvaluations } = window._evalState;
+    const mIdx = window._evalState.currentModuleIdx;
+    const pIdx = window._evalState.currentProjectIdx;
+    const mod = modules[mIdx];
+    const proj = mod.projects[pIdx];
+    const modId = mod.id || String(mIdx);
+    const existingIdx = savedEvaluations.findIndex(e => e.moduleId === modId && e.projectName === proj.name);
+    if (existingIdx >= 0) window._evalState.savedEvaluations[existingIdx] = saved;
+    else window._evalState.savedEvaluations.push(saved);
+
+    await _persistEvaluations();
+
+    // Sync to student ficha
+    const { students } = window._evalState;
+    await _syncEvaluationsToStudentTracking(saved, mod, proj, students);
+
+    bootstrap.Modal.getInstance(subModalEl)?.hide();
+    // Re-open the parent eval modal to refresh saved evaluations list
+    openEvaluationModal(mIdx, pIdx);
+    showToast('Evaluación guardada correctamente', 'success');
+}
+
+// Legacy – kept for group eval and backward compat; also handles "edit" click scroll
+function onEvalStudentChange() {
+    // No-op: individual evaluation is now done via sub-modal
 }
 
 function toggleEvalLevel(btn, targetId, compId, level, compName) {
@@ -6803,22 +6945,20 @@ window.deleteStudentEvaluation = function(targetId) {
     openEvaluationModal(mIdx, pIdx);
 };
 
-/** Loads a student's existing evaluation into the form for editing */
+/** Loads a student's existing evaluation into the sub-modal for editing */
 window.editStudentEvaluation = function(targetId) {
     const saved = window._evalCurrentSaved;
     if (!saved) return;
-
-    // Scroll to student selector and select the student
-    const sel = document.getElementById('eval-student-select');
-    if (sel) {
-        sel.value = targetId;
-        // Restore removed competences for this target so they appear again
-        if (window._evalRemovedComps) delete window._evalRemovedComps[String(targetId)];
-        onEvalStudentChange();
-        // Scroll the content into view
-        const content = document.getElementById('eval-individual-content');
-        if (content) content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Restore removed competences for this target so they appear again
+    if (window._evalRemovedComps) delete window._evalRemovedComps[String(targetId)];
+    // Also restore removed tools for this target
+    if (window._evalRemovedTools && window._evalRemovedTools[String(targetId)]) {
+        delete window._evalRemovedTools[String(targetId)];
     }
+    // Also update the student select if it exists
+    const sel = document.getElementById('eval-student-select');
+    if (sel) sel.value = targetId;
+    _openStudentEvalSubModalFor(targetId);
 };
 
 async function _persistEvaluations() {

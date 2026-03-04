@@ -160,9 +160,13 @@
             ? `<span class="badge bg-light text-dark border ms-2 small"><i class="bi bi-play-circle me-1"></i>${_esc(comp.startModule.name)}</span>`
             : '';
 
-        // Tools badges
+        // Tools badges — with inline × remove button
         const toolBadges = (comp.selectedTools || []).map(t =>
-            `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1 opacity-50"></i>${_esc(t)}</span>`
+            `<span class="badge bg-light text-dark border me-1 mb-1 d-inline-flex align-items-center gap-1">` +
+            `<i class="bi bi-tools opacity-50" style="font-size:.75em;"></i>${_esc(t)}` +
+            `<button type="button" class="btn-close btn-close-sm ms-1" style="font-size:.55em;" aria-label="Eliminar" ` +
+            `onclick="event.stopPropagation();window.ProgramCompetences._removeTool(${idx},'${t.replace(/'/g,"\\'")}')"></button>` +
+            `</span>`
         ).join('');
 
         // Level rows
@@ -388,6 +392,14 @@
         _markUnsaved();
     }
 
+    function _removeTool(idx, toolName) {
+        const comp = _programCompetences[idx];
+        if (!comp) return;
+        comp.selectedTools = (comp.selectedTools || []).filter(t => t !== toolName);
+        _render();
+        _markUnsaved();
+    }
+
     // ─── Editor de herramientas seleccionadas ─────────────────────────────────
     function _openToolsEditor(idx) {
         const comp = _programCompetences[idx];
@@ -601,6 +613,7 @@
         _addFromCatalog,
         _filterCatalog,
         _removeCompetence,
+        _removeTool,
         _openToolsEditor,
         _addCustomToolToEditor,
         _removeCustomToolFromEditor,
