@@ -1043,13 +1043,18 @@ async function printActaInicio(promotionId) {
             const studentName = `${student.name || ''} ${student.lastname || ''}`.trim() || '—';
             const docId       = student.identificationDocument || '—';
 
-            // Extract city from ext.presentialDays (last segment after comma) or fallback
+            // Extract city from ext.presentialDays (last comma-segment) or fallback to promo location
+            const DAYS_ES = /^(lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)$/i;
             let city = '';
             if (ext.presentialDays) {
-                const parts = ext.presentialDays.split(',').map(p => p.trim());
-                city = parts[parts.length - 1] || '';
+                const parts = ext.presentialDays.split(',').map(p => p.trim()).filter(Boolean);
+                // Walk from the end and pick the first segment that doesn't look like a weekday
+                for (let i = parts.length - 1; i >= 0; i--) {
+                    if (!DAYS_ES.test(parts[i])) { city = parts[i]; break; }
+                }
             }
-            if (!city) city = 'Barcelona';
+            // Last resort: try to pull city from the seat address stored in presentialDays free text
+            if (!city) city = ext.city || promo.city || '';
 
             const withdrawalDate = w.date ? new Date(w.date) : new Date();
             const withdrawalDateStr = withdrawalDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -1192,7 +1197,7 @@ async function printActaInicio(promotionId) {
             // Título
             html += `<div class="doc-title">Acta de Baja Oficial</div>`;
             html += `<div class="doc-subtitle">${esc(promo.name || '—')}</div>`;
-            html += `<div class="doc-location">En ${esc(city)}, a ${esc(withdrawalDateStr)}</div>`;
+            html += `<div class="doc-location">${city ? `En ${esc(city)}, a` : 'A'} ${esc(withdrawalDateStr)}</div>`;
             html += `<hr class="divider">`;
 
             // Cuerpo

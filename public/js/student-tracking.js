@@ -131,14 +131,15 @@
 
         try {
             const token = localStorage.getItem('token');
-            // Fetch student + fresh pildoras status in parallel
-            const [studentRes, pildarasRes] = await Promise.all([
+            // Fetch student + pildoras + extended-info in parallel
+            const [studentRes, pildarasRes, extRes] = await Promise.all([
                 fetch(`${API_URL}/api/promotions/${_promotionId}/students/${studentId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
                 fetch(`${API_URL}/api/promotions/${_promotionId}/modules-pildoras`, {
                     headers: { 'Authorization': `Bearer ${token}` }
-                })
+                }),
+                fetch(`${API_URL}/api/promotions/${_promotionId}/extended-info`)
             ]);
 
             if (!studentRes.ok) throw new Error('No se pudo cargar el estudiante');
@@ -147,6 +148,14 @@
             if (pildarasRes.ok) {
                 const pildarasData = await pildarasRes.json();
                 _modulesPildarasExtended = pildarasData.modulesPildoras || [];
+            }
+
+            // Merge project evaluations from ExtendedInfo into the student's technicalTracking.teams
+            // so that evaluations done from the Evaluación tab are always visible in the ficha
+            if (extRes.ok) {
+                const ext = await extRes.json();
+                const projectEvaluations = ext.projectEvaluations || [];
+                _mergeProjectEvaluationsIntoFicha(projectEvaluations, studentId);
             }
         } catch (e) {
             console.error('[StudentTracking] Error cargando estudiante:', e);
@@ -163,6 +172,10 @@
         _competences = (tt.competences || []).map(c => ({ ...c }));
         _completedModules = (tt.completedModules || []).map(m => ({ ...m }));
         _completedPildoras = (tt.completedPildoras || []).map(p => ({ ...p }));
+
+        // Overlay: inject evaluations from ExtendedInfo that are not yet in technicalTracking
+        _overlayEvaluationsIntoTeams(studentId);
+
         _employabilitySessions = (tr.employabilitySessions || []).map(s => ({ ...s }));
         _individualSessions = (tr.individualSessions || []).map(s => ({ ...s }));
         _incidents = (tr.incidents || []).map(i => ({ ...i }));
@@ -172,6 +185,67 @@
     }
 
     // ─── Modal principal ──────────────────────────────────────────────────────
+
+    /**
+     * Stores the fetched projectEvaluations from ExtendedInfo so _overlayEvaluationsIntoTeams can use them.
+     * Called during openFicha before data is loaded into memory.
+     */
+    let _extProjectEvaluations = [];
+
+    function _mergeProjectEvaluationsIntoFicha(projectEvaluations, studentId) {
+        _extProjectEvaluations = projectEvaluations || [];
+    }
+
+    /**
+     * After _teams is populated from technicalTracking, overlay any project evaluations from ExtendedInfo
+     * that don't yet have a corresponding entry in _teams (i.e. evaluations saved before sync existed,
+     * or evaluations that were never synced). This ensures they always appear in the ficha.
+     */
+    function _overlayEvaluationsIntoTeams(studentId) {
+        const LEVEL_LABELS_MAP = { 0: 'Sin nivel', 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+        for (const projEval of _extProjectEvaluations) {
+            // Find the entry for this student (individual) or any group (grupal) that contains this student
+            let evalEntry = null;
+            if (projEval.type === 'grupal') {
+                // Find which group the student belongs to
+                const group = (projEval.groups || []).find(g => (g.studentIds || []).includes(String(studentId)));
+                if (group) {
+                    evalEntry = (projEval.evaluations || []).find(e => e.targetId === group.groupName);
+                }
+            } else {
+                evalEntry = (projEval.evaluations || []).find(e => String(e.targetId) === String(studentId));
+            }
+            if (!evalEntry) continue;
+            if (!(evalEntry.competences || []).length && !evalEntry.feedback) continue;
+
+            // Check if this project is already in _teams (it will be if _syncEvaluationsToStudentTracking ran)
+            const alreadyInTeams = _teams.some(
+                t => t.teamName === projEval.projectName && t.moduleId === projEval.moduleId
+            );
+            if (alreadyInTeams) continue;
+
+            // Build a synthetic team entry from the evaluation data
+            const teamEntry = {
+                teamName: projEval.projectName || '',
+                projectType: projEval.type || 'individual',
+                role: '',
+                moduleName: projEval.moduleName || '',
+                moduleId: projEval.moduleId || '',
+                assignedDate: evalEntry.evaluatedAt ? evalEntry.evaluatedAt.split('T')[0] : '',
+                teacherNote: evalEntry.feedback || '',
+                studentComment: evalEntry.studentComment || '',
+                members: [],
+                competences: (evalEntry.competences || []).map(ce => ({
+                    competenceId: ce.competenceId,
+                    competenceName: ce.competenceName,
+                    level: ce.level,
+                    toolsUsed: ce.toolsUsed || []
+                })),
+                _fromEvaluation: true  // marker so we know it came from ExtendedInfo
+            };
+            _teams.push(teamEntry);
+        }
+    }
 
     function _showFichaModal() {
         const modal = _getOrCreateModal();
@@ -643,6 +717,12 @@
                     <span class="text-muted fst-italic">${_esc(t.teacherNote)}</span>
                    </div>`
                 : '';
+            const commentBlock = t.studentComment
+                ? `<div class="mt-1 small">
+                    <i class="bi bi-chat-right-text text-primary me-1"></i>
+                    <span class="text-primary fst-italic">${_esc(t.studentComment)}</span>
+                   </div>`
+                : '';
             const competencesList = (t.competences && t.competences.length)
                 ? `<div class="mt-2 pt-2 border-top">
                     <div class="small fw-semibold text-muted mb-1"><i class="bi bi-award me-1"></i>Competencias trabajadas:</div>
@@ -709,6 +789,7 @@
                             <small class="text-muted">Módulo: <strong>${_esc(t.moduleName || '—')}</strong></small>
                             ${membersList}
                             ${noteBlock}
+                            ${commentBlock}
                             ${competencesList}
                         </div>
                         <div class="d-flex flex-column gap-1 ms-2">
@@ -2176,23 +2257,31 @@
             email: document.getElementById('fp-email')?.value?.trim(),
             phone: document.getElementById('fp-phone')?.value?.trim(),
             age: parseInt(document.getElementById('fp-age')?.value) || null,
-            administrativeSituation: document.getElementById('fp-admin-situation')?.value,
-            nationality: document.getElementById('fp-nationality')?.value?.trim(),
-            identificationDocument: document.getElementById('fp-document')?.value?.trim(),
-            gender: document.getElementById('fp-gender')?.value,
-            englishLevel: document.getElementById('fp-english-level')?.value,
-            educationLevel: document.getElementById('fp-education-level')?.value,
-            profession: document.getElementById('fp-profession')?.value?.trim(),
-            community: document.getElementById('fp-community')?.value,
+            administrativeSituation: document.getElementById('fp-admin-situation')?.value || '',
+            nationality: document.getElementById('fp-nationality')?.value?.trim() || '',
+            identificationDocument: document.getElementById('fp-document')?.value?.trim() || '',
+            gender: document.getElementById('fp-gender')?.value || '',
+            englishLevel: document.getElementById('fp-english-level')?.value || '',
+            educationLevel: document.getElementById('fp-education-level')?.value || '',
+            profession: document.getElementById('fp-profession')?.value?.trim() || '',
+            community: document.getElementById('fp-community')?.value || '',
         };
 
-        // Validación de obligatorios
-        const required = ['name', 'lastname', 'email', 'phone', 'administrativeSituation'];
-        const missing = required.filter(f => !payload[f]);
-        if (missing.length || !payload.age) {
-            _showToast('Completa todos los campos obligatorios (*)', 'warning');
+        // Only validate the absolutely minimum fields
+        if (!payload.name || !payload.lastname || !payload.email) {
+            // Highlight missing fields
+            ['fp-name', 'fp-lastname', 'fp-email'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('is-invalid', !el.value.trim());
+            });
+            _showToast('Nombre, apellido y email son obligatorios', 'warning');
             return;
         }
+
+        // Clear any previous validation highlights
+        ['fp-name', 'fp-lastname', 'fp-email', 'fp-phone', 'fp-age'].forEach(id => {
+            document.getElementById(id)?.classList.remove('is-invalid');
+        });
 
         try {
             const res = await fetch(`${API_URL}/api/promotions/${_promotionId}/students/${_currentStudentId}/ficha/personal`, {
@@ -2200,7 +2289,10 @@
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload)
             });
-            if (!res.ok) throw new Error((await res.json()).error || 'Error al guardar');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `Error ${res.status}`);
+            }
             const updated = await res.json();
             _currentStudent = { ..._currentStudent, ...payload };
             // Actualizar nombre en el subtítulo

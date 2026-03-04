@@ -2415,29 +2415,43 @@ app.put('/api/promotions/:promotionId/students/:studentId/ficha/personal', verif
     const {
       name, lastname, email, phone, age, administrativeSituation,
       nationality, identificationDocument, gender, englishLevel,
-      educationLevel, profession, community
+      educationLevel, profession, community,
+      isWithdrawn, withdrawal
     } = req.body;
 
-    // Validar obligatorios
-    if (!name || !lastname || !email || !phone || !administrativeSituation || !age) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios: nombre, apellido, email, teléfono, situación administrativa y edad' });
+    // Withdrawal-only update (no personal fields sent)
+    if ((isWithdrawn !== undefined || withdrawal !== undefined) && !name) {
+      const updated = await Student.findByIdAndUpdate(
+        student._id,
+        { $set: { isWithdrawn: !!isWithdrawn, withdrawal: withdrawal || null } },
+        { new: true }
+      );
+      return res.json({ message: 'Estado de baja actualizado', student: updated });
+    }
+
+    // Validar obligatorios (solo nombre, apellido y email son imprescindibles)
+    if (!name || !lastname || !email) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios: nombre, apellido y email' });
     }
 
     const updated = await Student.findByIdAndUpdate(
       student._id,
-      {
-        name, lastname, email, phone,
-        age: Number(age),
-        administrativeSituation,
+      { $set: {
+        name, lastname, email,
+        phone: phone || '',
+        age: (age && !isNaN(Number(age))) ? Number(age) : null,
+        administrativeSituation: administrativeSituation || '',
         nationality: nationality || '',
         identificationDocument: identificationDocument || '',
         gender: gender || '',
         englishLevel: englishLevel || '',
         educationLevel: educationLevel || '',
         profession: profession || '',
-        community: community || ''
-      },
-      { new: true }
+        community: community || '',
+        ...(isWithdrawn !== undefined ? { isWithdrawn: !!isWithdrawn } : {}),
+        ...(withdrawal !== undefined ? { withdrawal } : {})
+      }},
+      { new: true, runValidators: false }
     );
 
     res.json({ message: 'Datos personales actualizados', student: updated });
@@ -3074,10 +3088,11 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
             school, projectType, positiveExitStart, positiveExitEnd, totalHours,
             modality, presentialDays, materials, internships, funders, funderDeadlines,
             okrKpis, funderKpis, trainerDayOff, cotrainerDayOff, projectMeetings, teamMeetings,
-            approvalName, approvalRole } = req.body;
+            approvalName, approvalRole, projectEvaluations } = req.body;
     const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
     const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
     const normalizedCompetences = Array.isArray(competences) ? competences : [];
+    const normalizedProjectEvaluations = Array.isArray(projectEvaluations) ? projectEvaluations : undefined;
     console.log('[extended-info POST] competences to save:', JSON.stringify(normalizedCompetences.map(c => ({ name: c.name, startModule: c.startModule }))));
     const newInfo = await ExtendedInfo.findOneAndUpdate(
       { promotionId: req.params.promotionId },
@@ -3109,7 +3124,8 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
           projectMeetings: projectMeetings || '',
           teamMeetings: teamMeetings || '',
           approvalName: approvalName || '',
-          approvalRole: approvalRole || ''
+          approvalRole: approvalRole || '',
+          ...(normalizedProjectEvaluations !== undefined ? { projectEvaluations: normalizedProjectEvaluations } : {})
         }
       },
       { upsert: true, returnDocument: 'after', strict: false }

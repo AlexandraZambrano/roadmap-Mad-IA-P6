@@ -96,6 +96,28 @@ const ExtendedInfoSchema = new mongoose.Schema({
             id: String,
             name: String
         }
+    }],
+    // Project evaluations for the Evaluación tab
+    projectEvaluations: [{
+        moduleId: String,
+        moduleName: String,
+        projectName: String,
+        type: { type: String, enum: ['individual', 'grupal'], default: 'individual' },
+        groups: [{
+            groupName: String,
+            studentIds: [String]
+        }],
+        evaluations: [{
+            targetId: String,
+            targetName: String,
+            competences: [{
+                competenceId: mongoose.Schema.Types.Mixed,
+                competenceName: String,
+                level: Number
+            }],
+            feedback: String,
+            evaluatedAt: String
+        }]
     }]
 }, { timestamps: true });
 
