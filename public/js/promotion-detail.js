@@ -3566,15 +3566,30 @@ function displayStudents(students) {
         return;
     }
 
-    studentsContainer.innerHTML = students.map((student, index) => `
-        <tr>
+    // Sort: active students first, withdrawn at the bottom
+    const sorted = [...students].sort((a, b) => {
+        if (!!a.isWithdrawn === !!b.isWithdrawn) return (a.name || '').localeCompare(b.name || '');
+        return a.isWithdrawn ? 1 : -1;
+    });
+
+    const activeCount    = sorted.filter(s => !s.isWithdrawn).length;
+    const withdrawnCount = sorted.length - activeCount;
+
+    studentsContainer.innerHTML = sorted.map((student, index) => {
+        const separator = (index === activeCount && withdrawnCount > 0)
+            ? `<tr class="table-danger"><td colspan="6" class="py-1 px-3 small fw-semibold text-danger"><i class="bi bi-person-x me-1"></i>Bajas oficiales (${withdrawnCount})</td></tr>`
+            : '';
+        const row = `<tr class="${student.isWithdrawn ? 'table-secondary text-muted opacity-75' : ''}">
             <td>
                 <input type="checkbox" class="form-check-input student-checkbox" 
                        data-student-id="${student.id}" 
-                       onchange="updateSelectionState()">
+                       onchange="updateSelectionState()"
+                       ${student.isWithdrawn ? 'disabled' : ''}>
             </td>
             <td>
-                <div class="fw-bold">${student.name || student.lastname ? studentFullName(student) : 'N/A'}</div>
+                <div class="fw-bold">${student.name || student.lastname ? studentFullName(student) : 'N/A'}
+                    ${student.isWithdrawn ? `<span class="badge bg-danger ms-2" style="font-size:.65rem;" title="Baja desde ${student.withdrawal?.date ? new Date(student.withdrawal.date).toLocaleDateString('es-ES') : ''}">BAJA</span>` : ''}
+                </div>
             </td>
             <td>${student.email || 'N/A'}</td>
             <td>${student.nationality || 'N/A'}</td>
@@ -3590,13 +3605,14 @@ function displayStudents(students) {
                     <button class="btn btn-sm btn-outline-secondary" onclick="window.Reports?.printTransversal('${student.id}', promotionId)" title="PDF Seguimiento Transversal">
                         <i class="bi bi-file-earmark-person"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}', '${student.email}')" title="Delete">
+                    ${!student.isWithdrawn ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}', '${student.email}')" title="Delete">
                         <i class="bi bi-trash"></i>
-                    </button>
+                    </button>` : ''}
                 </div>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+        return separator + row;
+    }).join('');
 
     updateSelectionState();
 }
@@ -4954,6 +4970,11 @@ function renderAttendanceTable() {
             const isHoliday = promotionHolidays.has(dateKey);
             const isBlocked = isWeekend || isHoliday;
 
+            // Block attendance cells on/after withdrawal date for withdrawn students
+            const isWithdrawnDay = student.isWithdrawn &&
+                student.withdrawal?.date &&
+                dateKey >= student.withdrawal.date.split('T')[0];
+
             const td = document.createElement('td');
 
             if (isBlocked) {
@@ -4963,6 +4984,18 @@ function renderAttendanceTable() {
                 td.style.color = isHoliday ? '#7c3aed' : '#aaa';
                 td.style.cursor = 'default';
                 td.innerHTML = isHoliday ? '<i class="bi bi-balloon" style="font-size:0.75rem;"></i>' : '';
+                tr.appendChild(td);
+                continue;
+            }
+
+            if (isWithdrawnDay) {
+                // Day on/after withdrawal: striped red, no click
+                td.className = 'attendance-cell attendance-blocked';
+                td.style.backgroundColor = '#ffe0e0';
+                td.style.color = '#c0392b';
+                td.style.cursor = 'default';
+                td.title = 'Baja oficial';
+                td.innerHTML = '<i class="bi bi-dash" style="font-size:0.75rem;"></i>';
                 tr.appendChild(td);
                 continue;
             }

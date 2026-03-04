@@ -338,6 +338,11 @@
                                             </button>
                                         </div>
                                     </form>
+
+                                    <!-- ══ SECCIÓN DAR DE BAJA ══ -->
+                                    <div id="ficha-baja-section" class="mt-4 pt-3 border-top">
+                                        <div id="ficha-baja-content"></div>
+                                    </div>
                                 </div>
 
                                 <!-- ══ PESTAÑA SEGUIMIENTO TÉCNICO ══ -->
@@ -495,6 +500,9 @@
         if (form) {
             form.onsubmit = (e) => { e.preventDefault(); _savePersonal(); };
         }
+
+        // ── Sección de baja ──
+        _renderBajaSection();
     }
 
     // ─── Helpers de UI ────────────────────────────────────────────────────────
@@ -2013,6 +2021,151 @@
         if (wrapper) wrapper.remove();
     }
 
+    // ─── Dar de baja ──────────────────────────────────────────────────────────
+
+    function _renderBajaSection() {
+        const container = document.getElementById('ficha-baja-content');
+        if (!container) return;
+        const s = _currentStudent;
+        if (!s) return;
+
+        if (s.isWithdrawn && s.withdrawal) {
+            const w = s.withdrawal;
+            container.innerHTML = `
+                <div class="alert alert-danger d-flex align-items-start gap-3 mb-3" role="alert">
+                    <i class="bi bi-person-x-fill fs-4 text-danger mt-1 flex-shrink-0"></i>
+                    <div class="flex-grow-1">
+                        <h6 class="alert-heading mb-2">Este coder ha causado baja oficial</h6>
+                        <div class="row g-2 small">
+                            <div class="col-md-4"><span class="fw-semibold">Fecha de baja:</span><br>${_esc(w.date ? new Date(w.date).toLocaleDateString('es-ES') : '—')}</div>
+                            <div class="col-md-4"><span class="fw-semibold">Representante F5:</span><br>${_esc(w.representative || '—')}</div>
+                            <div class="col-12"><span class="fw-semibold">Motivo:</span><br>${_esc(w.reason || '—')}</div>
+                        </div>
+                        <div class="mt-3 d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="window.StudentTracking._openBajaForm()">
+                                <i class="bi bi-pencil me-1"></i>Editar datos de baja
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick="window.Reports?.printActaBaja(window.StudentTracking._getCurrentStudentId(), window.StudentTracking._getPromotionId())">
+                                <i class="bi bi-file-earmark-text me-1"></i>Descargar Acta de Baja
+                            </button>
+                            <button type="button" class="btn btn-sm btn-link text-secondary p-0 ms-auto align-self-center"
+                                onclick="window.StudentTracking._cancelWithdrawal()">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>Reactivar estudiante
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+        } else {
+            container.innerHTML = `
+                <button type="button" class="btn btn-outline-danger btn-sm"
+                        onclick="window.StudentTracking._openBajaForm()">
+                    <i class="bi bi-person-x me-1"></i> Dar de Baja al Estudiante
+                </button>`;
+        }
+    }
+
+    function _openBajaForm() {
+        const container = document.getElementById('ficha-baja-content');
+        if (!container) return;
+        const s = _currentStudent;
+        const w = s?.withdrawal || {};
+        const today = _todayISO();
+
+        container.innerHTML = `
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white d-flex align-items-center gap-2">
+                    <i class="bi bi-person-x-fill"></i>
+                    <strong>${s?.isWithdrawn ? 'Editar datos de baja' : 'Registrar Baja Oficial'}</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Fecha oficial de baja <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control form-control-sm" id="baja-date"
+                                value="${_esc(w.date ? w.date.split('T')[0] : today)}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Representante Factoría F5 que firma <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm" id="baja-representative"
+                                placeholder="Nombre y cargo del representante"
+                                value="${_esc(w.representative || '')}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Motivo de la baja <span class="text-danger">*</span></label>
+                            <textarea class="form-control form-control-sm" id="baja-reason" rows="3"
+                                placeholder="Describe el motivo de la baja del estudiante…">${_esc(w.reason || '')}</textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" class="btn btn-sm btn-secondary"
+                            onclick="window.StudentTracking._renderBajaSection()">Cancelar</button>
+                        <button type="button" class="btn btn-sm btn-danger"
+                            onclick="window.StudentTracking._saveWithdrawal()">
+                            <i class="bi bi-check-lg me-1"></i>
+                            ${s?.isWithdrawn ? 'Actualizar' : 'Registrar Baja y Generar Acta'}
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    async function _saveWithdrawal() {
+        const date         = document.getElementById('baja-date')?.value?.trim();
+        const reason       = document.getElementById('baja-reason')?.value?.trim();
+        const representative = document.getElementById('baja-representative')?.value?.trim();
+
+        if (!date || !reason || !representative) {
+            _showToast('Completa todos los campos de baja (*)', 'warning');
+            return;
+        }
+
+        const token = localStorage.getItem('token');
+        const payload = {
+            isWithdrawn: true,
+            withdrawal: { date, reason, representative, processedAt: new Date().toISOString() }
+        };
+
+        try {
+            const res = await fetch(`${API_URL}/api/promotions/${_promotionId}/students/${_currentStudentId}/ficha/personal`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error((await res.json()).error || 'Error al guardar');
+            _currentStudent = { ..._currentStudent, ...payload };
+            _syncStudentInTable(_currentStudent);
+            _showToast('Baja registrada correctamente ✓');
+            _renderBajaSection();
+            // Generar PDF del acta
+            window.Reports?.printActaBaja(_currentStudentId, _promotionId);
+        } catch (e) {
+            console.error('[StudentTracking] saveWithdrawal error:', e);
+            _showToast(e.message || 'Error al registrar la baja', 'danger');
+        }
+    }
+
+    async function _cancelWithdrawal() {
+        if (!confirm('¿Reactivar a este estudiante? Se eliminará el registro de baja.')) return;
+        const token = localStorage.getItem('token');
+        const payload = { isWithdrawn: false, withdrawal: null };
+        try {
+            const res = await fetch(`${API_URL}/api/promotions/${_promotionId}/students/${_currentStudentId}/ficha/personal`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error((await res.json()).error || 'Error al reactivar');
+            _currentStudent = { ..._currentStudent, isWithdrawn: false, withdrawal: null };
+            _syncStudentInTable(_currentStudent);
+            _showToast('Estudiante reactivado correctamente ✓');
+            _renderBajaSection();
+        } catch (e) {
+            _showToast(e.message || 'Error al reactivar el estudiante', 'danger');
+        }
+    }
+
     // ─── Persistencia (API calls) ─────────────────────────────────────────────
 
     async function _savePersonal() {
@@ -2174,7 +2327,8 @@
         _openIndSessionForm, _saveIndSession, _removeIndSession,
         _openIncidentForm, _saveIncident, _resolveIncident, _removeIncident,
         _cancelInlineForm,
-        _saveTechnical, _saveTransversal
+        _saveTechnical, _saveTransversal,
+        _renderBajaSection, _openBajaForm, _saveWithdrawal, _cancelWithdrawal
     };
 
 })(window);

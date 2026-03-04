@@ -1022,6 +1022,245 @@ async function printActaInicio(promotionId) {
 }
 
     // ════════════════════════════════════════════════════════════════════════
+    // 3b. ACTA DE BAJA
+    // ════════════════════════════════════════════════════════════════════════
+    async function printActaBaja(studentId, promotionId) {
+        const token = localStorage.getItem('token');
+        try {
+            const [promoRes, extRes, studentRes] = await Promise.all([
+                fetch(`${API_URL}/api/promotions/${promotionId}`,                              { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`,                { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`,        { headers: { 'Authorization': `Bearer ${token}` } })
+            ]);
+            if (!promoRes.ok) throw new Error('No se pudo cargar la promoción');
+            if (!studentRes.ok) throw new Error('No se pudo cargar el estudiante');
+
+            const promo   = await promoRes.json();
+            const ext     = extRes.ok ? await extRes.json() : {};
+            const student = await studentRes.json();
+            const w = student.withdrawal || {};
+
+            const studentName = `${student.name || ''} ${student.lastname || ''}`.trim() || '—';
+            const docId       = student.identificationDocument || '—';
+
+            // Extract city from ext.presentialDays (last segment after comma) or fallback
+            let city = '';
+            if (ext.presentialDays) {
+                const parts = ext.presentialDays.split(',').map(p => p.trim());
+                city = parts[parts.length - 1] || '';
+            }
+            if (!city) city = 'Barcelona';
+
+            const withdrawalDate = w.date ? new Date(w.date) : new Date();
+            const withdrawalDateStr = withdrawalDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+            const withdrawalDateShort = withdrawalDate.toLocaleDateString('es-ES');
+
+            const representative = w.representative || '—';
+            const reason         = w.reason || '—';
+
+            const ORANGE = '#E85D26';
+            const BLUE   = '#4472C4';
+
+            const style = `
+                <style>
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body {
+                        font-family: 'Poppins', Arial, sans-serif;
+                        font-size: 10pt;
+                        color: #1a1a1a;
+                        padding: 40pt 50pt 80pt 50pt;
+                        line-height: 1.6;
+                    }
+                    .doc-title {
+                        font-size: 20pt;
+                        font-weight: bold;
+                        color: ${ORANGE};
+                        text-align: center;
+                        margin-bottom: 6pt;
+                        margin-top: 10pt;
+                        text-transform: uppercase;
+                        letter-spacing: 1pt;
+                    }
+                    .doc-subtitle {
+                        text-align: center;
+                        font-size: 12pt;
+                        font-weight: bold;
+                        color: ${BLUE};
+                        margin-bottom: 24pt;
+                    }
+                    .doc-location {
+                        text-align: right;
+                        font-size: 10pt;
+                        color: #555;
+                        margin-bottom: 20pt;
+                        font-style: italic;
+                    }
+                    .body-text {
+                        font-size: 10pt;
+                        margin-bottom: 14pt;
+                        text-align: justify;
+                        line-height: 1.7;
+                    }
+                    .body-text .highlight {
+                        font-weight: bold;
+                        color: ${BLUE};
+                    }
+                    .reason-box {
+                        background: #fff8f5;
+                        border-left: 3pt solid ${ORANGE};
+                        padding: 10pt 14pt;
+                        margin: 16pt 0;
+                        font-size: 10pt;
+                        line-height: 1.6;
+                    }
+                    .reason-box .label {
+                        font-weight: bold;
+                        color: ${ORANGE};
+                        display: block;
+                        margin-bottom: 4pt;
+                    }
+                    .signatures {
+                        margin-top: 40pt;
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 40pt;
+                    }
+                    .sign-block {
+                        flex: 1;
+                        text-align: center;
+                    }
+                    .sign-block .sign-line {
+                        border-bottom: 1px solid #999;
+                        height: 50pt;
+                        margin-bottom: 8pt;
+                    }
+                    .sign-block .sign-label {
+                        font-size: 9pt;
+                        color: #555;
+                        font-weight: bold;
+                    }
+                    .sign-block .sign-name {
+                        font-size: 9pt;
+                        color: #1a1a1a;
+                        margin-top: 2pt;
+                    }
+                    .divider {
+                        border: none;
+                        border-top: 1px solid #ddd;
+                        margin: 20pt 0;
+                    }
+                    .footer {
+                        position: fixed;
+                        bottom: 16pt;
+                        right: 40pt;
+                        display: flex;
+                        align-items: center;
+                        gap: 6pt;
+                    }
+                    .footer-badge {
+                        background: ${ORANGE};
+                        color: white;
+                        font-size: 9pt;
+                        font-weight: bold;
+                        padding: 2pt 4pt;
+                        border-radius: 2pt;
+                    }
+                    .footer-text {
+                        font-size: 14pt;
+                        font-weight: bold;
+                        color: ${ORANGE};
+                    }
+                    .footer-sub {
+                        font-size: 6.5pt;
+                        color: #999;
+                        letter-spacing: 1.2pt;
+                        text-transform: uppercase;
+                        display: block;
+                        margin-top: -2pt;
+                    }
+                    @media print {
+                        body { padding: 20pt 30pt 60pt 30pt; }
+                    }
+                </style>`;
+
+            const esc = (v) => _esc(v);
+
+            let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+                <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+                ${style}</head><body>`;
+
+            // Título
+            html += `<div class="doc-title">Acta de Baja Oficial</div>`;
+            html += `<div class="doc-subtitle">${esc(promo.name || '—')}</div>`;
+            html += `<div class="doc-location">En ${esc(city)}, a ${esc(withdrawalDateStr)}</div>`;
+            html += `<hr class="divider">`;
+
+            // Cuerpo
+            html += `<p class="body-text">
+                Mediante el presente documento se hace constar que
+                <span class="highlight">${esc(studentName)}</span>,
+                con documento de identidad <span class="highlight">${esc(docId)}</span>,
+                participante en el programa formativo
+                <span class="highlight">${esc(promo.name || '—')}</span>
+                impartido por Factoría F5, ha causado <strong>baja oficial</strong>
+                del citado programa con efectos a partir del día
+                <span class="highlight">${esc(withdrawalDateShort)}</span>.
+            </p>`;
+
+            html += `<div class="reason-box">
+                <span class="label">Motivo de la baja:</span>
+                ${esc(reason)}
+            </div>`;
+
+            html += `<p class="body-text">
+                Dicha baja ha sido tramitada y registrada en los sistemas de gestión de Factoría F5,
+                dejando constancia de la misma a todos los efectos legales y administrativos pertinentes.
+            </p>`;
+
+            html += `<p class="body-text">
+                La persona interesada ha sido informada de esta decisión y ha tenido la oportunidad de
+                conocer los motivos que la fundamentan.
+            </p>`;
+
+            // Firmas
+            html += `<div class="signatures">
+                <div class="sign-block">
+                    <div class="sign-line"></div>
+                    <div class="sign-label">La persona participante</div>
+                    <div class="sign-name">${esc(studentName)}</div>
+                    <div class="sign-name">${esc(docId)}</div>
+                </div>
+                <div class="sign-block">
+                    <div class="sign-line"></div>
+                    <div class="sign-label">Por Factoría F5</div>
+                    <div class="sign-name">${esc(representative)}</div>
+                </div>
+            </div>`;
+
+            // Footer
+            html += `<div class="footer">
+                <div>
+                    <span class="footer-badge">F5</span>
+                    <span class="footer-text">factoría</span>
+                    <span class="footer-sub">powered by simplon</span>
+                </div>
+            </div>`;
+
+            html += `</body></html>`;
+
+            const safeName = studentName.replace(/\s+/g, '-');
+            const filename = `acta-baja_${safeName}_${(promo.name||'promo').replace(/\s+/g,'-')}.pdf`;
+            _showSaving('Generando Acta de Baja…');
+            await _savePdf(html, filename);
+            _hideSaving();
+        } catch (e) {
+            _hideSaving();
+            console.error('[Reports] printActaBaja:', e);
+            alert('Error generando el Acta de Baja: ' + e.message);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     // 4. DESCRIPCIÓN TÉCNICA DE FORMACIÓN
     // ════════════════════════════════════════════════════════════════════════
     async function printDescripcionTecnica(promotionId) {
@@ -1788,6 +2027,7 @@ async function printActaInicio(promotionId) {
         printTechnical,
         printTransversal,
         printActaInicio,
+        printActaBaja,
         printDescripcionTecnica,
         printProjectReport,
         printBulkTechnical,
