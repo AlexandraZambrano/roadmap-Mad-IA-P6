@@ -385,7 +385,97 @@
     // ════════════════════════════════════════════════════════════════════════
     // 1. FICHA SEGUIMIENTO TÉCNICO
     // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Shows a modal dialog asking for the "Razón del informe" before generating the PDF.
+     * Returns a Promise that resolves with the entered text, or null if cancelled.
+     */
+    function _promptRazonInforme() {
+        return new Promise(resolve => {
+            document.getElementById('_razon-modal-overlay')?.remove();
+
+            // ── Bootstrap's modal has a focus-trap (enforceFocus) that steals focus
+            //    back to the modal on every focusin event on document.
+            //    The only reliable fix: hide the modal, show our prompt, then re-show.
+            const fichaModal = document.getElementById('fichaModal');
+            const bsModal = (fichaModal && window.bootstrap)
+                ? bootstrap.Modal.getInstance(fichaModal)
+                : null;
+
+            // Build and inject the overlay before hiding the modal,
+            // so we can re-show it in the 'hidden.bs.modal' callback.
+            const overlay = document.createElement('div');
+            overlay.id = '_razon-modal-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(26,26,46,.65);display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `
+                <div id="_razon-card" style="
+                    background:#fff; border-radius:12px; padding:28px 32px;
+                    width:480px; max-width:95vw; box-shadow:0 8px 40px rgba(0,0,0,.25);
+                    font-family:'Inter',Arial,sans-serif; position:relative;
+                ">
+                    <div style="font-size:13pt;font-weight:700;color:#1A1A2E;margin-bottom:6px;">
+                        <span style="color:#FF6B35;margin-right:6px;">✦</span>Razón del informe
+                    </div>
+                    <div style="font-size:9.5pt;color:#888;margin-bottom:16px;">
+                        Opcional — aparecerá en la cabecera del PDF, debajo de las fechas del bootcamp.
+                    </div>
+                    <textarea id="_razon-ta" rows="4"
+                        placeholder="Ej: Seguimiento trimestral, solicitud de empresa, revisión de competencias…"
+                        style="width:100%;border:1px solid #dee2e6;border-radius:6px;padding:10px 12px;
+                               font-family:inherit;font-size:10pt;resize:vertical;color:#222;
+                               line-height:1.5;display:block;box-sizing:border-box;"></textarea>
+                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
+                        <button id="_razon-skip" type="button" style="
+                            background:transparent;border:1px solid #dee2e6;border-radius:6px;
+                            padding:8px 18px;font-size:10pt;cursor:pointer;color:#555;">Omitir</button>
+                        <button id="_razon-ok" type="button" style="
+                            background:#FF6B35;border:none;border-radius:6px;
+                            padding:8px 22px;font-size:10pt;font-weight:600;color:#fff;cursor:pointer;">Generar PDF</button>
+                    </div>
+                </div>`;
+
+            const ta   = overlay.querySelector('#_razon-ta');
+            const ok   = overlay.querySelector('#_razon-ok');
+            const skip = overlay.querySelector('#_razon-skip');
+            const card = overlay.querySelector('#_razon-card');
+
+            const done = (val) => {
+                overlay.remove();
+                if (bsModal) {
+                    // Re-show the ficha modal after the prompt closes
+                    bsModal.show();
+                }
+                resolve(val);
+            };
+
+            ok.addEventListener('click',   () => done(ta.value.trim()));
+            skip.addEventListener('click', () => done(''));
+            card.addEventListener('click',      e => e.stopPropagation());
+            card.addEventListener('mousedown',  e => e.stopPropagation());
+            overlay.addEventListener('click',   () => done(''));
+            ta.addEventListener('keydown', e => { if (e.key === 'Enter' && e.ctrlKey) done(ta.value.trim()); });
+
+            if (bsModal) {
+                // Hide the Bootstrap modal first; append overlay + focus once it's fully hidden
+                fichaModal.addEventListener('hidden.bs.modal', function onHidden() {
+                    fichaModal.removeEventListener('hidden.bs.modal', onHidden);
+                    document.body.appendChild(overlay);
+                    setTimeout(() => ta.focus(), 50);
+                }, { once: true });
+                bsModal.hide();
+            } else {
+                // No Bootstrap modal open — just show immediately
+                document.body.appendChild(overlay);
+                setTimeout(() => ta.focus(), 50);
+            }
+        });
+    }
+
     async function printTechnical(studentId, promotionId) {
+        // Ask for the reason BEFORE showing the saving spinner
+        const razonInforme = await _promptRazonInforme();
+        // null means the user closed the dialog — we still generate (razonInforme will be '')
+
         const token = localStorage.getItem('token');
         try {
             const [stuRes, promoRes, pildarasRes] = await Promise.all([
@@ -401,12 +491,56 @@
             const tt  = s.technicalTracking || {};
             const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
 
+            // ── Format bootcamp date range ──
+            const fmtLong = (d) => {
+                if (!d) return '—';
+                try {
+                    const parts = String(d).split('T')[0].split('-');
+                    if (parts.length === 3) {
+                        const dt = new Date(+parts[0], +parts[1]-1, +parts[2]);
+                        return dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+                    }
+                    return String(d);
+                } catch { return String(d); }
+            };
+            const startStr = fmtLong(promo.startDate);
+            const endStr   = fmtLong(promo.endDate);
+            const dateRange = (promo.startDate || promo.endDate)
+                ? `${startStr} a ${endStr}`
+                : null;
+
             let html = _header(
                 'Ficha de Seguimiento Técnico',
                 fullName,
                 promo.name,
                 _today()
             );
+
+            // ── Dates + reason block (injected right after the header) ──
+            if (dateRange || razonInforme) {
+                html += `<div style="
+                    margin-bottom: 14pt;
+                    padding: 8pt 12pt;
+                    background: #f8f9fa;
+                    border-left: 4px solid ${PRIMARY};
+                    border-radius: 0 6pt 6pt 0;
+                    font-size: 9.5pt;
+                    line-height: 1.6;
+                ">`;
+                if (dateRange) {
+                    html += `<div style="margin-bottom:${razonInforme ? '5pt' : '0'};">
+                        <span style="color:${SECONDARY}; font-weight:600;">Período del bootcamp:&nbsp;</span>
+                        <span style="color:#222;">${_esc(dateRange)}</span>
+                    </div>`;
+                }
+                if (razonInforme) {
+                    html += `<div>
+                        <span style="color:${SECONDARY}; font-weight:600;">Razón del informe:&nbsp;</span>
+                        <span style="color:#222;">${_esc(razonInforme)}</span>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
 
             // ── Notas del profesor ──
             html += `<h3><span style="color:${PRIMARY}">✦</span> Notas del Profesor</h3>`;
