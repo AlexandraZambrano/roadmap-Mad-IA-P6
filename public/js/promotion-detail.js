@@ -220,7 +220,8 @@ let extendedInfoData = {
     resources: [],
     evaluation: '',
     pildoras: [],
-    pildorasAssignmentOpen: false
+    pildorasAssignmentOpen: false,
+    overviewTeacherNote: ''
 };
 
 // Attendance state
@@ -536,6 +537,17 @@ Evaluación Global al Final del Bootcamp
                 assignmentToggle.checked = !!extendedInfoData.pildorasAssignmentOpen;
             }
 
+            // Overview teacher note
+            const noteEl = document.getElementById('overview-teacher-note');
+            if (noteEl) {
+                noteEl.value = extendedInfoData.overviewTeacherNote || '';
+                const saveBtn = document.getElementById('overview-teacher-note-save');
+                if (saveBtn && !saveBtn._bound) {
+                    saveBtn._bound = true;
+                    saveBtn.addEventListener('click', saveOverviewTeacherNote);
+                }
+            }
+
             // Init Competencias module
             if (window.ProgramCompetences) {
                 window.ProgramCompetences.init(extendedInfoData.competences || []);
@@ -664,6 +676,7 @@ async function loadModulesPildoras() {
             // Set current module to first module
             currentModuleIndex = 0;
             displayPildoras();
+            updateOverviewUpcomingPildoras();
         } else {
             console.error('Error loading modules píldoras:', response.statusText);
             // Fallback to regular píldoras display
@@ -1551,6 +1564,12 @@ async function saveExtendedInfo() {
     // Update global object
     extendedInfoData.schedule = schedule;
     extendedInfoData.evaluation = evaluation;
+
+    // Overview teacher note
+    const overviewNoteEl = document.getElementById('overview-teacher-note');
+    if (overviewNoteEl) {
+        extendedInfoData.overviewTeacherNote = overviewNoteEl.value || '';
+    }
 
     // Gather Competencias from ProgramCompetences module
     if (window.ProgramCompetences) {
@@ -2600,9 +2619,11 @@ async function loadQuickLinks() {
 
         if (response.ok) {
             const links = await response.json();
+            window.currentQuickLinks = links;
             displayQuickLinks(links);
             const el = document.getElementById('quicklinks-count');
             if (el) el.textContent = links.length;
+            updateOverviewQuickActionsFromQuickLinks(links);
         }
     } catch (error) {
         console.error('Error loading quick links:', error);
@@ -2645,6 +2666,57 @@ function displayQuickLinks(links) {
         `;
         list.appendChild(card);
     });
+}
+
+function updateOverviewQuickActionsFromQuickLinks(links) {
+    const zoomBtn = document.getElementById('overview-zoom-btn');
+    const calendarBtn = document.getElementById('overview-calendar-btn');
+    const asanaBtn = document.getElementById('overview-asana-btn');
+
+    if (!zoomBtn && !calendarBtn && !asanaBtn) return;
+
+    const findLink = (platformKey, nameRegex) =>
+        (links || []).find(l => l.platform === platformKey || (nameRegex && nameRegex.test(l.name || '')));
+
+    // Zoom from Quick Links
+    if (zoomBtn) {
+        const zoomLink = findLink('zoom', /zoom/i);
+        if (zoomLink) {
+            zoomBtn.disabled = false;
+            zoomBtn.onclick = () => window.open(zoomLink.url, '_blank');
+        } else {
+            zoomBtn.disabled = true;
+            zoomBtn.onclick = null;
+        }
+    }
+
+    // Calendar from Access Settings (Google Calendar ID)
+    if (calendarBtn) {
+        const calendarIdInput = document.getElementById('google-calendar-id');
+        const calendarId = calendarIdInput ? calendarIdInput.value.trim() : '';
+        if (calendarId) {
+            calendarBtn.disabled = false;
+            calendarBtn.onclick = () => {
+                const url = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Madrid`;
+                window.open(url, '_blank');
+            };
+        } else {
+            calendarBtn.disabled = true;
+            calendarBtn.onclick = null;
+        }
+    }
+
+    // Asana from Quick Links
+    if (asanaBtn) {
+        const asanaLink = findLink('asana', /asana/i);
+        if (asanaLink) {
+            asanaBtn.disabled = false;
+            asanaBtn.onclick = () => window.open(asanaLink.url, '_blank');
+        } else {
+            asanaBtn.disabled = true;
+            asanaBtn.onclick = null;
+        }
+    }
 }
 
 async function loadSections() {
@@ -2711,8 +2783,11 @@ async function loadCalendar() {
 
         if (response.ok) {
             const calendar = await response.json();
-            document.getElementById('google-calendar-id').value = calendar.googleCalendarId;
+            const calInput = document.getElementById('google-calendar-id');
+            if (calInput) calInput.value = calendar.googleCalendarId || '';
             displayCalendar(calendar.googleCalendarId);
+            // Refresh overview quick actions (calendar button)
+            updateOverviewQuickActionsFromQuickLinks(window.currentQuickLinks || []);
         }
     } catch (error) {
         console.error('Error loading calendar:', error);
@@ -3933,7 +4008,63 @@ async function displayCollaborators(collaborators) {
                 `;
                 tbody.appendChild(tr);
             });
+
+    updateOverviewUpcomingPildoras();
         }
+
+// Overview: upcoming píldoras (from all modules, future dates only)
+function updateOverviewUpcomingPildoras() {
+    const container = document.getElementById('overview-upcoming-pildoras');
+    if (!container) return;
+
+    const modulesPildoras = extendedInfoData.modulesPildoras || [];
+    if (!modulesPildoras || modulesPildoras.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">No hay píldoras configuradas todavía.</p>';
+        return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const upcoming = [];
+
+    modulesPildoras.forEach(mp => {
+        (mp.pildoras || []).forEach(p => {
+            const date = p.date || '';
+            if (!date || date <= today) return;
+            const students = p.students || [];
+            const firstStudent = students[0];
+            upcoming.push({
+                date,
+                title: p.title || 'Píldora',
+                studentName: firstStudent ? studentFullName(firstStudent) : null
+            });
+        });
+    });
+
+    upcoming.sort((a, b) => a.date.localeCompare(b.date));
+
+    if (upcoming.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">No hay próximas píldoras programadas.</p>';
+        return;
+    }
+
+    const limited = upcoming.slice(0, 4);
+    let html = '<ul class="list-unstyled mb-1 small">';
+    limited.forEach(item => {
+        const dateStr = new Date(item.date).toLocaleDateString('es-ES');
+        html += `
+        <li class="mb-1">
+            <span class="fw-semibold">${escapeHtml(item.title)}</span>
+            <span class="text-muted"> — ${dateStr}</span>
+            ${item.studentName ? `<br><span class="text-muted">Coder: ${escapeHtml(item.studentName)}</span>` : ''}
+        </li>`;
+    });
+    html += '</ul>';
+    if (upcoming.length > limited.length) {
+        html += `<p class="text-muted small mb-0">Y ${upcoming.length - limited.length} píldora(s) más programadas.</p>`;
+    }
+
+    container.innerHTML = html;
+}
     }
 
     // Update list-group view
@@ -4836,6 +4967,7 @@ async function loadAttendance() {
         }
 
         renderAttendanceTable();
+        updateOverviewTopAbsences();
     } catch (error) {
         console.error('Error loading attendance:', error);
     }
@@ -5063,6 +5195,47 @@ function updateAttendanceStats() {    const totalDays = studentsForAttendance.le
     const totalMarked = present + absent + late + justified + earlyLeave;
     const avg = totalMarked > 0 ? Math.round(((present + late + justified + earlyLeave) / totalMarked) * 100) : 0;
     document.getElementById('stat-attendance-avg').textContent = `${avg}%`;
+}
+
+// Overview: student with most absences (for currently loaded attendance month)
+function updateOverviewTopAbsences() {
+    const el = document.getElementById('overview-top-absences');
+    if (!el) return;
+
+    if (!studentsForAttendance || studentsForAttendance.length === 0 || !attendanceData) {
+        el.textContent = 'No hay datos de asistencia suficientes.';
+        return;
+    }
+
+    const absenceCountByStudent = new Map();
+    attendanceData.forEach(rec => {
+        if (rec.status === 'Ausente') {
+            const current = absenceCountByStudent.get(rec.studentId) || 0;
+            absenceCountByStudent.set(rec.studentId, current + 1);
+        }
+    });
+
+    if (absenceCountByStudent.size === 0) {
+        el.textContent = 'No hay ausencias registradas todavía.';
+        return;
+    }
+
+    let topStudentId = null;
+    let topCount = 0;
+    absenceCountByStudent.forEach((count, studentId) => {
+        if (count > topCount) {
+            topCount = count;
+            topStudentId = studentId;
+        }
+    });
+
+    const student = studentsForAttendance.find(s => s.id === topStudentId);
+    if (!student) {
+        el.textContent = 'No se ha podido calcular el estudiante con más ausencias.';
+        return;
+    }
+
+    el.textContent = `Estudiante con más ausencias: ${studentFullName(student)} (${topCount} ausencias)`;
 }
 
 function cycleAttendanceStatus(cell) {
@@ -5862,6 +6035,7 @@ async function loadEvaluation() {
         window._evalState.savedEvaluations = ext.projectEvaluations || [];
 
         renderEvaluationTab();
+        updateOverviewUnevaluatedProjects();
     } catch (err) {
         console.error('Error loading evaluation data:', err);
         if (container) {
@@ -5984,6 +6158,69 @@ function renderEvaluationTab() {
     });
 
     html += `</div>`;
+    container.innerHTML = html;
+}
+
+// Overview: projects without any evaluations
+function updateOverviewUnevaluatedProjects() {
+    const container = document.getElementById('overview-unevaluated-projects');
+    if (!container || !window._evalState) return;
+
+    const { modules, savedEvaluations, students } = window._evalState;
+    if (!modules || modules.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">No hay módulos ni proyectos configurados.</p>';
+        return;
+    }
+
+    const unevaluated = [];
+
+    modules.forEach((mod, mIdx) => {
+        if (!mod.projects) return;
+        const modId = mod.id || String(mIdx);
+        mod.projects.forEach(proj => {
+            const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+            const projType = saved ? saved.type : 'individual';
+            const evalCount = saved ? (saved.evaluations || []).length : 0;
+            const totalTargets = projType === 'grupal'
+                ? (saved && saved.groups ? saved.groups.length : 0)
+                : (students || []).length;
+            if (!saved || evalCount === 0 || evalCount < totalTargets) {
+                unevaluated.push({
+                    moduleName: mod.name || `Módulo ${mIdx + 1}`,
+                    projectName: proj.name || 'Proyecto',
+                    modIdx: mIdx,
+                    projIdx: (mod.projects || []).indexOf(proj)
+                });
+            }
+        });
+    });
+
+    if (unevaluated.length === 0) {
+        container.innerHTML = '<p class="text-success small mb-0"><i class="bi bi-check-circle me-1"></i>Todos los proyectos tienen al menos alguna evaluación registrada.</p>';
+        return;
+    }
+
+    const limited = unevaluated.slice(0, 4);
+    let html = '<ul class="list-unstyled mb-1 small">';
+    limited.forEach(item => {
+        html += `
+        <li class="d-flex align-items-center justify-content-between mb-1">
+            <span>
+                <span class="fw-semibold">${escapeHtml(item.projectName)}</span>
+                <span class="text-muted"> — ${escapeHtml(item.moduleName)}</span>
+            </span>
+            <button class="btn btn-xs btn-outline-primary btn-sm"
+                onclick="openEvaluationModal(${item.modIdx}, ${item.projIdx})">
+                Evaluar
+            </button>
+        </li>`;
+    });
+    html += '</ul>';
+
+    if (unevaluated.length > limited.length) {
+        html += `<p class="text-muted small mb-0">Y ${unevaluated.length - limited.length} proyecto(s) más por evaluar.</p>`;
+    }
+
     container.innerHTML = html;
 }
 
