@@ -3,6 +3,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { readFileSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -42,6 +43,8 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const EXTERNAL_PUBLIC_KEY = readFileSync(join(__dirname, 'backend/keys/public.pem'), 'utf8');
+const EXTERNAL_AUTH_URL = process.env.EXTERNAL_AUTH_URL || 'https://users.coderf5.es/v1';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/bootcamp-manager';
 
 // MongoDB Connection
@@ -79,8 +82,8 @@ const upload = multer({
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3001',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
   'https://alexandrazambrano.github.io',
@@ -177,12 +180,24 @@ initializeTestAccounts();
 const verifyToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token provided' });
-
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
+    // Try RS256 first (external auth API token from users.coderf5.es)
+    const decoded = jwt.verify(token, EXTERNAL_PUBLIC_KEY, { algorithms: ['RS256'] });
+    const extRoles = Array.isArray(decoded.roles) ? decoded.roles : [];
+    let extRole = 'teacher';
+    if (extRoles.includes('ROLE_SUPER_ADMIN') || extRoles.includes('ROLE_SUPERADMIN')) extRole = 'admin';
+    else if (extRoles.includes('ROLE_USER') && extRoles.includes('ROLE_ADMIN')) extRole = 'admin';
+    else if (extRoles.includes('ROLE_ADMIN')) extRole = 'teacher';
+    req.user = { id: String(decoded.userId || decoded.sub), email: decoded.email, role: extRole };
     next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+  } catch (rsErr) {
+    try {
+      // Fallback: HS256 legacy local token
+      req.user = jwt.verify(token, JWT_SECRET);
+      next();
+    } catch (error) {
+      res.status(401).json({ error: 'Invalid token' });
+    }
   }
 };
 
@@ -3435,43 +3450,38 @@ app.get('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 app.post('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
   try {
-    const { email, name, userRole } = req.body;
+    const { email, name, userRole, externalUserId, provisionalPassword: clientPassword } = req.body;
     if (!email || !name) return res.status(400).json({ error: 'Email and name are required' });
-
     const existing = await Teacher.findOne({ email });
     if (existing) return res.status(400).json({ error: 'Email already registered' });
-
-    const provisionalPassword = Math.random().toString(36).slice(-10) + 'A1!';
-    const hashedPassword = await bcrypt.hash(provisionalPassword, 10);
-
+    const provisionalPassword = clientPassword || (Math.random().toString(36).slice(-10) + 'A1!');
     const validUserRoles = ['Formador/a', 'CoFormador/a', 'Coordinador/a'];
     const resolvedUserRole = validUserRoles.includes(userRole) ? userRole : 'Formador/a';
 
-    const teacher = await Teacher.create({ id: uuidv4(), name, email, password: hashedPassword, provisional: true, userRole: resolvedUserRole });
+    // Use externalUserId sent by frontend (browser registered directly), fallback to uuid
+    const localId = externalUserId || uuidv4();
+    console.log('[POST /api/admin/teachers] Saving teacher:', email, 'id:', localId, externalUserId ? '(external)' : '(local uuid)');
 
-    // Send password to email
+    const hashedPassword = await bcrypt.hash(provisionalPassword, 10);
+    const teacher = await Teacher.create({ id: localId, name, email, password: hashedPassword, provisional: true, userRole: resolvedUserRole });
+
+    // Send password email
     const emailSent = await sendPasswordEmail(email, name, provisionalPassword);
+    const emailWarning = emailSent ? undefined : 'No se pudo enviar el correo con las credenciales.';
 
-    if (emailSent) {
-      res.status(201).json({
-        message: 'Teacher created successfully. Password has been sent to their email address.',
-        teacher: { id: teacher.id, name: teacher.name, email: teacher.email }
-      });
-    } else {
-      // Still create teacher but alert admin
-      res.status(201).json({
-        message: 'Teacher created, but password email could not be sent. Please notify the teacher manually.',
-        teacher: { id: teacher.id, name: teacher.name, email: teacher.email },
-        warning: 'Email not sent'
-      });
-    }
+    res.status(201).json({
+      message: 'Teacher created successfully.',
+      teacher: { id: teacher.id, name: teacher.name, email: teacher.email },
+      ...(emailWarning && { emailWarning }),
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+
 
 app.put('/api/admin/teachers/:id', verifyToken, verifyAdmin, async (req, res) => {
   try {

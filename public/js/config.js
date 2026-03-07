@@ -12,10 +12,16 @@
         API_URL = productionUrl;
     } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         // Local development: point to the server port
-        API_URL = 'http://localhost:3001';
+        API_URL = 'http://localhost:3000';
     }
 
-    const config = { API_URL };
+    // External auth API (register/login)
+    let EXTERNAL_AUTH_URL = 'https://users.coderf5.es/v1';
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        EXTERNAL_AUTH_URL = 'http://127.0.0.1:8000';
+    }
+
+    const config = { API_URL, EXTERNAL_AUTH_URL };
 
     if (typeof window !== 'undefined') {
         window.APP_CONFIG = config;

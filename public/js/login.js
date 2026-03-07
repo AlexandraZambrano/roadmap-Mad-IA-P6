@@ -1,4 +1,4 @@
-const API_URL = "https://users.coderf5.es/infouser" || window.location.origin;
+const API_URL = "http://127.0.0.1:8000/infouser" || window.location.origin;
 
 function showAlert(message, type = 'danger') {
     const alert = document.getElementById(`${type}-alert`);
@@ -61,25 +61,45 @@ window.handleLogin = async function () {
         const data = await response.json();
         console.log('Login response:', data);
 
-        if (response.ok) {
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            localStorage.setItem('role', data.user.role);
+        if (response.ok && data.success && data.data?.token) {
+            const token = data.data.token;
+            const roles = Array.isArray(data.data.roles) ? data.data.roles : [];
+            console.log('roles:', roles);
+
+            // Role mapping from external API:
+            // ROLE_USER + ROLE_ADMIN together = superadmin (full platform admin)
+            // ROLE_ADMIN alone = teacher/coordinator
+            // ROLE_STUDENT = student
+            // ROLE_SUPER_ADMIN = superadmin
+            let role = 'teacher';
+            if (roles.includes('ROLE_SUPER_ADMIN') || roles.includes('ROLE_SUPERADMIN')) {
+                role = 'superadmin';
+            } else if (roles.includes('ROLE_USER') && roles.includes('ROLE_ADMIN')) {
+                role = 'superadmin';
+            } else if (roles.includes('ROLE_ADMIN')) {
+                role = 'teacher';
+            }
+
+            console.log('Mapped role:', role);
+
+            const user = {
+                id: data.data.userId || '',
+                name: data.data.name || data.data.email || '',
+                email: data.data.email || '',
+                role
+            };
+
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem('role', role);
             showAlert('Login successful! Redirecting...', 'success');
 
-            // Redirect based on role returned from server
             setTimeout(() => {
-                const role = data.user.role;
-                if (role === 'admin') {
-                    window.location.href = 'admin.html';
-                } else if (role === 'teacher') {
-                    window.location.href = 'dashboard.html';
-                } else {
-                    window.location.href = 'student-dashboard.html';
-                }
+                // All roles go to dashboard; superadmin has Admin Panel button in navbar
+                window.location.href = 'dashboard.html';
             }, 1000);
         } else {
-            showAlert(data.error || 'Login failed', 'danger');
+            showAlert(data.message || data.error || 'Login failed', 'danger');
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -90,7 +110,6 @@ window.handleLogin = async function () {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Add enter key listener
     const form = document.getElementById('login-form');
     if (form) {
         form.addEventListener('keydown', (e) => {

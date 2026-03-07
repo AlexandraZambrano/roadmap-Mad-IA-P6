@@ -33,6 +33,12 @@ function loadTeacherInfo() {
     if (currentUser && currentUser.name) {
         document.getElementById('teacher-name').textContent = currentUser.name;
     }
+    // Show admin panel button only for superadmin
+    const role = localStorage.getItem('role') || currentUser.role;
+    if (role === 'superadmin') {
+        document.getElementById('admin-panel-divider')?.classList.remove('d-none');
+        document.getElementById('admin-panel-item')?.classList.remove('d-none');
+    }
 }
 
 async function loadPromotions() {
