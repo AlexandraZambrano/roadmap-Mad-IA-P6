@@ -11,7 +11,9 @@
     if (productionUrl && !productionUrl.startsWith('__')) {
         API_URL = productionUrl;
     } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        // Local development: point to the server port
+        // Local development: point to the backend server port (3000)
+        // If the page is served from a different port (e.g. Live Server on :5500),
+        // API calls must still go to where the Node.js server actually listens.
         API_URL = 'http://localhost:3000';
     }
 

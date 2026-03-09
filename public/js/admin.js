@@ -134,105 +134,47 @@ function openCreateTeacherModal() {
 async function handleCreateTeacher(e) {
     e.preventDefault();
     const token = localStorage.getItem('token');
-    const EXTERNAL_AUTH_URL = window.APP_CONFIG?.EXTERNAL_AUTH_URL || 'http://127.0.0.1:8000';
     const name = document.getElementById('teacher-name').value;
     const email = document.getElementById('teacher-email').value;
     const userRole = document.getElementById('teacher-userrole').value;
+
     const submitBtn = e.target.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating…';
 
-    // Generate provisional password client-side
-    const provisionalPassword = Math.random().toString(36).slice(-10) + 'A1!';
-
     try {
-                // Step 1: Register in external auth API
-        // /register returns { success, data: { token, user: { email, roles } } }
-        // The identifier is the 'username' claim inside the JWT (= email)
-        let externalUserId = null;
-        let externalRegistered = false;
-        let externalWarning = null;
-        try {
-            const extRes = await fetch(`${EXTERNAL_AUTH_URL}/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password: provisionalPassword })
-            });
-            const extData = await extRes.json();
-            console.log('[register] external response:', JSON.stringify(extData));
-            if (extRes.ok && extData.success) {
-                externalRegistered = true;
-                // Step 1b: call /infouser with new credentials to get the numeric userId
-                // /infouser returns { success, data: { token, userId: 19, email, name, roles } }
-                try {
-                    const infoRes = await fetch(`${EXTERNAL_AUTH_URL}/infouser`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password: provisionalPassword })
-                    });
-                    const infoData = await infoRes.json();
-                    console.log('[infouser] response after register:', JSON.stringify(infoData));
-                    const info = infoData.data || infoData;
-                    if (info.userId) {
-                        externalUserId = String(info.userId); // numeric ID from external API
-                    } else {
-                        // fallback: extract username from /register JWT, then email
-                        const regToken = extData.data?.token;
-                        if (regToken) {
-                            try {
-                                const payload = JSON.parse(atob(regToken.split('.')[1]));
-                                externalUserId = payload.username || payload.email || payload.sub || email;
-                            } catch(e) { externalUserId = email; }
-                        } else {
-                            externalUserId = extData.data?.user?.email || email;
-                        }
-                    }
-                } catch (infoErr) {
-                    console.warn('[infouser] failed after register, falling back to email:', infoErr.message);
-                    externalUserId = email;
-                }
-            } else {
-                externalWarning = extData.message || extData.error || 'External registration failed';
-            }
-        } catch (extErr) {
-            externalWarning = 'External auth API unreachable: ' + extErr.message;
-        }
-        // If external registration failed, stop and warn admin
-        if (!externalRegistered) {
-            alert('No se pudo registrar en el sistema de autenticación externo:\n' + (externalWarning || 'Error desconocido'));
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Create Account';
-            return;
-        }
-        // externalUserId = email (the stable identifier matching decoded.username in JWT)
-        if (!externalUserId) externalUserId = email;
-        // Step 2: Save to MongoDB via local server
         const response = await fetch(`${API_URL}/api/admin/teachers`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ name, email, userRole, externalUserId, provisionalPassword })
+            body: JSON.stringify({ name, email, userRole })
         });
+
         const data = await response.json();
+
         if (response.ok) {
             createModal.hide();
             e.target.reset();
+
+            // Show success modal with password and status
             document.getElementById('success-email').textContent = email;
-            document.getElementById('provisional-password').textContent = provisionalPassword;
+            document.getElementById('provisional-password').textContent = data.provisionalPassword || '—';
+
             const statusEl = document.getElementById('success-external-status');
             if (statusEl) {
-                if (externalRegistered) {
+                if (data.externalRegistered) {
                     statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Registrado en el sistema de autenticación externo.</span>';
                 } else {
-                    statusEl.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>${externalWarning || 'No se pudo registrar en el sistema externo.'}</span>`;
+                    statusEl.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>${data.warning || 'No se pudo registrar en el sistema externo.'}</span>`;
                 }
             }
             if (data.emailWarning) {
                 const emailWarnEl = document.getElementById('success-email-warning');
                 if (emailWarnEl) emailWarnEl.textContent = data.emailWarning;
             }
+
             successModal.show();
             loadTeachers();
         } else {

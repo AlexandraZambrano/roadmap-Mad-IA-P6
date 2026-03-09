@@ -27,6 +27,10 @@
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    <li class="nav-item d-flex align-items-center me-2 gap-1">
+                        <button id="lang-en-btn" onclick="setLanguage('en')" class="btn btn-sm" style="border:1px solid #ff4700;border-radius:4px;padding:2px 8px;font-size:0.8rem;">EN</button>
+                        <button id="lang-es-btn" onclick="setLanguage('es')" class="btn btn-sm" style="border:1px solid #ff4700;border-radius:4px;padding:2px 8px;font-size:0.8rem;">ES</button>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button"
                             data-bs-toggle="dropdown" aria-expanded="false">
@@ -62,9 +66,13 @@
                             <h1 class="page-title m-0">Mis Promociones</h1> 
                             <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" height="50" class="d-lg-block mb-1"/> 
                         </div>
-                        <button class="btn-new" onclick="openNewPromotionModal()">
-                            <i class="bi bi-plus-circle me-2"></i>Añadir Promoción
-                        </button>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="text-muted small">Promociones: <strong id="promotions-count">0</strong></span>
+                            <span class="text-muted small">Módulos totales: <strong id="modules-count">0</strong></span>
+                            <button class="btn-new" onclick="openNewPromotionModal()">
+                                <i class="bi bi-plus-circle me-2"></i>Añadir Promoción
+                            </button>
+                        </div>
                     </div>
 
                     <div id="promotions-list" class="row">
@@ -219,10 +227,16 @@
         // Update language buttons based on current language
         function updateLangButtons() {
             const currentLang = getCurrentLanguage();
-            document.getElementById('lang-en-btn').style.background = currentLang === 'en' ? '#ff4700' : 'transparent';
-            document.getElementById('lang-en-btn').style.color = currentLang === 'en' ? 'white' : '#ff4700';
-            document.getElementById('lang-es-btn').style.background = currentLang === 'es' ? '#ff4700' : 'transparent';
-            document.getElementById('lang-es-btn').style.color = currentLang === 'es' ? 'white' : '#ff4700';
+            const enBtn = document.getElementById('lang-en-btn');
+            const esBtn = document.getElementById('lang-es-btn');
+            if (enBtn) {
+                enBtn.style.background = currentLang === 'en' ? '#ff4700' : 'transparent';
+                enBtn.style.color = currentLang === 'en' ? 'white' : '#ff4700';
+            }
+            if (esBtn) {
+                esBtn.style.background = currentLang === 'es' ? '#ff4700' : 'transparent';
+                esBtn.style.color = currentLang === 'es' ? 'white' : '#ff4700';
+            }
         }
 
         // Apply translations when language changes

@@ -99,13 +99,15 @@ function displayPromotions(promotions, userId) {
 }
 
 function updateDashboardStats(promotions) {
-    document.getElementById('promotions-count').textContent = promotions.length;
+    const countEl = document.getElementById('promotions-count');
+    const modulesEl = document.getElementById('modules-count');
+    if (countEl) countEl.textContent = promotions.length;
 
     let totalModules = 0;
     promotions.forEach(p => {
         totalModules += (p.modules || []).length;
     });
-    document.getElementById('modules-count').textContent = totalModules;
+    if (modulesEl) modulesEl.textContent = totalModules;
 }
 
 function setupNavigation() {
