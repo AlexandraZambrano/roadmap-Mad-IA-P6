@@ -1,8 +1,9 @@
-// API URL is loaded from window.APP_CONFIG (set by config.js via /api/config)
-// Falls back to production URL if config hasn't loaded yet
+// Login goes through OUR server proxy (/api/auth/external-login) to avoid CORS issues.
+// The browser MUST NOT call the external auth server directly — Symfony redirects produce
+// ERR_FAILED (net::ERR_FAILED 200 OK) because the redirect target has no CORS headers.
 function getLoginUrl() {
-    const base = window.APP_CONFIG?.EXTERNAL_AUTH_URL || 'https://users.coderf5.es';
-    return `${base}/infouser`;
+    const base = window.APP_CONFIG?.API_URL || window.location.origin;
+    return `${base}/api/auth/external-login`;
 }
 
 function showAlert(message, type) {

@@ -3768,7 +3768,7 @@ async function deleteSection(sectionId) {
 async function previewPromotion() {
     // Generate the same link as Access Settings
     const baseUrl = window.location.origin;
-    const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
+    const isLiveServer = window.location.port === '5500' || window.location.hostname === 'localhost';
     const isGitHubPages = window.location.hostname.includes('github.io');
 
     let path;
@@ -4168,7 +4168,7 @@ async function loadAccessPassword() {
             if (accessLinkInput) {
                 const baseUrl = window.location.origin;
                 // Detect different environments and adjust path accordingly
-                const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
+                const isLiveServer = window.location.port === '5500' || window.location.hostname === 'localhost';
                 const isGitHubPages = window.location.hostname.includes('github.io');
 
                 let path;
@@ -4240,7 +4240,7 @@ async function updateAccessPassword() {
             if (accessLinkInput) {
                 const baseUrl = window.location.origin;
                 // Detect different environments and adjust path accordingly
-                const isLiveServer = window.location.port === '5500' || window.location.hostname === '127.0.0.1';
+                const isLiveServer = window.location.port === '5500' || window.location.hostname === 'localhost';
                 const isGitHubPages = window.location.hostname.includes('github.io');
 
                 let path;

@@ -8,7 +8,7 @@
     const productionUrl = '__BACKEND_URL_PLACEHOLDER__'; // replaced by GitHub Actions
     if (productionUrl && !productionUrl.startsWith('__')) {
         API_URL = productionUrl;
-    } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    } else if (window.location.hostname === 'localhost' || window.location.hostname === 'localhost') {
         API_URL = 'http://localhost:3000';
     }
 

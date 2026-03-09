@@ -426,9 +426,9 @@ window.changePassword = async function () {
     }
 
     try {
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === 'localhost';
         const resetUrl = isLocal
-            ? 'http://127.0.0.1:8000/reset-password/api-request-reset'
+            ? 'http://localhost:8000/reset-password/api-request-reset'
             : 'https://users.coderf5.es/reset-password/api-request-reset';
 
         const response = await fetch(resetUrl, {

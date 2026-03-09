@@ -51,7 +51,7 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/bootcamp-m
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const EXTERNAL_AUTH_BASE = IS_PRODUCTION
   ? (process.env.EXTERNAL_AUTH_URL_PROD || 'https://users.coderf5.es')
-  : (process.env.EXTERNAL_AUTH_URL_DEV  || 'http://127.0.0.1:8000');
+  : (process.env.EXTERNAL_AUTH_URL_DEV  || 'http://localhost:8000');
 
 console.log(`[config] NODE_ENV=${process.env.NODE_ENV || 'development'} → EXTERNAL_AUTH_BASE=${EXTERNAL_AUTH_BASE}`);
 
@@ -96,11 +96,11 @@ const upload = multer({
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://127.0.0.1:3000',
+  'http://localhost:3000',
   'http://localhost:3001',
-  'http://127.0.0.1:3001',
+  'http://localhost:3001',
   'http://localhost:5500',
-  'http://127.0.0.1:5500',
+  'http://localhost:5500',
   'https://alexandrazambrano.github.io',
   'https://roadmap-manager-latest.onrender.com'
 ];
@@ -1173,7 +1173,18 @@ app.post('/api/auth/external-login', async (req, res) => {
       body: JSON.stringify({ email, password })
     });
 
-    const extData = await extRes.json();
+    // Read as text first — Symfony may return an HTML debug page instead of JSON
+    // (e.g. when APP_DEBUG=true and a dump() call is present in the controller)
+    const rawText = await extRes.text();
+    let extData = {};
+    try {
+      extData = JSON.parse(rawText);
+    } catch {
+      // Response was not JSON (HTML debug page, plain text error, etc.)
+      console.error('[external-login proxy] Symfony returned non-JSON response. First 200 chars:', rawText.substring(0, 200));
+      return res.status(502).json({ error: 'Auth server returned an unexpected response. Check Symfony logs (remove any dump() calls).' });
+    }
+
     if (extData.data?.token) {
       // Decode without verify just to log the roles
       const payload = JSON.parse(Buffer.from(extData.data.token.split('.')[1], 'base64').toString());
