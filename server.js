@@ -45,6 +45,16 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/bootcamp-manager';
 
+// External auth base URL — driven by NODE_ENV in .env
+// NODE_ENV=development → uses EXTERNAL_AUTH_URL_DEV (local Symfony)
+// NODE_ENV=production  → uses EXTERNAL_AUTH_URL_PROD (users.coderf5.es)
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const EXTERNAL_AUTH_BASE = IS_PRODUCTION
+  ? (process.env.EXTERNAL_AUTH_URL_PROD || 'https://users.coderf5.es')
+  : (process.env.EXTERNAL_AUTH_URL_DEV  || 'http://127.0.0.1:8000');
+
+console.log(`[config] NODE_ENV=${process.env.NODE_ENV || 'development'} → EXTERNAL_AUTH_BASE=${EXTERNAL_AUTH_BASE}`);
+
 // Public key of the external auth server (https://users.coderf5.es) — used to verify RS256 tokens
 let EXTERNAL_JWT_PUBLIC_KEY = null;
 try {
@@ -110,6 +120,15 @@ app.use(cors({
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+// Public config endpoint — exposes safe runtime variables to the frontend
+// Never put secrets here, only public URLs
+app.get('/api/config', (req, res) => {
+  res.json({
+    externalAuthUrl: EXTERNAL_AUTH_BASE,
+    env: IS_PRODUCTION ? 'production' : 'development'
+  });
+});
 
 // Serve static files from public directory
 app.use(express.static(join(__dirname, 'public')));
@@ -1148,7 +1167,7 @@ app.post('/api/auth/external-login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 
-    const extRes = await fetch('https://users.coderf5.es/infouser', {
+    const extRes = await fetch(`${EXTERNAL_AUTH_BASE}/infouser`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -1181,7 +1200,7 @@ app.post('/api/auth/external-verify', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
 
-    const extRes = await fetch('https://users.coderf5.es/infouser', {
+    const extRes = await fetch(`${EXTERNAL_AUTH_BASE}/infouser`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -1193,6 +1212,33 @@ app.post('/api/auth/external-verify', async (req, res) => {
     }
     return res.status(401).json({ success: false, message: extData.message || 'Contraseña incorrecta' });
   } catch (error) {
+    res.status(502).json({ error: 'External auth server unreachable' });
+  }
+});
+
+// Proxy to external reset-password API — changes password via users.coderf5.es
+// Body: { email, currentPassword, newPassword }
+app.post('/api/auth3000password', verifyToken, async (req, res) => {
+  try {
+    const { email, currentPassword, newPassword } = req.body;
+    if (!email || !currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'email, currentPassword and newPassword are required' });
+    }
+
+    const extRes = await fetch(`${EXTERNAL_AUTH_BASE}/reset-password/api-request-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, currentPassword, newPassword })
+    });
+
+    const extData = await extRes.json();
+    if (extRes.ok && (extData.success !== false)) {
+      return res.json({ success: true, message: extData.message || 'Contraseña actualizada correctamente' });
+    }
+    const statusToReturn = extRes.status >= 400 ? extRes.status : 400;
+    return res.status(statusToReturn).json({ success: false, message: extData.message || extData.error || 'Error al cambiar la contraseña' });
+  } catch (error) {
+    console.error('[reset-password proxy] Error:', error.message);
     res.status(502).json({ error: 'External auth server unreachable' });
   }
 });
@@ -3680,7 +3726,7 @@ app.post('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
     let externalRegistered = false;
     let externalError = null;
     try {
-      const extRegRes = await fetch('https://users.coderf5.es/register', {
+      const extRegRes = await fetch(`${EXTERNAL_AUTH_BASE}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: provisionalPassword, name })

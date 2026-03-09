@@ -1,4 +1,9 @@
-const API_URL = "http://127.0.0.1:8000/infouser";
+// API URL is loaded from window.APP_CONFIG (set by config.js via /api/config)
+// Falls back to production URL if config hasn't loaded yet
+function getLoginUrl() {
+    const base = window.APP_CONFIG?.EXTERNAL_AUTH_URL || 'https://users.coderf5.es';
+    return `${base}/infouser`;
+}
 
 function showAlert(message, type) {
     if (type === undefined) type = 'danger';
@@ -51,7 +56,7 @@ window.handleLogin = async function () {
     console.log('Attempting login for:', email);
 
     try {
-        var response = await fetch(API_URL, {
+        var response = await fetch(getLoginUrl(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email, password: password })
