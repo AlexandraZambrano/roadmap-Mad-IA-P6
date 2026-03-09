@@ -92,6 +92,11 @@
                                 <i class="bi bi-person-plus me-2"></i>Collaboradores
                             </a>
                         </li>
+                        <li class="nav-item teacher-only">
+                            <a class="nav-link" href="#evaluation" onclick="switchTab('evaluation')">
+                                <i class="bi bi-clipboard-check me-2"></i>Evaluación
+                            </a>
+                        </li>
                         <li class="nav-item mt-4 teacher-only">
                             <button type="button" class="nav-link text-start text-danger fw-semibold" onclick="openDeletePromotionModal()">
                                 <i class="bi bi-trash me-2"></i>Eliminar promoción
@@ -925,7 +930,48 @@
                         </div>
                     </div>
                 </div>
+                <!-- Evaluación Tab -->
+                <div id="evaluation-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <div>
+                            <h2><i class="bi bi-clipboard-check me-2 text-primary"></i>Evaluación de Proyectos</h2>
+                            <p class="text-muted small mb-0">Evalúa a los estudiantes por proyecto y módulo. Los resultados se sincronizan con la ficha de seguimiento de cada estudiante.</p>
+                        </div>
+                    </div>
+                    <div id="evaluation-content">
+                        <div class="text-center text-muted py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">Cargando proyectos...</p>
+                        </div>
+                    </div>
+                </div>
+
             </main>
+        </div>
+    </div>
+
+    <!-- Evaluation Modal -->
+    <div class="modal fade" id="evaluationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,#E85D26,#f97316);color:#fff;">
+                    <h5 class="modal-title fw-bold" id="eval-modal-title">
+                        <i class="bi bi-clipboard-check me-2"></i>Evaluación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="eval-modal-body">
+                    <!-- Populated dynamically by openEvaluationModal() -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary d-none" id="eval-modal-save-btn"
+                        onclick="saveProjectEvaluation()"
+                        style="background:#E85D26;border-color:#E85D26;">
+                        <i class="bi bi-save me-1"></i>Guardar evaluación
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 

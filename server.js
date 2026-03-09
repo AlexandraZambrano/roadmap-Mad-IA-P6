@@ -1455,11 +1455,20 @@ app.get('/api/promotions/:promotionId/students', verifyToken, async (req, res) =
       name: student.name,
       lastname: student.lastname,
       email: student.email,
+      phone: student.phone,
       age: student.age,
+      administrativeSituation: student.administrativeSituation,
       nationality: student.nationality,
+      identificationDocument: student.identificationDocument,
+      gender: student.gender,
+      englishLevel: student.englishLevel,
+      educationLevel: student.educationLevel,
       profession: student.profession,
+      community: student.community,
       address: student.address,
-      promotionId: student.promotionId
+      promotionId: student.promotionId,
+      isWithdrawn: student.isWithdrawn,
+      withdrawal: student.withdrawal
     }));
 
     res.json(normalizedStudents);
@@ -2934,8 +2943,15 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
       lastName, lastname,  // Support both lastName and lastname
       age,
       nationality,
-      profession,          // New field
-      address,            // New field
+      profession,
+      address,
+      phone,
+      administrativeSituation,
+      identificationDocument,
+      gender,
+      englishLevel,
+      educationLevel,
+      community,
       paperStatus,
       description,
       workBackground,
@@ -2966,11 +2982,18 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
       student._id,
       {
         name: name || student.name,
-        lastname: finalLastname || student.lastname || '',  // Provide default if field doesn't exist
+        lastname: finalLastname || student.lastname || '',
         age: age !== undefined ? age : (student.age || null),
+        phone: phone !== undefined ? phone : (student.phone || ''),
+        administrativeSituation: administrativeSituation !== undefined ? administrativeSituation : (student.administrativeSituation || ''),
         nationality: nationality !== undefined ? nationality : (student.nationality || ''),
-        profession: profession !== undefined ? profession : (student.profession || ''),     // New field
-        address: address !== undefined ? address : (student.address || ''),             // New field
+        identificationDocument: identificationDocument !== undefined ? identificationDocument : (student.identificationDocument || ''),
+        gender: gender !== undefined ? gender : (student.gender || ''),
+        englishLevel: englishLevel !== undefined ? englishLevel : (student.englishLevel || ''),
+        educationLevel: educationLevel !== undefined ? educationLevel : (student.educationLevel || ''),
+        profession: profession !== undefined ? profession : (student.profession || ''),
+        community: community !== undefined ? community : (student.community || ''),
+        address: address !== undefined ? address : (student.address || ''),
         paperStatus: paperStatus || student.paperStatus,
         description: description || student.description,
         workBackground: workBackground || student.workBackground,
@@ -2986,9 +3009,16 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
         name: updatedStudent.name,
         lastname: updatedStudent.lastname,
         email: updatedStudent.email,
+        phone: updatedStudent.phone,
         age: updatedStudent.age,
+        administrativeSituation: updatedStudent.administrativeSituation,
         nationality: updatedStudent.nationality,
+        identificationDocument: updatedStudent.identificationDocument,
+        gender: updatedStudent.gender,
+        englishLevel: updatedStudent.englishLevel,
+        educationLevel: updatedStudent.educationLevel,
         profession: updatedStudent.profession,
+        community: updatedStudent.community,
         address: updatedStudent.address
       }
     });

@@ -5,9 +5,16 @@ const StudentSchema = new mongoose.Schema({
     name: { type: String, required: true },
     lastname: { type: String, required: false, default: '' }, // Changed to not required for existing students
     email: { type: String, required: true },
+    phone: { type: String, default: '' },
     age: { type: Number, default: null },
+    administrativeSituation: { type: String, default: '' },
     nationality: { type: String, default: '' },
+    identificationDocument: { type: String, default: '' },
+    gender: { type: String, default: '' },
+    englishLevel: { type: String, default: '' },
+    educationLevel: { type: String, default: '' },
     profession: { type: String, default: '' }, // Current profession/background
+    community: { type: String, default: '' },
     address: { type: String, default: '' }, // Full address
     promotionId: { type: String },
     notes: { type: String, default: '' }, // Teacher notes about the student
