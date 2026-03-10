@@ -23,6 +23,18 @@ import ExtendedInfo from './backend/models/ExtendedInfo.js';
 import Calendar from './backend/models/Calendar.js';
 import Attendance from './backend/models/Attendance.js';
 import BootcampTemplate from './backend/models/BootcampTemplate.js';
+import Competence from './backend/models/Competence.js';
+import Indicator from './backend/models/Indicator.js';
+import Tool from './backend/models/Tool.js';
+import Area from './backend/models/Area.js';
+import Level from './backend/models/Level.js';
+import Resource from './backend/models/Resource.js';
+import Referent from './backend/models/Referent.js';
+import ResourceType from './backend/models/ResourceType.js';
+import CompetenceIndicator from './backend/models/CompetenceIndicator.js';
+import CompetenceTool from './backend/models/CompetenceTool.js';
+import CompetenceArea from './backend/models/CompetenceArea.js';
+import CompetenceResource from './backend/models/CompetenceResource.js';
 import { sendPasswordEmail } from './backend/utils/email.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,9 +58,19 @@ console.log(`[config] NODE_ENV=${process.env.NODE_ENV || 'development'} → EXTE
 // Public key of the external auth server (https://users.coderf5.es) — used to verify RS256 tokens
 let EXTERNAL_JWT_PUBLIC_KEY = null;
 try {
-  EXTERNAL_JWT_PUBLIC_KEY = readFileSync(join(__dirname, 'backend', 'keys', 'public.pem'), 'utf8');
+  // Try both lowercase and uppercase paths for cross-platform compatibility
+  let keyPath = join(__dirname, 'backend', 'keys', 'public.pem');
+  try {
+    EXTERNAL_JWT_PUBLIC_KEY = readFileSync(keyPath, 'utf8');
+  } catch {
+    // Try with uppercase Keys folder (Windows case sensitivity issue)
+    keyPath = join(__dirname, 'backend', 'Keys', 'public.pem');
+    EXTERNAL_JWT_PUBLIC_KEY = readFileSync(keyPath, 'utf8');
+  }
+  console.log('[auth] Loaded external JWT public key from ' + keyPath);
 } catch (e) {
-  console.warn('[auth] Could not load backend/keys/public.pem — external tokens will be rejected:', e.message);
+  console.warn('[auth] Could not load public key — external tokens will be rejected:', e.message);
+  console.warn('[auth] Make sure the file exists at backend/keys/public.pem or update EXTERNAL_AUTH_BASE in .env');
 }
 
 // MongoDB Connection
@@ -240,9 +262,12 @@ const verifyToken = async (req, res, next) => {
         };
       }
       return next();
-    } catch (_) {
+    } catch (err) {
+      console.error('[verifyToken] RS256 verification failed:', err.message);
       // Not a valid external token — fall through to internal check
     }
+  } else {
+    console.warn('[verifyToken] EXTERNAL_JWT_PUBLIC_KEY not loaded, skipping external token verification');
   }
 
   // 2. Try verifying with our internal HS256 secret (admin / student local accounts)
@@ -250,6 +275,7 @@ const verifyToken = async (req, res, next) => {
     req.user = jwt.verify(token, JWT_SECRET);
     next();
   } catch (error) {
+    console.error('[verifyToken] Token verification failed - both external RS256 and internal HS256 failed:', error.message);
     res.status(401).json({ error: 'Invalid token' });
   }
 };
@@ -348,19 +374,19 @@ async function evalApiGet(path, userToken) {
   const sep = baseUrl.includes('?') ? '&' : '?';
   const url = `${baseUrl}${sep}page_size=200`;
 
-
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${userToken}`, 'Content-Type': 'application/json' }
   });
 
-
   if (!res.ok) {
     const errText = await res.text();
-    console.error(`[evalApiGet] ❌ Error body for ${path}:`, errText.substring(0, 300));
+    // Log as info/debug, not error — this is expected when external API is unavailable
+    console.log(`[evalApiGet] External API ${path} returned ${res.status} (expected when API unavailable)`);
     throw new Error(`Eval API ${path} → ${res.status}`);
   }
 
   const json = await res.json();
+  console.log(`[evalApiGet] ✓ Successfully fetched ${path} from Eval API`);
 
   // Handle Django REST paginated response: { count, next, results: [] }
   if (!Array.isArray(json) && json.results) {
@@ -413,19 +439,9 @@ function normaliseEvalCompetence(comp) {
   const areaStrings = Array.isArray(comp.area) ? comp.area : [];
   const areas = areaStrings.map((name, idx) => ({ id: idx + 1, name, icon: '' }));
 
-  // tools array — preserve full tool objects including indicators
+  // tools array — extract tool objects (without indicators, just id/name/description)
   const toolsRaw = comp.tools || [];
-  const tools = toolsRaw.map(t => ({
-    id: t.id,
-    name: t.name,
-    description: t.description || '',
-    indicators: (t.indicators || []).map(ind => ({
-      id: ind.id,
-      name: ind.name,
-      description: ind.description || '',
-      levelId: ind.levelId ?? ind.level_id ?? ind.level ?? 1
-    }))
-  }));
+  const tools = toolsRaw.map(t => ({ id: t.id, name: t.name, description: t.description || '' }));
 
   // Build levels by collecting indicators from ALL tools and grouping by levelId
   // Each tool has its own indicators with a numeric levelId field
@@ -462,76 +478,177 @@ function normaliseEvalCompetence(comp) {
   };
 }
 
-// GET /api/areas — external evaluation API only
+// GET /api/areas — tries external evaluation API first, falls back to local DB
 app.get('/api/areas', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    const rows = await evalApiGet('/areas/', token);
-    res.json(rows);
+    try {
+      const rows = await evalApiGet('/areas/', token);
+      console.log('[GET /api/areas] ✓ Fetched from external API:', rows.length, 'areas');
+      return res.json(rows);
+    } catch (evalErr) {
+      console.log('[GET /api/areas] Using local DB fallback (external API unavailable)');
+    }
+    // Fallback to local database
+    const areas = await Area.find({}).sort({ id: 1 }).lean();
+    console.log('[GET /api/areas] ✓ Fallback returned', areas.length, 'areas from local DB');
+    res.json(areas);
   } catch (error) {
-    console.error('[GET /api/areas] Error:', error);
-    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
+    console.error('[GET /api/areas] Server error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/tools — external evaluation API only
+// GET /api/tools — tries external evaluation API first, falls back to local DB
 app.get('/api/tools', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    const rows = await evalApiGet('/tools/', token);
-    res.json(rows);
+    try {
+      const rows = await evalApiGet('/tools/', token);
+      console.log('[GET /api/tools] ✓ Fetched from external API:', rows.length, 'tools');
+      return res.json(rows);
+    } catch (evalErr) {
+      console.log('[GET /api/tools] Using local DB fallback (external API unavailable)');
+    }
+    const tools = await Tool.find({}).sort({ id: 1 }).lean();
+    console.log('[GET /api/tools] ✓ Fallback returned', tools.length, 'tools from local DB');
+    res.json(tools);
   } catch (error) {
-    console.error('[GET /api/tools] Error:', error);
-    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
+    console.error('[GET /api/tools] Server error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/indicators — external evaluation API only
+// GET /api/indicators — tries external evaluation API first, falls back to local DB
 app.get('/api/indicators', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    const rows = await evalApiGet('/indicators/', token);
-    res.json(rows);
+    try {
+      const rows = await evalApiGet('/indicators/', token);
+      console.log('[GET /api/indicators] ✓ Fetched from external API:', rows.length, 'indicators');
+      return res.json(rows);
+    } catch (evalErr) {
+      console.log('[GET /api/indicators] Using local DB fallback (external API unavailable)');
+    }
+    const indicators = await Indicator.find({}).lean();
+    console.log('[GET /api/indicators] ✓ Fallback returned', indicators.length, 'indicators from local DB');
+    res.json(indicators);
   } catch (error) {
-    console.error('[GET /api/indicators] Error:', error);
-    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
+    console.error('[GET /api/indicators] Server error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/levels — external evaluation API only
+// GET /api/levels — tries external evaluation API first, falls back to local DB
 app.get('/api/levels', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    const rows = await evalApiGet('/levels/', token);
-    res.json(rows);
+    try {
+      const rows = await evalApiGet('/levels/', token);
+      console.log('[GET /api/levels] ✓ Fetched from external API:', rows.length, 'levels');
+      return res.json(rows);
+    } catch (evalErr) {
+      console.log('[GET /api/levels] Using local DB fallback (external API unavailable)');
+    }
+    const levels = await Level.find({}).lean();
+    console.log('[GET /api/levels] ✓ Fallback returned', levels.length, 'levels from local DB');
+    res.json(levels);
   } catch (error) {
-    console.error('[GET /api/levels] Error:', error);
-    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
+    console.error('[GET /api/levels] Server error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/resources — external evaluation API only
+// GET /api/resources — tries external evaluation API first, falls back to local DB
 app.get('/api/resources', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    const rows = await evalApiGet('/resources/', token);
-    res.json(rows);
+    try {
+      const rows = await evalApiGet('/resources/', token);
+      console.log('[GET /api/resources] ✓ Fetched from external API:', rows.length, 'resources');
+      return res.json(rows);
+    } catch (evalErr) {
+      console.log('[GET /api/resources] Using local DB fallback (external API unavailable)');
+    }
+    const resources = await Resource.find({}).lean();
+    console.log('[GET /api/resources] ✓ Fallback returned', resources.length, 'resources from local DB');
+    res.json(resources);
   } catch (error) {
-    console.error('[GET /api/resources] Error:', error);
-    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
+    console.error('[GET /api/resources] Server error:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/competences — external evaluation API only, normalised with full tool indicators
+// GET /api/competences — tries external evaluation API first (normalised), falls back to local DB
 app.get('/api/competences', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    const rows = await evalApiGet('/competences/', token);
-    const normalised = rows.map(normaliseEvalCompetence);
-    res.json(normalised);
+    try {
+      const rows = await evalApiGet('/competences/', token);
+      const normalised = rows.map(normaliseEvalCompetence);
+      console.log('[GET /api/competences] ✓ Fetched from external API:', normalised.length, 'competences');
+      return res.json(normalised);
+    } catch (evalErr) {
+      console.log('[GET /api/competences] Using local DB fallback (external API unavailable)');
+    }
+
+    // ── Local DB fallback (full enrichment) ──────────────────────────────────
+    const [
+      competences, indicators, tools, areas, levels,
+      compIndicators, compTools, compAreas
+    ] = await Promise.all([
+      Competence.find({}).sort({ id: 1 }).lean(),
+      Indicator.find({}).lean(),
+      Tool.find({}).lean(),
+      Area.find({}).lean(),
+      Level.find({}).lean(),
+      CompetenceIndicator.find({}).lean(),
+      CompetenceTool.find({}).lean(),
+      CompetenceArea.find({}).lean()
+    ]);
+
+    console.log('[GET /api/competences] Local DB fallback:', competences.length, 'competences');
+
+    const indicatorMap = Object.fromEntries(indicators.map(i => [i.id, i]));
+    const toolMap      = Object.fromEntries(tools.map(t => [t.id, t]));
+    const areaMap      = Object.fromEntries(areas.map(a => [a.id, a]));
+    const levelMap     = Object.fromEntries(levels.map(l => [l.id, l]));
+
+    const indsByComp  = {};
+    compIndicators.forEach(ci => { (indsByComp[ci.id_competence] ??= []).push(ci.id_indicator); });
+    const toolsByComp = {};
+    compTools.forEach(ct => { (toolsByComp[ct.id_competence] ??= []).push(ct.id_tool); });
+    const areasByComp = {};
+    compAreas.forEach(ca => { (areasByComp[ca.id_competence] ??= []).push(ca.id_area); });
+
+    const enriched = competences.map(comp => {
+      const compAreasList = (areasByComp[comp.id] || [])
+        .map(aId => areaMap[aId]).filter(Boolean)
+        .map(a => ({ id: a.id, name: a.name, icon: a.icon }));
+
+      const rawIndicators = (indsByComp[comp.id] || []).map(iId => indicatorMap[iId]).filter(Boolean);
+      const indicatorsByLevel = {};
+      rawIndicators.forEach(ind => {
+        const lvl = ind.levelId || 0;
+        if (!indicatorsByLevel[lvl]) {
+          indicatorsByLevel[lvl] = { levelId: lvl, levelName: levelMap[lvl]?.name || `Nivel ${lvl}`, levelDescription: levelMap[lvl]?.description || '', indicators: [] };
+        }
+        indicatorsByLevel[lvl].indicators.push({ id: ind.id, name: ind.name, description: ind.description });
+      });
+      const levels_grouped = Object.values(indicatorsByLevel).sort((a, b) => a.levelId - b.levelId);
+
+      const compToolsList = (toolsByComp[comp.id] || [])
+        .map(tId => toolMap[tId]).filter(Boolean)
+        .map(t => ({ id: t.id, name: t.name, description: t.description }));
+
+      return { id: comp.id, name: comp.name, description: comp.description, areas: compAreasList, levels: levels_grouped, tools: compToolsList };
+    });
+
+    console.log(`[GET /api/competences] Returning ${enriched.length} competences from local DB fallback`);
+    res.json(enriched);
   } catch (error) {
     console.error('[GET /api/competences] Error:', error);
-    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -544,6 +661,7 @@ app.get('/api/promotions/:promotionId/access-password', verifyToken, async (req,
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
+    console.log('[GET access-password] Promotion found:', promotion.id, 'Password:', promotion.accessPassword);
     res.json({ accessPassword: promotion.accessPassword || null });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1370,20 +1488,11 @@ app.get('/api/promotions/:promotionId/students', verifyToken, async (req, res) =
       name: student.name,
       lastname: student.lastname,
       email: student.email,
-      phone: student.phone,
       age: student.age,
-      administrativeSituation: student.administrativeSituation,
       nationality: student.nationality,
-      identificationDocument: student.identificationDocument,
-      gender: student.gender,
-      englishLevel: student.englishLevel,
-      educationLevel: student.educationLevel,
       profession: student.profession,
-      community: student.community,
       address: student.address,
-      promotionId: student.promotionId,
-      isWithdrawn: student.isWithdrawn,
-      withdrawal: student.withdrawal
+      promotionId: student.promotionId
     }));
 
     res.json(normalizedStudents);
@@ -2858,15 +2967,8 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
       lastName, lastname,  // Support both lastName and lastname
       age,
       nationality,
-      profession,
-      address,
-      phone,
-      administrativeSituation,
-      identificationDocument,
-      gender,
-      englishLevel,
-      educationLevel,
-      community,
+      profession,          // New field
+      address,            // New field
       paperStatus,
       description,
       workBackground,
@@ -2897,18 +2999,11 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
       student._id,
       {
         name: name || student.name,
-        lastname: finalLastname || student.lastname || '',
+        lastname: finalLastname || student.lastname || '',  // Provide default if field doesn't exist
         age: age !== undefined ? age : (student.age || null),
-        phone: phone !== undefined ? phone : (student.phone || ''),
-        administrativeSituation: administrativeSituation !== undefined ? administrativeSituation : (student.administrativeSituation || ''),
         nationality: nationality !== undefined ? nationality : (student.nationality || ''),
-        identificationDocument: identificationDocument !== undefined ? identificationDocument : (student.identificationDocument || ''),
-        gender: gender !== undefined ? gender : (student.gender || ''),
-        englishLevel: englishLevel !== undefined ? englishLevel : (student.englishLevel || ''),
-        educationLevel: educationLevel !== undefined ? educationLevel : (student.educationLevel || ''),
-        profession: profession !== undefined ? profession : (student.profession || ''),
-        community: community !== undefined ? community : (student.community || ''),
-        address: address !== undefined ? address : (student.address || ''),
+        profession: profession !== undefined ? profession : (student.profession || ''),     // New field
+        address: address !== undefined ? address : (student.address || ''),             // New field
         paperStatus: paperStatus || student.paperStatus,
         description: description || student.description,
         workBackground: workBackground || student.workBackground,
@@ -2924,16 +3019,9 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
         name: updatedStudent.name,
         lastname: updatedStudent.lastname,
         email: updatedStudent.email,
-        phone: updatedStudent.phone,
         age: updatedStudent.age,
-        administrativeSituation: updatedStudent.administrativeSituation,
         nationality: updatedStudent.nationality,
-        identificationDocument: updatedStudent.identificationDocument,
-        gender: updatedStudent.gender,
-        englishLevel: updatedStudent.englishLevel,
-        educationLevel: updatedStudent.educationLevel,
         profession: updatedStudent.profession,
-        community: updatedStudent.community,
         address: updatedStudent.address
       }
     });
@@ -3341,8 +3429,12 @@ app.post('/api/promotions/:promotionId/calendar', verifyToken, async (req, res) 
 app.get('/api/promotions/:promotionId/extended-info', async (req, res) => {
   try {
     const extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    console.log(`[GET /api/promotions/${req.params.promotionId}/extended-info] Found:`, !!extendedInfo);
+    if (extendedInfo) {
+      console.log('[extended-info] Has competences:', !!extendedInfo.competences, 'count:', (extendedInfo.competences || []).length);
+    }
     if (!extendedInfo) {
-      return res.json({ schedule: {}, team: [], resources: [], evaluation: '', pildoras: [], pildorasAssignmentOpen: false });
+      return res.json({ schedule: {}, team: [], resources: [], evaluation: '', pildoras: [], pildorasAssignmentOpen: false, competences: [] });
     }
     res.json(extendedInfo);
   } catch (error) {
@@ -3363,49 +3455,101 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
             school, projectType, positiveExitStart, positiveExitEnd, totalHours,
             modality, presentialDays, materials, internships, funders, funderDeadlines,
             okrKpis, funderKpis, trainerDayOff, cotrainerDayOff, projectMeetings, teamMeetings,
-            approvalName, approvalRole, projectEvaluations } = req.body;
-
-    // Build a $set object with ONLY the fields that were explicitly sent in the request body.
-    // This prevents partial saves (e.g. _persistEvaluations sending only projectEvaluations)
-    // from wiping out other fields like pildoras, competences, etc.
-    const body = req.body;
-    const $setFields = {};
-
-    if (body.hasOwnProperty('schedule'))               $setFields.schedule = schedule || {};
-    if (body.hasOwnProperty('team'))                   $setFields.team = Array.isArray(team) ? team : [];
-    if (body.hasOwnProperty('resources'))              $setFields.resources = Array.isArray(resources) ? resources : [];
-    if (body.hasOwnProperty('evaluation'))             $setFields.evaluation = evaluation || '';
-    if (body.hasOwnProperty('pildoras'))               $setFields.pildoras = Array.isArray(pildoras) ? pildoras : [];
-    if (body.hasOwnProperty('modulesPildoras'))        $setFields.modulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
-    if (body.hasOwnProperty('pildorasAssignmentOpen')) $setFields.pildorasAssignmentOpen = !!pildorasAssignmentOpen;
-    if (body.hasOwnProperty('competences'))            $setFields.competences = Array.isArray(competences) ? competences : [];
-    if (body.hasOwnProperty('school'))                 $setFields.school = school || '';
-    if (body.hasOwnProperty('projectType'))            $setFields.projectType = projectType || '';
-    if (body.hasOwnProperty('positiveExitStart'))      $setFields.positiveExitStart = positiveExitStart || '';
-    if (body.hasOwnProperty('positiveExitEnd'))        $setFields.positiveExitEnd = positiveExitEnd || '';
-    if (body.hasOwnProperty('totalHours'))             $setFields.totalHours = totalHours || '';
-    if (body.hasOwnProperty('modality'))               $setFields.modality = modality || '';
-    if (body.hasOwnProperty('presentialDays'))         $setFields.presentialDays = presentialDays || '';
-    if (body.hasOwnProperty('materials'))              $setFields.materials = materials || '';
-    if (body.hasOwnProperty('internships'))            $setFields.internships = internships !== undefined ? internships : null;
-    if (body.hasOwnProperty('funders'))                $setFields.funders = funders || '';
-    if (body.hasOwnProperty('funderDeadlines'))        $setFields.funderDeadlines = funderDeadlines || '';
-    if (body.hasOwnProperty('okrKpis'))                $setFields.okrKpis = okrKpis || '';
-    if (body.hasOwnProperty('funderKpis'))             $setFields.funderKpis = funderKpis || '';
-    if (body.hasOwnProperty('trainerDayOff'))          $setFields.trainerDayOff = trainerDayOff || '';
-    if (body.hasOwnProperty('cotrainerDayOff'))        $setFields.cotrainerDayOff = cotrainerDayOff || '';
-    if (body.hasOwnProperty('projectMeetings'))        $setFields.projectMeetings = projectMeetings || '';
-    if (body.hasOwnProperty('teamMeetings'))           $setFields.teamMeetings = teamMeetings || '';
-    if (body.hasOwnProperty('approvalName'))           $setFields.approvalName = approvalName || '';
-    if (body.hasOwnProperty('approvalRole'))           $setFields.approvalRole = approvalRole || '';
-    if (Array.isArray(projectEvaluations))             $setFields.projectEvaluations = projectEvaluations;
-
+            approvalName, approvalRole, projectEvaluations, overviewTeacherNote } = req.body;
+    const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
+    const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
+    const normalizedCompetences = Array.isArray(competences) ? competences : [];
+    const normalizedProjectEvaluations = Array.isArray(projectEvaluations) ? projectEvaluations : undefined;
     const newInfo = await ExtendedInfo.findOneAndUpdate(
       { promotionId: req.params.promotionId },
-      { $set: $setFields },
+      {
+        $set: {
+          schedule: schedule || {},
+          team: team || [],
+          resources: resources || [],
+          evaluation: evaluation || '',
+          pildoras: normalizedPildoras,
+          modulesPildoras: normalizedModulesPildoras,
+          pildorasAssignmentOpen: !!pildorasAssignmentOpen,
+          competences: normalizedCompetences,
+          school: school || '',
+          projectType: projectType || '',
+          positiveExitStart: positiveExitStart || '',
+          positiveExitEnd: positiveExitEnd || '',
+          totalHours: totalHours || '',
+          modality: modality || '',
+          presentialDays: presentialDays || '',
+          materials: materials || '',
+          internships: internships !== undefined ? internships : null,
+          funders: funders || '',
+          funderDeadlines: funderDeadlines || '',
+          okrKpis: okrKpis || '',
+          funderKpis: funderKpis || '',
+          trainerDayOff: trainerDayOff || '',
+          cotrainerDayOff: cotrainerDayOff || '',
+          projectMeetings: projectMeetings || '',
+          teamMeetings: teamMeetings || '',
+          approvalName: approvalName || '',
+          approvalRole: approvalRole || '',
+          overviewTeacherNote: overviewTeacherNote || '',
+          ...(normalizedProjectEvaluations !== undefined ? { projectEvaluations: normalizedProjectEvaluations } : {})
+        }
+      },
       { upsert: true, returnDocument: 'after', strict: false }
     );
     res.json(newInfo);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== ASANA CONTENT ====================
+
+// GET asana content URL
+app.get('/api/promotions/:promotionId/asana-content', async (req, res) => {
+  try {
+    const extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    if (!extendedInfo) {
+      return res.json({ asanaContentUrl: '' });
+    }
+    res.json({ asanaContentUrl: extendedInfo.asanaContentUrl || '' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST/UPDATE asana content URL
+app.post('/api/promotions/:promotionId/asana-content', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { asanaContentUrl } = req.body;
+    const updatedInfo = await ExtendedInfo.findOneAndUpdate(
+      { promotionId: req.params.promotionId },
+      { $set: { asanaContentUrl: asanaContentUrl || '' } },
+      { upsert: true, returnDocument: 'after' }
+    );
+    res.json({ asanaContentUrl: updatedInfo.asanaContentUrl });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE asana content URL
+app.delete('/api/promotions/:promotionId/asana-content', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    await ExtendedInfo.findOneAndUpdate(
+      { promotionId: req.params.promotionId },
+      { $set: { asanaContentUrl: '' } },
+      { upsert: true }
+    );
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

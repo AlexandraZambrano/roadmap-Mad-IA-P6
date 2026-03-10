@@ -2042,6 +2042,8 @@ function switchTab(tabId) {
     // Load calendar data for Overview from backend
     if (tabId === 'overview') {
         loadOverviewCalendarId();
+        loadOverviewPildoraAlert();
+        loadOverviewAttendanceAlert();
     }
 }
 
@@ -2819,6 +2821,285 @@ async function loadOverviewCalendarId() {
     } catch (error) {
         console.error('[loadOverviewCalendarId] Error loading calendar:', error);
         currentCalendarId = '';
+    }
+}
+
+// Load and display next píldora alert in Overview
+async function loadOverviewPildoraAlert() {
+    try {
+        const contentEl = document.getElementById('next-pildora-content');
+        if (!contentEl) return;
+
+        // Get current date
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+
+        // Get all píldoras from extendedInfoData
+        const modulesPildoras = extendedInfoData.modulesPildoras || [];
+        
+        // Flatten all píldoras from all modules
+        let allPildoras = [];
+        modulesPildoras.forEach(modulePildoras => {
+            if (modulePildoras.pildoras && Array.isArray(modulePildoras.pildoras)) {
+                allPildoras = allPildoras.concat(modulePildoras.pildoras);
+            }
+        });
+
+        // Filter píldoras that are in the future and have a date
+        const futurePildoras = allPildoras.filter(p => {
+            if (!p.date) return false;
+            const pildoraDate = p.date.split('T')[0]; // Extract just the date part
+            return pildoraDate >= today;
+        }).sort((a, b) => {
+            const dateA = a.date.split('T')[0];
+            const dateB = b.date.split('T')[0];
+            return new Date(dateA) - new Date(dateB);
+        });
+
+        if (futurePildoras.length === 0) {
+            contentEl.innerHTML = `
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-check-circle me-2 text-success"></i>No hay píldoras pendientes
+                </p>
+            `;
+            return;
+        }
+
+        const nextPildora = futurePildoras[0];
+        const pildoraDate = new Date(nextPildora.date);
+        const formattedDate = pildoraDate.toLocaleDateString('es-ES', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+
+        const daysUntil = Math.ceil((pildoraDate - now) / (1000 * 60 * 60 * 24));
+        let daysText = '';
+        if (daysUntil === 0) {
+            daysText = '¡Hoy!';
+        } else if (daysUntil === 1) {
+            daysText = 'Mañana';
+        } else {
+            daysText = `En ${daysUntil} días`;
+        }
+
+        // Get students assigned to this píldora
+        const studentsAssigned = (nextPildora.students && Array.isArray(nextPildora.students)) ? nextPildora.students : [];
+        let studentsText = '';
+        if (studentsAssigned.length > 0) {
+            // Get current students list
+            const allStudents = window.currentStudents || [];
+            const assignedStudentNames = studentsAssigned
+                .map(studentId => {
+                    const student = allStudents.find(s => s.id === studentId || s._id === studentId);
+                    return student ? studentFullName(student) : null;
+                })
+                .filter(Boolean);
+            if (assignedStudentNames.length > 0) {
+                studentsText = `<p class="mb-0 small"><strong>Estudiantes:</strong> ${assignedStudentNames.join(', ')}</p>`;
+            }
+        }
+
+        contentEl.innerHTML = `
+            <div class="mb-2">
+                <h6 class="mb-1 text-dark">
+                    <i class="bi bi-star-fill me-2 text-warning"></i>${nextPildora.title || 'Sin título'}
+                </h6>
+                <p class="mb-1 small">
+                    <strong>Fecha:</strong> ${formattedDate} <span class="badge bg-info">${daysText}</span>
+                </p>
+                ${nextPildora.teacher ? `<p class="mb-0 small"><strong>Profesor:</strong> ${nextPildora.teacher}</p>` : ''}
+                ${studentsText}
+                ${nextPildora.description ? `<p class="mb-0 small text-muted">${nextPildora.description}</p>` : ''}
+            </div>
+        `;
+    } catch (error) {
+        console.error('[loadOverviewPildoraAlert] Error:', error);
+        const contentEl = document.getElementById('next-pildora-content');
+        if (contentEl) {
+            contentEl.innerHTML = `<p class="text-danger small mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Error cargando píldoras</p>`;
+        }
+    }
+}
+
+// Load and display attendance alert in Overview
+async function loadOverviewAttendanceAlert() {
+    try {
+        const token = localStorage.getItem('token');
+        const contentEl = document.getElementById('attendance-alert-content');
+        if (!contentEl) return;
+
+        // Get all students
+        const studentsRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const students = await studentsRes.json();
+
+        if (students.length === 0) {
+            contentEl.innerHTML = `
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Sin estudiantes registrados
+                </p>
+            `;
+            return;
+        }
+
+        // Get only active students
+        const activeStudents = students.filter(s => !s.isWithdrawn);
+
+        if (activeStudents.length === 0) {
+            contentEl.innerHTML = `
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Sin estudiantes activos
+                </p>
+            `;
+            return;
+        }
+
+        // Get promotion info to determine the date range for absences
+        const promotionRes = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const promotion = await promotionRes.json();
+
+        // Calculate months to fetch for TOTAL absences (historical)
+        const startDate = promotion.startDate ? new Date(promotion.startDate) : new Date();
+        const today = new Date();
+        const months = [];
+
+        let currentDate = new Date(startDate);
+        currentDate.setDate(1);
+
+        while (currentDate <= today) {
+            const year = currentDate.getFullYear();
+            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+            months.push(`${year}-${month}`);
+            currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+
+        // Fetch attendance data for all months (for total absences)
+        let allAttendanceData = [];
+        for (const month of months) {
+            try {
+                const attendanceRes = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance?month=${month}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (attendanceRes.ok) {
+                    const monthData = await attendanceRes.json();
+                    allAttendanceData = allAttendanceData.concat(monthData);
+                }
+            } catch (e) {
+                console.warn(`Error fetching attendance for ${month}:`, e);
+            }
+        }
+
+        // Also get CURRENT MONTH data for attendance rate calculation (matching Attendance tab)
+        const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+        let currentMonthData = [];
+        try {
+            const attendanceRes = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance?month=${currentMonth}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (attendanceRes.ok) {
+                currentMonthData = await attendanceRes.json();
+            }
+        } catch (e) {
+            console.warn(`Error fetching current month attendance:`, e);
+        }
+
+        // Calculate total absences per student (from all historical data)
+        const absencesPerStudent = {};
+        activeStudents.forEach(student => {
+            // Use student.id (the custom id field) as the key, NOT _id
+            absencesPerStudent[student.id] = {
+                name: studentFullName(student),
+                absences: 0,
+                studentId: student.id
+            };
+        });
+
+        // Count only 'Ausente' records from all months
+        allAttendanceData.forEach(record => {
+            const studentId = record.studentId;
+            if (record.status === 'Ausente' && absencesPerStudent[studentId]) {
+                absencesPerStudent[studentId].absences++;
+            }
+        });
+
+        console.log('[loadOverviewAttendanceAlert] Absences per student:', absencesPerStudent);
+        console.log('[loadOverviewAttendanceAlert] Total attendance records:', allAttendanceData.length);
+
+        // Sort students by total absences (descending)
+        const sortedStudents = Object.values(absencesPerStudent)
+            .sort((a, b) => b.absences - a.absences);
+
+        console.log('[loadOverviewAttendanceAlert] Sorted students:', sortedStudents);
+
+        // Calculate attendance rate using CURRENT MONTH data (matching the Attendance tab)
+        let present = 0, absent = 0, late = 0, justified = 0, earlyLeave = 0;
+        currentMonthData.forEach(record => {
+            if (record.status === 'Presente') present++;
+            else if (record.status === 'Ausente') absent++;
+            else if (record.status === 'Con retraso') late++;
+            else if (record.status === 'Justificado') justified++;
+            else if (record.status === 'Sale antes') earlyLeave++;
+        });
+
+        const totalMarked = present + absent + late + justified + earlyLeave;
+        const attendanceRate = totalMarked > 0 ? Math.round(((present + late + justified + earlyLeave) / totalMarked) * 100) : 0;
+
+        // Get total active students
+        const totalActive = activeStudents.length;
+
+        let html = `
+            <div class="mb-2">
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <p class="mb-0 small">
+                            <strong>Total:</strong> ${totalActive} estudiantes
+                        </p>
+                    </div>
+                    <div class="col-6">
+                        <p class="mb-0 small">
+                            <strong>Asistencia:</strong> <span class="badge ${attendanceRate >= 80 ? 'bg-success' : attendanceRate >= 60 ? 'bg-warning text-dark' : 'bg-danger'}">${attendanceRate}%</span>
+                        </p>
+                    </div>
+                </div>
+        `;
+
+        // Show student with most TOTAL absences if there are any
+        const studentsWithAbsences = sortedStudents.filter(s => s.absences > 0);
+
+        if (studentsWithAbsences.length > 0) {
+            const maxAbsenceStudent = studentsWithAbsences[0];
+            html += `
+                <div class="alert alert-warning py-2 px-2 mb-0">
+                    <strong class="d-block mb-2 small text-warning">
+                        <i class="bi bi-exclamation-circle me-1"></i>Mayor número de ausencias registradas:
+                    </strong>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small">${maxAbsenceStudent.name}</span>
+                        <span class="badge bg-warning text-dark">${maxAbsenceStudent.absences}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <p class="text-success small mb-0">
+                    <i class="bi bi-check-circle me-2"></i>¡Excelente asistencia!
+                </p>
+            `;
+        }
+
+        html += `</div>`;
+        contentEl.innerHTML = html;
+    } catch (error) {
+        console.error('[loadOverviewAttendanceAlert] Error:', error);
+        const contentEl = document.getElementById('attendance-alert-content');
+        if (contentEl) {
+            contentEl.innerHTML = `<p class="text-danger small mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Error cargando asistencias</p>`;
+        }
     }
 }
 
