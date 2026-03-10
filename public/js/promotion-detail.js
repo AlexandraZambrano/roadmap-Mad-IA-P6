@@ -230,6 +230,9 @@ let extendedInfoData = {
     pildorasAssignmentOpen: false
 };
 
+// Global calendar ID for use across the application
+let currentCalendarId = '';
+
 // Attendance state
 let currentAttendanceMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
 let attendanceData = []; // Store attendance records for the current month
@@ -337,25 +340,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize mobile menu
     initMobileMenu();
 
-    // Set up student dashboard preview iframe in Overview
-    const previewIframe = document.getElementById('student-preview-iframe');
-    if (previewIframe) {
-        const baseUrl = window.location.origin;
-        const isGitHubPages = window.location.hostname.includes('github.io');
-
-        let previewPath;
-        if (isGitHubPages) {
-            // GitHub Pages needs the repository name in the path
-            const pathParts = window.location.pathname.split('/');
-            const repoName = pathParts[1];
-            previewPath = `/${repoName}/public-promotion.html`;
-        } else {
-            const path = window.location.pathname;
-            const directory = path.substring(0, path.lastIndexOf('/'));
-            previewPath = (directory === '/' ? '' : directory) + '/public-promotion.html';
-        }
-
-        previewIframe.src = `${baseUrl}${previewPath}?id=${promotionId}&preview=1`;
+    // Set up calendar preview iframe in Overview
+    const calendarPreviewIframe = document.getElementById('calendar-preview-iframe');
+    if (calendarPreviewIframe) {
+        // The calendar will be loaded when loadCalendar() is called and when the calendar ID is available
+        // We'll set this up in a function that gets called after the calendar is loaded
+        window.setupCalendarPreview = function() {
+            // Use the global calendar ID variable instead of relying on the HTML field
+            const calendarId = currentCalendarId || '';
+            
+            if (calendarId) {
+                const embedUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Madrid&mode=AGENDA`;
+                calendarPreviewIframe.src = embedUrl;
+                console.log('[setupCalendarPreview] Calendar preview loaded with AGENDA mode:', embedUrl);
+            } else {
+                calendarPreviewIframe.src = '';
+                console.log('[setupCalendarPreview] No calendar ID found');
+            }
+        };
     }
 
     // Initialize modals only if elements exist (teacher view)
@@ -2037,12 +2039,9 @@ function switchTab(tabId) {
         }
     });
 
-    // Handle iframe height to fit content if possible
+    // Load calendar data for Overview from backend
     if (tabId === 'overview') {
-        const previewIframe = document.getElementById('student-preview-iframe');
-        if (previewIframe) {
-            previewIframe.style.height = '600px';
-        }
+        loadOverviewCalendarId();
     }
 }
 
@@ -2798,6 +2797,31 @@ function displaySections(sections) {
     });
 }
 
+// Load calendar ID from backend for Overview preview
+async function loadOverviewCalendarId() {
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/calendar`);
+        
+        if (response.ok) {
+            const calendar = await response.json();
+            // Store the calendar ID in the global variable
+            currentCalendarId = calendar.googleCalendarId || '';
+            console.log('[loadOverviewCalendarId] Calendar ID loaded from backend:', currentCalendarId);
+            
+            // Setup the calendar preview with the new ID
+            if (window.setupCalendarPreview) {
+                window.setupCalendarPreview();
+            }
+        } else {
+            currentCalendarId = '';
+            console.log('[loadOverviewCalendarId] No calendar found for this promotion');
+        }
+    } catch (error) {
+        console.error('[loadOverviewCalendarId] Error loading calendar:', error);
+        currentCalendarId = '';
+    }
+}
+
 async function loadCalendar() {
     const token = localStorage.getItem('token');
     try {
@@ -2807,8 +2831,21 @@ async function loadCalendar() {
 
         if (response.ok) {
             const calendar = await response.json();
-            document.getElementById('google-calendar-id').value = calendar.googleCalendarId;
-            displayCalendar(calendar.googleCalendarId);
+            // Store in global variable for use across the application
+            currentCalendarId = calendar.googleCalendarId || '';
+            console.log('[loadCalendar] Calendar ID stored globally:', currentCalendarId);
+            
+            // Also store in the HTML field if it exists (for the calendar configuration tab)
+            const calendarIdInput = document.getElementById('google-calendar-id');
+            if (calendarIdInput) {
+                calendarIdInput.value = currentCalendarId;
+            }
+            
+            displayCalendar(currentCalendarId);
+            // Also update the calendar preview in Overview
+            if (window.setupCalendarPreview) {
+                window.setupCalendarPreview();
+            }
         }
     } catch (error) {
         console.error('Error loading calendar:', error);
