@@ -1567,8 +1567,12 @@ async function saveExtendedInfo() {
 
     // Gather Competencias from ProgramCompetences module
     if (window.ProgramCompetences) {
-        extendedInfoData.competences = window.ProgramCompetences.getCompetences();
-        // Clear unsaved badge
+        const freshComps = window.ProgramCompetences.getCompetences();
+        if (freshComps && freshComps.length > 0) {
+            extendedInfoData.competences = freshComps;
+        }
+        // If freshComps is empty keep the server-loaded value to avoid wiping stored competences
+        // Clear unsaved badge regardless
         const badge = document.getElementById('competences-unsaved-badge');
         if (badge) badge.classList.add('d-none');
     }
@@ -1949,10 +1953,33 @@ async function saveActaData() {
     extendedInfoData.approvalRole = document.getElementById('acta-approval-role').value.trim();
 
     try {
+        // Build a payload with ONLY the acta fields — do NOT send unrelated fields
+        // (competences, team, resources, schedule, pildoras, etc.) to avoid wiping them.
+        const actaPayload = {
+            school:            extendedInfoData.school,
+            projectType:       extendedInfoData.projectType,
+            materials:         extendedInfoData.materials,
+            funderDeadlines:   extendedInfoData.funderDeadlines,
+            okrKpis:           extendedInfoData.okrKpis,
+            projectMeetings:   extendedInfoData.projectMeetings,
+            totalHours:        extendedInfoData.totalHours,
+            modality:          extendedInfoData.modality,
+            internships:       extendedInfoData.internships,
+            positiveExitStart: extendedInfoData.positiveExitStart,
+            positiveExitEnd:   extendedInfoData.positiveExitEnd,
+            presentialDays:    extendedInfoData.presentialDays,
+            funders:           extendedInfoData.funders,
+            funderKpis:        extendedInfoData.funderKpis,
+            trainerDayOff:     extendedInfoData.trainerDayOff,
+            cotrainerDayOff:   extendedInfoData.cotrainerDayOff,
+            teamMeetings:      extendedInfoData.teamMeetings,
+            approvalName:      extendedInfoData.approvalName,
+            approvalRole:      extendedInfoData.approvalRole,
+        };
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(extendedInfoData)
+            body: JSON.stringify(actaPayload)
         });
         if (response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('actaInicioModal'))?.hide();
@@ -1973,13 +2000,14 @@ async function togglePildorasAssignment(isOpen) {
 
     const token = localStorage.getItem('token');
     try {
+        // Send ONLY the field being toggled — avoids overwriting unrelated data
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(extendedInfoData)
+            body: JSON.stringify({ pildorasAssignmentOpen: isOpen })
         });
 
         if (!response.ok) {
