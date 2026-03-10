@@ -5930,7 +5930,17 @@ async function loadEvaluation() {
         const studentsData = studentsRes.ok ? await studentsRes.json() : [];
         const catalogRaw = catalogRes.ok ? await catalogRes.json() : [];
 
-        // Normalize the full catalog: id, name, area, description, levels, allTools
+        // DEBUG: log first catalog entry to verify structure
+        if (catalogRaw.length > 0) {
+            console.log('[Eval] catalogRaw[0] keys:', Object.keys(catalogRaw[0]));
+            console.log('[Eval] catalogRaw[0].tools sample:', JSON.stringify((catalogRaw[0].tools || []).slice(0,1)));
+            if (catalogRaw[0].tools && catalogRaw[0].tools[0]) {
+                console.log('[Eval] catalogRaw[0].tools[0] keys:', Object.keys(catalogRaw[0].tools[0]));
+                console.log('[Eval] catalogRaw[0].tools[0].indicators:', JSON.stringify((catalogRaw[0].tools[0].indicators || []).slice(0,2)));
+            }
+        }
+
+        // Normalize the full catalog: id, name, area, description, levels, allTools, toolsWithIndicators, competenceIndicators
         const catalog = catalogRaw.map(comp => ({
             id: comp.id,
             name: comp.name,
@@ -5941,7 +5951,25 @@ async function loadEvaluation() {
                 description: l.levelName || `Nivel ${l.levelId}`,
                 indicators: (l.indicators || []).map(i => i.name || i)
             })),
-            allTools: (comp.tools || []).map(t => t.name || t)
+            allTools: (comp.tools || []).map(t => t.name || t),
+            // Full tool objects with their indicators (for indicator-based evaluation)
+            toolsWithIndicators: (comp.tools || []).map(t => ({
+                id: t.id,
+                name: t.name || '',
+                description: t.description || '',
+                indicators: (t.indicators || []).map(ind => ({
+                    id: ind.id,
+                    name: ind.name || '',
+                    description: ind.description || '',
+                    levelId: ind.levelId || 1
+                }))
+            })),
+            // General competence indicators grouped by level
+            competenceIndicators: {
+                initial: (comp.indicators?.initial || []).map(ind => ({ id: ind.id, name: ind.name || '', description: ind.description || '', levelId: 1 })),
+                medio:   (comp.indicators?.medio   || []).map(ind => ({ id: ind.id, name: ind.name || '', description: ind.description || '', levelId: 2 })),
+                advance: (comp.indicators?.advance  || []).map(ind => ({ id: ind.id, name: ind.name || '', description: ind.description || '', levelId: 3 }))
+            }
         }));
 
         // Merge program competences (from ext) with full catalog data so description/levels/tools are available
@@ -6413,6 +6441,17 @@ function openEvaluationModal(mIdx, pIdx) {
         return competences.find(c => String(c.id) === String(cid)) || { id: cid, name: `Competencia ${cid}`, area: '' };
     });
 
+    // DEBUG: log competence tool data
+    console.log('[Eval] projCompetences:', projCompetences.map(c => ({
+        id: c.id, name: c.name,
+        toolsWithIndicators_count: (c.toolsWithIndicators||[]).length,
+        first_tool: (c.toolsWithIndicators||[])[0] ? {
+            name: (c.toolsWithIndicators||[])[0].name,
+            indicators_count: ((c.toolsWithIndicators||[])[0].indicators||[]).length,
+            first_indicator: ((c.toolsWithIndicators||[])[0].indicators||[])[0]
+        } : null
+    })));
+
     document.getElementById('eval-modal-title').textContent = `${escapeHtml(proj.name)} — ${escapeHtml(mod.name || `Módulo ${mIdx + 1}`)}`;
 
     const LEVEL_LABELS = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
@@ -6431,14 +6470,170 @@ function openEvaluationModal(mIdx, pIdx) {
             return `<p class="text-muted small fst-italic">Todas las competencias han sido eliminadas de esta evaluación.</p>`;
         }
 
+        const LEVEL_COLORS_IND = ['secondary', 'danger', 'warning', 'success'];
+        const LEVEL_LABELS_IND = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
+        const LEVEL_BG = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
+        const LEVEL_BORDER = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
+        const LEVEL_TEXT = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
         let html = `<div class="eval-competences-list">`;
-        visibleComps.forEach((comp, compIdx) => {
-            const savedLevel = savedEval ? (savedEval.competences || []).find(c => String(c.competenceId) === String(comp.id)) : null;
-            const currentLevel = savedLevel ? savedLevel.level : 0;
-            const tools = (comp.selectedTools && comp.selectedTools.length) ? comp.selectedTools : (comp.allTools || []);
+        visibleComps.forEach((comp) => {
+            const savedCompEntry = savedEval ? (savedEval.competences || []).find(c => String(c.competenceId) === String(comp.id)) : null;
+            const currentLevel = savedCompEntry ? savedCompEntry.level : 0;
+            const rawCompId = String(comp.id);
+            const savedCheckedIndicators = savedCompEntry?.checkedIndicators || savedEval?.checkedIndicators || {};
             const levelDescs = (comp.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
 
-            html += `<div class="eval-comp-card card mb-2 border" data-comp-id="${escapeHtml(String(comp.id))}" data-target-id="${escapeHtml(String(targetId))}">
+            const toolsWithInds = (comp.toolsWithIndicators || []).filter(t => t.indicators && t.indicators.length > 0);
+            const activeToolsWithInds = (() => {
+                const allT = (comp.selectedTools && comp.selectedTools.length)
+                    ? comp.selectedTools
+                    : (comp.allTools && comp.allTools.length ? comp.allTools : null);
+                const removed = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
+                if (!allT) return toolsWithInds.filter(t => !removed.includes(t.name));
+                const activeNames = new Set(allT.filter(n => !removed.includes(n)));
+                const filtered = toolsWithInds.filter(t => activeNames.has(t.name));
+                return filtered.length > 0 ? filtered : toolsWithInds.filter(t => !removed.includes(t.name));
+            })();
+
+            const compInds = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
+            const hasToolIndicators = activeToolsWithInds.some(t => t.indicators.length > 0);
+            const hasCompIndicators = compInds.initial.length || compInds.medio.length || compInds.advance.length;
+
+            const safeCompId = escapeHtml(rawCompId);
+            const safeTargetId = escapeHtml(String(targetId));
+            const prefix = `grp-ind-${safeCompId}-${safeTargetId}`;
+
+            // Count checked/total indicators to compute auto-level
+            const checkedData = savedCheckedIndicators[rawCompId] || {};
+            const checkedByLevel = { 1: 0, 2: 0, 3: 0 };
+            const totalByLevel   = { 1: 0, 2: 0, 3: 0 };
+            if (hasToolIndicators) {
+                activeToolsWithInds.forEach(tool => {
+                    tool.indicators.forEach(ind => {
+                        if (totalByLevel[ind.levelId] !== undefined) totalByLevel[ind.levelId]++;
+                        const k = `tool-${tool.id}-${ind.id}`;
+                        if (checkedData[k] && checkedByLevel[ind.levelId] !== undefined) checkedByLevel[ind.levelId]++;
+                    });
+                });
+            } else if (hasCompIndicators) {
+                [{ lvl:1, inds: compInds.initial },{ lvl:2, inds: compInds.medio },{ lvl:3, inds: compInds.advance }].forEach(({ lvl, inds }) => {
+                    totalByLevel[lvl] = inds.length;
+                    inds.forEach(ind => { if (checkedData[`comp-${ind.id}`]) checkedByLevel[lvl]++; });
+                });
+            }
+
+            let autoLevel = 0;
+            if (hasToolIndicators || hasCompIndicators) {
+                if (totalByLevel[1] > 0 && checkedByLevel[1] >= totalByLevel[1]) {
+                    autoLevel = 1;
+                    if (totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
+                        autoLevel = 2;
+                        if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
+                    }
+                }
+                if (totalByLevel[1] === 0 && totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
+                    autoLevel = Math.max(autoLevel, 2);
+                    if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
+                }
+            }
+
+            const displayLevel = (hasToolIndicators || hasCompIndicators) ? autoLevel : currentLevel;
+            const lvlBadgeColor = LEVEL_COLORS_IND[displayLevel] || 'secondary';
+            const lvlBadgeLabel = LEVEL_LABELS_IND[displayLevel] || 'Sin nivel';
+
+            // Build indicator checkboxes grouped by tool
+            let indicatorsHtml = '';
+            if (hasToolIndicators) {
+                indicatorsHtml = activeToolsWithInds.map(tool => {
+                    const byLevel = { 1: [], 2: [], 3: [] };
+                    tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
+                    const levelRows = [1, 2, 3].map(lvl => {
+                        const inds = byLevel[lvl];
+                        if (!inds.length) return '';
+                        return `<div class="mb-1">
+                            <div class="small" style="color:${LEVEL_BORDER[lvl]}; font-weight:600; margin-bottom:2px;">
+                                <i class="bi bi-${lvl===1?'circle':lvl===2?'circle-half':'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                            </div>
+                            ${inds.map(ind => {
+                                const indKey = `tool-${tool.id}-${ind.id}`;
+                                const isChecked = !!(checkedData[indKey]);
+                                return `<div class="form-check form-check-sm mb-0 ms-2">
+                                    <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
+                                        id="${prefix}-${escapeHtml(indKey)}"
+                                        onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
+                                    <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}">
+                                        ${escapeHtml(ind.name)}
+                                        ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
+                                    </label>
+                                </div>`;
+                            }).join('')}
+                        </div>`;
+                    }).join('');
+                    return `<div class="border rounded p-2 mb-2" style="background:#fafafa;">
+                        <div class="small fw-semibold text-secondary mb-1"><i class="bi bi-tools me-1"></i>${escapeHtml(tool.name)}</div>
+                        ${levelRows}
+                    </div>`;
+                }).join('');
+            } else if (hasCompIndicators) {
+                indicatorsHtml = [
+                    { lvl:1, inds: compInds.initial },
+                    { lvl:2, inds: compInds.medio },
+                    { lvl:3, inds: compInds.advance }
+                ].filter(g => g.inds.length).map(({ lvl, inds }) => `
+                    <div class="border rounded p-2 mb-2" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_BORDER[lvl]} !important;">
+                        <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]};">
+                            <i class="bi bi-${lvl===1?'circle':lvl===2?'circle-half':'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                        </div>
+                        ${inds.map(ind => {
+                            const indKey = `comp-${ind.id}`;
+                            const isChecked = !!(checkedData[indKey]);
+                            return `<div class="form-check form-check-sm mb-0">
+                                <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
+                                    id="${prefix}-${escapeHtml(indKey)}"
+                                    onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
+                                <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}">
+                                    ${escapeHtml(ind.name)}
+                                    ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
+                                </label>
+                            </div>`;
+                        }).join('')}
+                    </div>`
+                ).join('');
+            }
+
+            const indProgressHtml = (hasToolIndicators || hasCompIndicators) ? `
+                <div class="d-flex gap-2 flex-wrap mb-2 eval-ind-progress">
+                    ${[1, 2, 3].filter(lvl => totalByLevel[lvl] > 0).map(lvl => `
+                        <span class="badge rounded-pill" style="background:${LEVEL_BG[lvl]}; color:${LEVEL_BORDER[lvl]}; border:1px solid ${LEVEL_BORDER[lvl]}; font-size:.72rem;">
+                            Nv.${lvl}: <span data-lvl-count="${lvl}">${checkedByLevel[lvl]}/${totalByLevel[lvl]}</span>
+                        </span>`).join('')}
+                    <span class="badge bg-${lvlBadgeColor} ms-1" data-auto-level-badge>
+                        <i class="bi bi-award me-1"></i>Nivel calculado: <strong>${displayLevel}</strong> — ${lvlBadgeLabel}
+                    </span>
+                </div>` : '';
+
+            // Manual level buttons — only when no indicators at all
+            const manualLevelHtml = (!hasToolIndicators && !hasCompIndicators) ? `
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="small text-muted me-1">Nivel:</span>
+                    ${LEVEL_LABELS.map((lbl, lvl) => {
+                        const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
+                        return `<button type="button"
+                            class="btn btn-sm level-btn ${currentLevel === lvl ? `btn-${LEVEL_COLORS[lvl]}` : 'btn-outline-secondary'}"
+                            data-target="${safeTargetId}" data-comp="${safeCompId}"
+                            data-comp-name="${escapeHtml(comp.name)}" data-level="${lvl}"
+                            onclick="toggleEvalLevel(this,'${safeTargetId}','${safeCompId}',${lvl},'${escapeHtml(comp.name)}')"
+                            title="${escapeHtml(lbl + desc)}">
+                            ${lvl === 0 ? '<i class="bi bi-dash"></i>' : `<strong>${lvl}</strong>`}
+                            <span class="ms-1 d-none d-md-inline" style="font-size:.7rem;">${escapeHtml(lbl)}</span>
+                        </button>`;
+                    }).join('')}
+                </div>
+                ${currentLevel > 0 && levelDescs[currentLevel] ? `<div class="mt-1 small text-muted fst-italic">${escapeHtml(levelDescs[currentLevel])}</div>` : ''}
+            ` : '';
+
+            html += `<div class="eval-comp-card card mb-2 border" data-comp-id="${safeCompId}" data-target-id="${safeTargetId}">
                 <div class="card-header py-2 px-3 d-flex align-items-start justify-content-between gap-2" style="background:#f8f9fa;">
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -6446,35 +6641,20 @@ function openEvaluationModal(mIdx, pIdx) {
                             ${comp.area ? `<span class="badge bg-secondary" style="font-size:.65rem;">${escapeHtml(comp.area)}</span>` : ''}
                         </div>
                         ${comp.description ? `<div class="text-muted small mt-1 fst-italic">${escapeHtml(comp.description)}</div>` : ''}
-                        ${tools.length ? `<div class="mt-1 d-flex flex-wrap gap-1">
-                            ${tools.map(t => `<span class="badge bg-light text-dark border" style="font-size:.65rem;"><i class="bi bi-tools me-1"></i>${escapeHtml(t)}</span>`).join('')}
-                        </div>` : ''}
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" style="font-size:.7rem; padding:2px 6px;"
                         title="Eliminar esta competencia de la evaluación"
-                        onclick="removeEvalCompetence('${escapeHtml(String(targetId))}', '${escapeHtml(String(comp.id))}')">
+                        onclick="removeEvalCompetence('${safeTargetId}','${safeCompId}')">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
                 <div class="card-body py-2 px-3">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="small text-muted me-1">Nivel:</span>
-                        ${LEVEL_LABELS.map((lbl, lvl) => {
-                            const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
-                            return `<button type="button"
-                                class="btn btn-sm level-btn ${currentLevel === lvl ? `btn-${LEVEL_COLORS[lvl]}` : 'btn-outline-secondary'}"
-                                data-target="${escapeHtml(String(targetId))}"
-                                data-comp="${escapeHtml(String(comp.id))}"
-                                data-comp-name="${escapeHtml(comp.name)}"
-                                data-level="${lvl}"
-                                onclick="toggleEvalLevel(this, '${escapeHtml(String(targetId))}', '${escapeHtml(String(comp.id))}', ${lvl}, '${escapeHtml(comp.name)}')"
-                                title="${escapeHtml(lbl + desc)}">
-                                ${lvl === 0 ? '<i class="bi bi-dash"></i>' : `<strong>${lvl}</strong>`}
-                                <span class="ms-1 d-none d-md-inline" style="font-size:.7rem;">${escapeHtml(lbl)}</span>
-                            </button>`;
-                        }).join('')}
-                    </div>
-                    ${currentLevel > 0 && levelDescs[currentLevel] ? `<div class="mt-1 small text-muted fst-italic level-desc-hint">${escapeHtml(levelDescs[currentLevel])}</div>` : `<div class="mt-1 small text-muted fst-italic level-desc-hint" style="min-height:1rem;"></div>`}
+                    ${indProgressHtml}
+                    ${indicatorsHtml ? `<div class="mb-2">
+                        <div class="small fw-semibold text-secondary mb-1"><i class="bi bi-list-check me-1"></i>Indicadores — marca los que cumple:</div>
+                        <div id="ind-container-${safeCompId}-${safeTargetId}">${indicatorsHtml}</div>
+                    </div>` : ''}
+                    ${manualLevelHtml}
                 </div>
             </div>`;
         });
@@ -6666,16 +6846,213 @@ function _openStudentEvalSubModalFor(studentId) {
             return `<p class="text-muted small fst-italic">Todas las competencias han sido eliminadas de esta evaluación.</p>`;
         }
 
+        const LEVEL_COLORS_IND = ['secondary', 'danger', 'warning', 'success'];
+        const LEVEL_LABELS_IND = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
+        const LEVEL_BG = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
+        const LEVEL_BORDER = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
+        const LEVEL_TEXT = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
         let html = `<div class="eval-competences-list">`;
         visibleComps.forEach(comp => {
-            const savedLevel = savedEval ? (savedEval.competences || []).find(c => String(c.competenceId) === String(comp.id)) : null;
-            const currentLevel = savedLevel ? savedLevel.level : 0;
-            const allTools = (comp.selectedTools && comp.selectedTools.length) ? comp.selectedTools : (comp.allTools || []);
-            const removedToolsForComp = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
-            const visibleTools = allTools.filter(t => !removedToolsForComp.includes(t));
-            const levelDescs = (comp.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
+            const savedCompEntry = savedEval ? (savedEval.competences || []).find(c => String(c.competenceId) === String(comp.id)) : null;
+            const currentLevel = savedCompEntry ? savedCompEntry.level : 0;
+            // Use the raw comp.id (not HTML-escaped) as the key when reading checkedIndicators
+            const rawCompId = String(comp.id);
+            const savedCheckedIndicators = savedCompEntry?.checkedIndicators || savedEval?.checkedIndicators || {};
 
-            html += `<div class="eval-comp-card card mb-2 border" data-comp-id="${escapeHtml(String(comp.id))}" data-target-id="${escapeHtml(String(targetId))}">
+            // Build the indicators structure from toolsWithIndicators + competenceIndicators
+            // Priority: use toolsWithIndicators if available and have indicators; else use competenceIndicators
+            const toolsWithInds = (comp.toolsWithIndicators || []).filter(t => t.indicators && t.indicators.length > 0);
+
+            // Filter to only the tools visible in this evaluation (selectedTools or allTools, minus removed).
+            // If neither selectedTools nor allTools is populated, show ALL tools from toolsWithInds.
+            const activeToolsWithInds = (() => {
+                const allT = (comp.selectedTools && comp.selectedTools.length)
+                    ? comp.selectedTools
+                    : (comp.allTools && comp.allTools.length ? comp.allTools : null);
+                if (!allT) {
+                    // No name-based filter available — include all tools that have indicators
+                    const removed = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
+                    return toolsWithInds.filter(t => !removed.includes(t.name));
+                }
+                const removed = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
+                const activeNames = new Set(allT.filter(n => !removed.includes(n)));
+                // If every tool in toolsWithInds matches, return all; otherwise filter by name
+                const filtered = toolsWithInds.filter(t => activeNames.has(t.name));
+                // If filtering yields nothing but toolsWithInds has data, show all (name mismatch guard)
+                return filtered.length > 0 ? filtered : toolsWithInds.filter(t => !removed.includes(t.name));
+            })();
+
+            // Fallback to general competence indicators grouped by level
+            const compInds = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
+            const hasToolIndicators = activeToolsWithInds.some(t => t.indicators.length > 0);
+            const hasCompIndicators = compInds.initial.length || compInds.medio.length || compInds.advance.length;
+
+            // Unique ID prefix for this competence+target combo
+            const safeCompId = escapeHtml(String(comp.id));
+            const safeTargetId = escapeHtml(String(targetId));
+            const prefix = `ind-${safeCompId}-${safeTargetId}`;
+
+            // Build indicators HTML — grouped by tool (or by level if no tool indicators)
+            let indicatorsHtml = '';
+
+            if (hasToolIndicators) {
+                // Group by tool, then within each tool group by level (1, 2, 3)
+                indicatorsHtml = activeToolsWithInds.map(tool => {
+                    const byLevel = { 1: [], 2: [], 3: [] };
+                    tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
+
+                    const levelRows = [1, 2, 3].map(lvl => {
+                        const inds = byLevel[lvl];
+                        if (!inds.length) return '';
+                        return `<div class="mb-1">
+                            <div class="small" style="color:${LEVEL_BORDER[lvl]}; font-weight:600; margin-bottom:2px;">
+                                <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                            </div>
+                            ${inds.map(ind => {
+                                const indKey = `tool-${tool.id}-${ind.id}`;
+                                const isChecked = !!(savedCheckedIndicators[rawCompId]?.[indKey]);
+                                return `<div class="form-check form-check-sm mb-0 ms-2">
+                                    <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
+                                        id="${prefix}-${escapeHtml(indKey)}"
+                                        data-comp-id="${safeCompId}"
+                                        data-target-id="${safeTargetId}"
+                                        data-ind-key="${escapeHtml(indKey)}"
+                                        data-level="${lvl}"
+                                        onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
+                                    <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
+                                        ${escapeHtml(ind.name)}
+                                        ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
+                                    </label>
+                                </div>`;
+                            }).join('')}
+                        </div>`;
+                    }).join('');
+
+                    return `<div class="border rounded p-2 mb-2" style="background:#fafafa;">
+                        <div class="small fw-semibold text-secondary mb-1">
+                            <i class="bi bi-tools me-1"></i>${escapeHtml(tool.name)}
+                        </div>
+                        ${levelRows}
+                    </div>`;
+                }).join('');
+
+            } else if (hasCompIndicators) {
+                // Use general competence indicators grouped by level
+                indicatorsHtml = [
+                    { lvl: 1, inds: compInds.initial },
+                    { lvl: 2, inds: compInds.medio },
+                    { lvl: 3, inds: compInds.advance }
+                ].filter(g => g.inds.length).map(({ lvl, inds }) => `
+                    <div class="border rounded p-2 mb-2" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_BORDER[lvl]} !important;">
+                        <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]};">
+                            <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                        </div>
+                        ${inds.map(ind => {
+                            const indKey = `comp-${ind.id}`;
+                            const isChecked = !!(savedCheckedIndicators[rawCompId]?.[indKey]);
+                            return `<div class="form-check form-check-sm mb-0">
+                                <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
+                                    id="${prefix}-${escapeHtml(indKey)}"
+                                    data-comp-id="${safeCompId}"
+                                    data-target-id="${safeTargetId}"
+                                    data-ind-key="${escapeHtml(indKey)}"
+                                    data-level="${lvl}"
+                                    onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
+                                <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
+                                    ${escapeHtml(ind.name)}
+                                    ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
+                                </label>
+                            </div>`;
+                        }).join('')}
+                    </div>`
+                ).join('');
+            }
+
+            // Calculate current level from checked indicators
+            const checkedData = savedCheckedIndicators[rawCompId] || {};
+            const checkedByLevel = { 1: 0, 2: 0, 3: 0 };
+            const totalByLevel = { 1: 0, 2: 0, 3: 0 };
+
+            // Count total indicators per level (from visible tools or comp indicators)
+            if (hasToolIndicators) {
+                activeToolsWithInds.forEach(tool => {
+                    tool.indicators.forEach(ind => {
+                        if (totalByLevel[ind.levelId] !== undefined) totalByLevel[ind.levelId]++;
+                        const indKey = `tool-${tool.id}-${ind.id}`;
+                        if (checkedData[indKey] && checkedByLevel[ind.levelId] !== undefined) checkedByLevel[ind.levelId]++;
+                    });
+                });
+            } else if (hasCompIndicators) {
+                [{ lvl: 1, inds: compInds.initial }, { lvl: 2, inds: compInds.medio }, { lvl: 3, inds: compInds.advance }].forEach(({ lvl, inds }) => {
+                    totalByLevel[lvl] = inds.length;
+                    inds.forEach(ind => {
+                        const indKey = `comp-${ind.id}`;
+                        if (checkedData[indKey]) checkedByLevel[lvl]++;
+                    });
+                });
+            }
+
+            // Auto-computed level: highest level where ALL indicators of that level are checked
+            // (and all lower levels are also fully checked)
+            let autoLevel = 0;
+            if (hasToolIndicators || hasCompIndicators) {
+                if (totalByLevel[1] > 0 && checkedByLevel[1] >= totalByLevel[1]) {
+                    autoLevel = 1;
+                    if (totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
+                        autoLevel = 2;
+                        if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) {
+                            autoLevel = 3;
+                        }
+                    }
+                }
+                // If no level-1 indicators defined but level-2+ checked
+                if (totalByLevel[1] === 0 && totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
+                    autoLevel = Math.max(autoLevel, 2);
+                    if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
+                }
+            }
+
+            const displayLevel = (hasToolIndicators || hasCompIndicators) ? autoLevel : currentLevel;
+            const lvlBadgeColor = LEVEL_COLORS_IND[displayLevel] || 'secondary';
+            const lvlBadgeLabel = LEVEL_LABELS_IND[displayLevel] || 'Sin nivel';
+
+            // Progress counters per level
+            const indProgressHtml = (hasToolIndicators || hasCompIndicators) ? `
+                <div class="d-flex gap-2 flex-wrap mb-2 eval-ind-progress">
+                    ${[1, 2, 3].filter(lvl => totalByLevel[lvl] > 0).map(lvl => `
+                        <span class="badge rounded-pill" style="background:${LEVEL_BG[lvl]}; color:${LEVEL_BORDER[lvl]}; border:1px solid ${LEVEL_BORDER[lvl]}; font-size:.72rem;">
+                            Nv.${lvl}: <span data-lvl-count="${lvl}">${checkedByLevel[lvl]}/${totalByLevel[lvl]}</span>
+                        </span>`).join('')}
+                    <span class="badge bg-${lvlBadgeColor} ms-1" data-auto-level-badge>
+                        <i class="bi bi-award me-1"></i>Nivel calculado: <strong>${displayLevel}</strong> — ${lvlBadgeLabel}
+                    </span>
+                </div>` : '';
+
+            // Fallback manual level buttons (shown only if no indicators at all)
+            const levelDescs = (comp.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
+            const manualLevelHtml = (!hasToolIndicators && !hasCompIndicators) ? `
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="small text-muted me-1">Nivel:</span>
+                    ${LEVEL_LABELS.map((lbl, lvl) => {
+                        const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
+                        return `<button type="button"
+                            class="btn btn-sm level-btn ${currentLevel === lvl ? `btn-${LEVEL_COLORS[lvl]}` : 'btn-outline-secondary'}"
+                            data-target="${safeTargetId}"
+                            data-comp="${safeCompId}"
+                            data-comp-name="${escapeHtml(comp.name)}"
+                            data-level="${lvl}"
+                            onclick="toggleEvalLevel(this, '${safeTargetId}', '${safeCompId}', ${lvl}, '${escapeHtml(comp.name)}')"
+                            title="${escapeHtml(lbl + desc)}">
+                            ${lvl === 0 ? '<i class="bi bi-dash"></i>' : `<strong>${lvl}</strong>`}
+                            <span class="ms-1 d-none d-md-inline" style="font-size:.7rem;">${escapeHtml(lbl)}</span>
+                        </button>`;
+                    }).join('')}
+                </div>
+                ${currentLevel > 0 && levelDescs[currentLevel] ? `<div class="mt-1 small text-muted fst-italic level-desc-hint">${escapeHtml(levelDescs[currentLevel])}</div>` : `<div class="mt-1 small text-muted fst-italic level-desc-hint" style="min-height:1rem;"></div>`}
+            ` : '';
+
+            html += `<div class="eval-comp-card card mb-3 border" data-comp-id="${safeCompId}" data-target-id="${safeTargetId}">
                 <div class="card-header py-2 px-3 d-flex align-items-start justify-content-between gap-2" style="background:#f8f9fa;">
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -6683,41 +7060,26 @@ function _openStudentEvalSubModalFor(studentId) {
                             ${comp.area ? `<span class="badge bg-secondary" style="font-size:.65rem;">${escapeHtml(comp.area)}</span>` : ''}
                         </div>
                         ${comp.description ? `<div class="text-muted small mt-1 fst-italic">${escapeHtml(comp.description)}</div>` : ''}
-                        ${allTools.length ? `<div class="mt-1 d-flex flex-wrap gap-1" id="submodal-tools-${escapeHtml(String(comp.id))}-${escapeHtml(String(targetId))}">
-                            ${visibleTools.map(t =>
-                                `<span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1" style="font-size:.65rem;">
-                                    <i class="bi bi-tools opacity-50" style="font-size:.6em;"></i>${escapeHtml(t)}
-                                    <button type="button" class="btn-close ms-1" style="font-size:.45em;" aria-label="Eliminar herramienta"
-                                        onclick="removeEvalTool('${escapeHtml(String(targetId))}','${escapeHtml(String(comp.id))}','${t.replace(/'/g,"\\'")}')"></button>
-                                </span>`
-                            ).join('')}
-                        </div>` : ''}
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" style="font-size:.7rem; padding:2px 6px;"
                         title="Eliminar esta competencia de la evaluación"
-                        onclick="removeEvalCompetence('${escapeHtml(String(targetId))}', '${escapeHtml(String(comp.id))}')">
+                        onclick="removeEvalCompetence('${safeTargetId}', '${safeCompId}')">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
                 <div class="card-body py-2 px-3">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="small text-muted me-1">Nivel:</span>
-                        ${LEVEL_LABELS.map((lbl, lvl) => {
-                            const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
-                            return `<button type="button"
-                                class="btn btn-sm level-btn ${currentLevel === lvl ? `btn-${LEVEL_COLORS[lvl]}` : 'btn-outline-secondary'}"
-                                data-target="${escapeHtml(String(targetId))}"
-                                data-comp="${escapeHtml(String(comp.id))}"
-                                data-comp-name="${escapeHtml(comp.name)}"
-                                data-level="${lvl}"
-                                onclick="toggleEvalLevel(this, '${escapeHtml(String(targetId))}', '${escapeHtml(String(comp.id))}', ${lvl}, '${escapeHtml(comp.name)}')"
-                                title="${escapeHtml(lbl + desc)}">
-                                ${lvl === 0 ? '<i class="bi bi-dash"></i>' : `<strong>${lvl}</strong>`}
-                                <span class="ms-1 d-none d-md-inline" style="font-size:.7rem;">${escapeHtml(lbl)}</span>
-                            </button>`;
-                        }).join('')}
-                    </div>
-                    ${currentLevel > 0 && levelDescs[currentLevel] ? `<div class="mt-1 small text-muted fst-italic level-desc-hint">${escapeHtml(levelDescs[currentLevel])}</div>` : `<div class="mt-1 small text-muted fst-italic level-desc-hint" style="min-height:1rem;"></div>`}
+                    ${indProgressHtml}
+                    ${indicatorsHtml
+                        ? `<div class="mb-2">
+                            <div class="small fw-semibold text-secondary mb-1">
+                                <i class="bi bi-list-check me-1"></i>Indicadores — marca los que cumple el estudiante:
+                            </div>
+                            <div id="ind-container-${safeCompId}-${safeTargetId}">
+                                ${indicatorsHtml}
+                            </div>
+                           </div>`
+                        : ''}
+                    ${manualLevelHtml}
                 </div>
             </div>`;
         });
@@ -6795,6 +7157,124 @@ function removeEvalTool(targetId, compId, toolName) {
                 setTimeout(() => badge.remove(), 200);
             }
         });
+    }
+}
+
+/**
+ * Called when the user checks/unchecks an indicator checkbox in the evaluation sub-modal.
+ * Updates the in-memory checkedIndicators state and recalculates the auto-level badge.
+ */
+function updateEvalIndicator(targetId, compId, indKey, level, checked, compName) {
+    const saved = window._evalCurrentSaved;
+    if (!saved) return;
+
+    // Ensure eval entry exists
+    let evalEntry = (saved.evaluations || []).find(e => e.targetId === targetId);
+    if (!evalEntry) {
+        evalEntry = {
+            targetId, targetName: targetId,
+            competences: [], feedback: '', studentComment: '', evaluatedAt: null
+        };
+        if (!saved.evaluations) saved.evaluations = [];
+        saved.evaluations.push(evalEntry);
+    }
+
+    // Ensure checkedIndicators map exists on the eval entry
+    if (!evalEntry.checkedIndicators) evalEntry.checkedIndicators = {};
+    if (!evalEntry.checkedIndicators[compId]) evalEntry.checkedIndicators[compId] = {};
+
+    evalEntry.checkedIndicators[compId][indKey] = checked;
+
+    // Recalculate auto-level from all checked indicators for this comp
+    const comp = (window._evalCurrentProjectCompetences || []).find(c => String(c.id) === String(compId));
+    if (!comp) return;
+
+    const checkedData = evalEntry.checkedIndicators[compId] || {};
+    const toolsWithInds = (comp.toolsWithIndicators || []).filter(t => t.indicators && t.indicators.length > 0);
+    const activeToolsWithInds = (() => {
+        const allT = (comp.selectedTools && comp.selectedTools.length)
+            ? comp.selectedTools
+            : (comp.allTools && comp.allTools.length ? comp.allTools : null);
+        const removed = window._evalRemovedTools?.[String(targetId)]?.[String(compId)] || [];
+        if (!allT) return toolsWithInds.filter(t => !removed.includes(t.name));
+        const activeNames = new Set(allT.filter(n => !removed.includes(n)));
+        const filtered = toolsWithInds.filter(t => activeNames.has(t.name));
+        return filtered.length > 0 ? filtered : toolsWithInds.filter(t => !removed.includes(t.name));
+    })();
+    const compInds = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
+    const hasToolIndicators = activeToolsWithInds.some(t => t.indicators.length > 0);
+    const hasCompIndicators = compInds.initial.length || compInds.medio.length || compInds.advance.length;
+
+    const totalByLevel = { 1: 0, 2: 0, 3: 0 };
+    const checkedByLevel = { 1: 0, 2: 0, 3: 0 };
+
+    if (hasToolIndicators) {
+        activeToolsWithInds.forEach(tool => {
+            tool.indicators.forEach(ind => {
+                if (totalByLevel[ind.levelId] !== undefined) totalByLevel[ind.levelId]++;
+                const k = `tool-${tool.id}-${ind.id}`;
+                if (checkedData[k] && checkedByLevel[ind.levelId] !== undefined) checkedByLevel[ind.levelId]++;
+            });
+        });
+    } else if (hasCompIndicators) {
+        [{ lvl: 1, inds: compInds.initial }, { lvl: 2, inds: compInds.medio }, { lvl: 3, inds: compInds.advance }].forEach(({ lvl, inds }) => {
+            totalByLevel[lvl] = inds.length;
+            inds.forEach(ind => { if (checkedData[`comp-${ind.id}`]) checkedByLevel[lvl]++; });
+        });
+    }
+
+    let autoLevel = 0;
+    if (hasToolIndicators || hasCompIndicators) {
+        if (totalByLevel[1] > 0 && checkedByLevel[1] >= totalByLevel[1]) {
+            autoLevel = 1;
+            if (totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
+                autoLevel = 2;
+                if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
+            }
+        }
+        if (totalByLevel[1] === 0 && totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
+            autoLevel = Math.max(autoLevel, 2);
+            if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
+        }
+    }
+
+    // Update the competence entry level
+    let compEntry = evalEntry.competences.find(c => String(c.competenceId) === String(compId));
+    if (!compEntry) {
+        compEntry = { competenceId: compId, competenceName: compName, level: autoLevel, toolsUsed: [], checkedIndicators: {} };
+        evalEntry.competences.push(compEntry);
+    } else {
+        compEntry.level = autoLevel;
+    }
+    compEntry.checkedIndicators = evalEntry.checkedIndicators[compId];
+
+    // Update badge in DOM without full re-render
+    const LEVEL_COLORS_IND = ['secondary', 'danger', 'warning', 'success'];
+    const LEVEL_LABELS_IND = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
+    const safeCompId = CSS.escape(String(compId));
+    const safeTargetId = CSS.escape(String(targetId));
+
+    // Update progress counters
+    const progressContainer = document.querySelector(
+        `.eval-comp-card[data-comp-id="${CSS.escape(String(compId))}"][data-target-id="${CSS.escape(String(targetId))}"] .eval-ind-progress`
+    );
+
+    // Find and update the auto-level badge span (the last badge in the progress bar)
+    const cardEl = document.querySelector(
+        `.eval-comp-card[data-comp-id="${CSS.escape(String(compId))}"][data-target-id="${CSS.escape(String(targetId))}"]`
+    );
+    if (cardEl) {
+        // Update per-level counter badges
+        [1, 2, 3].forEach(lvl => {
+            const lvlBadge = cardEl.querySelector(`[data-lvl-count="${lvl}"]`);
+            if (lvlBadge) lvlBadge.textContent = `${checkedByLevel[lvl]}/${totalByLevel[lvl]}`;
+        });
+        // Update the auto-level badge
+        const autoLevelBadge = cardEl.querySelector('[data-auto-level-badge]');
+        if (autoLevelBadge) {
+            autoLevelBadge.className = `badge bg-${LEVEL_COLORS_IND[autoLevel]} ms-1`;
+            autoLevelBadge.innerHTML = `<i class="bi bi-award me-1"></i>Nivel calculado: <strong>${autoLevel}</strong> — ${LEVEL_LABELS_IND[autoLevel]}`;
+        }
     }
 }
 
@@ -7076,7 +7556,11 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
                         ? updatedCompletedModules[existingIdx].finalGrade
                         : autoGrade,
                     completionDate: progressPct >= 100 ? today : (existingIdx >= 0 ? updatedCompletedModules[existingIdx].completionDate : ''),
-                    notes: completedNotes
+                    notes: completedNotes,
+                    // Preserve existing completedCourses so course checkboxes in the ficha are not lost
+                    completedCourses: existingIdx >= 0
+                        ? (updatedCompletedModules[existingIdx].completedCourses || [])
+                        : []
                 };
 
                 if (existingIdx >= 0) {

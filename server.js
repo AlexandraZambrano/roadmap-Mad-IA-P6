@@ -23,18 +23,6 @@ import ExtendedInfo from './backend/models/ExtendedInfo.js';
 import Calendar from './backend/models/Calendar.js';
 import Attendance from './backend/models/Attendance.js';
 import BootcampTemplate from './backend/models/BootcampTemplate.js';
-import Competence from './backend/models/Competence.js';
-import Indicator from './backend/models/Indicator.js';
-import Tool from './backend/models/Tool.js';
-import Area from './backend/models/Area.js';
-import Level from './backend/models/Level.js';
-import Resource from './backend/models/Resource.js';
-import Referent from './backend/models/Referent.js';
-import ResourceType from './backend/models/ResourceType.js';
-import CompetenceIndicator from './backend/models/CompetenceIndicator.js';
-import CompetenceTool from './backend/models/CompetenceTool.js';
-import CompetenceArea from './backend/models/CompetenceArea.js';
-import CompetenceResource from './backend/models/CompetenceResource.js';
 import { sendPasswordEmail } from './backend/utils/email.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -425,9 +413,19 @@ function normaliseEvalCompetence(comp) {
   const areaStrings = Array.isArray(comp.area) ? comp.area : [];
   const areas = areaStrings.map((name, idx) => ({ id: idx + 1, name, icon: '' }));
 
-  // tools array — extract tool objects (without indicators, just id/name/description)
+  // tools array — preserve full tool objects including indicators
   const toolsRaw = comp.tools || [];
-  const tools = toolsRaw.map(t => ({ id: t.id, name: t.name, description: t.description || '' }));
+  const tools = toolsRaw.map(t => ({
+    id: t.id,
+    name: t.name,
+    description: t.description || '',
+    indicators: (t.indicators || []).map(ind => ({
+      id: ind.id,
+      name: ind.name,
+      description: ind.description || '',
+      levelId: ind.levelId ?? ind.level_id ?? ind.level ?? 1
+    }))
+  }));
 
   // Build levels by collecting indicators from ALL tools and grouping by levelId
   // Each tool has its own indicators with a numeric levelId field
@@ -464,159 +462,76 @@ function normaliseEvalCompetence(comp) {
   };
 }
 
-// GET /api/areas — tries external evaluation API first, falls back to local DB
+// GET /api/areas — external evaluation API only
 app.get('/api/areas', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    try {
-      const rows = await evalApiGet('/areas/', token);
-      return res.json(rows);
-    } catch (evalErr) {
-      console.warn('[GET /api/areas] Eval API unavailable, falling back to local DB:', evalErr.message);
-    }
-    const areas = await Area.find({}).sort({ id: 1 }).lean();
-    res.json(areas);
+    const rows = await evalApiGet('/areas/', token);
+    res.json(rows);
   } catch (error) {
     console.error('[GET /api/areas] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
   }
 });
 
-// GET /api/tools — tries external evaluation API first, falls back to local DB
+// GET /api/tools — external evaluation API only
 app.get('/api/tools', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    try {
-      const rows = await evalApiGet('/tools/', token);
-      return res.json(rows);
-    } catch (evalErr) {
-      console.warn('[GET /api/tools] Eval API unavailable, falling back to local DB:', evalErr.message);
-    }
-    const tools = await Tool.find({}).sort({ id: 1 }).lean();
-    res.json(tools);
+    const rows = await evalApiGet('/tools/', token);
+    res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[GET /api/tools] Error:', error);
+    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
   }
 });
 
-// GET /api/indicators — tries external evaluation API first, falls back to local DB
+// GET /api/indicators — external evaluation API only
 app.get('/api/indicators', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    try {
-      const rows = await evalApiGet('/indicators/', token);
-      return res.json(rows);
-    } catch (evalErr) {
-      console.warn('[GET /api/indicators] Eval API unavailable, falling back to local DB:', evalErr.message);
-    }
-    const indicators = await Indicator.find({}).lean();
-    res.json(indicators);
+    const rows = await evalApiGet('/indicators/', token);
+    res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[GET /api/indicators] Error:', error);
+    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
   }
 });
 
-// GET /api/levels — tries external evaluation API first, falls back to local DB
+// GET /api/levels — external evaluation API only
 app.get('/api/levels', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    try {
-      const rows = await evalApiGet('/levels/', token);
-      return res.json(rows);
-    } catch (evalErr) {
-      console.warn('[GET /api/levels] Eval API unavailable, falling back to local DB:', evalErr.message);
-    }
-    const levels = await Level.find({}).lean();
-    res.json(levels);
+    const rows = await evalApiGet('/levels/', token);
+    res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[GET /api/levels] Error:', error);
+    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
   }
 });
 
-// GET /api/resources — tries external evaluation API first, falls back to local DB
+// GET /api/resources — external evaluation API only
 app.get('/api/resources', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    try {
-      const rows = await evalApiGet('/resources/', token);
-      return res.json(rows);
-    } catch (evalErr) {
-      console.warn('[GET /api/resources] Eval API unavailable, falling back to local DB:', evalErr.message);
-    }
-    const resources = await Resource.find({}).lean();
-    res.json(resources);
+    const rows = await evalApiGet('/resources/', token);
+    res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[GET /api/resources] Error:', error);
+    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
   }
 });
 
-// GET /api/competences — tries external evaluation API first (normalised), falls back to local DB
+// GET /api/competences — external evaluation API only, normalised with full tool indicators
 app.get('/api/competences', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    try {
-      const rows = await evalApiGet('/competences/', token);
-      const normalised = rows.map(normaliseEvalCompetence);
-      return res.json(normalised);
-    } catch (evalErr) {
-      console.warn('[GET /api/competences] Eval API unavailable, falling back to local DB:', evalErr.message);
-    }
-
-    // ── Local DB fallback (full enrichment) ──────────────────────────────────
-    const [
-      competences, indicators, tools, areas, levels,
-      compIndicators, compTools, compAreas
-    ] = await Promise.all([
-      Competence.find({}).sort({ id: 1 }).lean(),
-      Indicator.find({}).lean(),
-      Tool.find({}).lean(),
-      Area.find({}).lean(),
-      Level.find({}).lean(),
-      CompetenceIndicator.find({}).lean(),
-      CompetenceTool.find({}).lean(),
-      CompetenceArea.find({}).lean()
-    ]);
-
-
-    const indicatorMap = Object.fromEntries(indicators.map(i => [i.id, i]));
-    const toolMap      = Object.fromEntries(tools.map(t => [t.id, t]));
-    const areaMap      = Object.fromEntries(areas.map(a => [a.id, a]));
-    const levelMap     = Object.fromEntries(levels.map(l => [l.id, l]));
-
-    const indsByComp  = {};
-    compIndicators.forEach(ci => { (indsByComp[ci.id_competence] ??= []).push(ci.id_indicator); });
-    const toolsByComp = {};
-    compTools.forEach(ct => { (toolsByComp[ct.id_competence] ??= []).push(ct.id_tool); });
-    const areasByComp = {};
-    compAreas.forEach(ca => { (areasByComp[ca.id_competence] ??= []).push(ca.id_area); });
-
-    const enriched = competences.map(comp => {
-      const compAreasList = (areasByComp[comp.id] || [])
-        .map(aId => areaMap[aId]).filter(Boolean)
-        .map(a => ({ id: a.id, name: a.name, icon: a.icon }));
-
-      const rawIndicators = (indsByComp[comp.id] || []).map(iId => indicatorMap[iId]).filter(Boolean);
-      const indicatorsByLevel = {};
-      rawIndicators.forEach(ind => {
-        const lvl = ind.levelId || 0;
-        if (!indicatorsByLevel[lvl]) {
-          indicatorsByLevel[lvl] = { levelId: lvl, levelName: levelMap[lvl]?.name || `Nivel ${lvl}`, levelDescription: levelMap[lvl]?.description || '', indicators: [] };
-        }
-        indicatorsByLevel[lvl].indicators.push({ id: ind.id, name: ind.name, description: ind.description });
-      });
-      const levels_grouped = Object.values(indicatorsByLevel).sort((a, b) => a.levelId - b.levelId);
-
-      const compToolsList = (toolsByComp[comp.id] || [])
-        .map(tId => toolMap[tId]).filter(Boolean)
-        .map(t => ({ id: t.id, name: t.name, description: t.description }));
-
-      return { id: comp.id, name: comp.name, description: comp.description, areas: compAreasList, levels: levels_grouped, tools: compToolsList };
-    });
-
-    res.json(enriched);
+    const rows = await evalApiGet('/competences/', token);
+    const normalised = rows.map(normaliseEvalCompetence);
+    res.json(normalised);
   } catch (error) {
     console.error('[GET /api/competences] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(502).json({ error: 'Eval API unavailable: ' + error.message });
   }
 });
 
@@ -3449,44 +3364,45 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
             modality, presentialDays, materials, internships, funders, funderDeadlines,
             okrKpis, funderKpis, trainerDayOff, cotrainerDayOff, projectMeetings, teamMeetings,
             approvalName, approvalRole, projectEvaluations } = req.body;
-    const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
-    const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
-    const normalizedCompetences = Array.isArray(competences) ? competences : [];
-    const normalizedProjectEvaluations = Array.isArray(projectEvaluations) ? projectEvaluations : undefined;
+
+    // Build a $set object with ONLY the fields that were explicitly sent in the request body.
+    // This prevents partial saves (e.g. _persistEvaluations sending only projectEvaluations)
+    // from wiping out other fields like pildoras, competences, etc.
+    const body = req.body;
+    const $setFields = {};
+
+    if (body.hasOwnProperty('schedule'))               $setFields.schedule = schedule || {};
+    if (body.hasOwnProperty('team'))                   $setFields.team = Array.isArray(team) ? team : [];
+    if (body.hasOwnProperty('resources'))              $setFields.resources = Array.isArray(resources) ? resources : [];
+    if (body.hasOwnProperty('evaluation'))             $setFields.evaluation = evaluation || '';
+    if (body.hasOwnProperty('pildoras'))               $setFields.pildoras = Array.isArray(pildoras) ? pildoras : [];
+    if (body.hasOwnProperty('modulesPildoras'))        $setFields.modulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
+    if (body.hasOwnProperty('pildorasAssignmentOpen')) $setFields.pildorasAssignmentOpen = !!pildorasAssignmentOpen;
+    if (body.hasOwnProperty('competences'))            $setFields.competences = Array.isArray(competences) ? competences : [];
+    if (body.hasOwnProperty('school'))                 $setFields.school = school || '';
+    if (body.hasOwnProperty('projectType'))            $setFields.projectType = projectType || '';
+    if (body.hasOwnProperty('positiveExitStart'))      $setFields.positiveExitStart = positiveExitStart || '';
+    if (body.hasOwnProperty('positiveExitEnd'))        $setFields.positiveExitEnd = positiveExitEnd || '';
+    if (body.hasOwnProperty('totalHours'))             $setFields.totalHours = totalHours || '';
+    if (body.hasOwnProperty('modality'))               $setFields.modality = modality || '';
+    if (body.hasOwnProperty('presentialDays'))         $setFields.presentialDays = presentialDays || '';
+    if (body.hasOwnProperty('materials'))              $setFields.materials = materials || '';
+    if (body.hasOwnProperty('internships'))            $setFields.internships = internships !== undefined ? internships : null;
+    if (body.hasOwnProperty('funders'))                $setFields.funders = funders || '';
+    if (body.hasOwnProperty('funderDeadlines'))        $setFields.funderDeadlines = funderDeadlines || '';
+    if (body.hasOwnProperty('okrKpis'))                $setFields.okrKpis = okrKpis || '';
+    if (body.hasOwnProperty('funderKpis'))             $setFields.funderKpis = funderKpis || '';
+    if (body.hasOwnProperty('trainerDayOff'))          $setFields.trainerDayOff = trainerDayOff || '';
+    if (body.hasOwnProperty('cotrainerDayOff'))        $setFields.cotrainerDayOff = cotrainerDayOff || '';
+    if (body.hasOwnProperty('projectMeetings'))        $setFields.projectMeetings = projectMeetings || '';
+    if (body.hasOwnProperty('teamMeetings'))           $setFields.teamMeetings = teamMeetings || '';
+    if (body.hasOwnProperty('approvalName'))           $setFields.approvalName = approvalName || '';
+    if (body.hasOwnProperty('approvalRole'))           $setFields.approvalRole = approvalRole || '';
+    if (Array.isArray(projectEvaluations))             $setFields.projectEvaluations = projectEvaluations;
+
     const newInfo = await ExtendedInfo.findOneAndUpdate(
       { promotionId: req.params.promotionId },
-      {
-        $set: {
-          schedule: schedule || {},
-          team: team || [],
-          resources: resources || [],
-          evaluation: evaluation || '',
-          pildoras: normalizedPildoras,
-          modulesPildoras: normalizedModulesPildoras,
-          pildorasAssignmentOpen: !!pildorasAssignmentOpen,
-          competences: normalizedCompetences,
-          school: school || '',
-          projectType: projectType || '',
-          positiveExitStart: positiveExitStart || '',
-          positiveExitEnd: positiveExitEnd || '',
-          totalHours: totalHours || '',
-          modality: modality || '',
-          presentialDays: presentialDays || '',
-          materials: materials || '',
-          internships: internships !== undefined ? internships : null,
-          funders: funders || '',
-          funderDeadlines: funderDeadlines || '',
-          okrKpis: okrKpis || '',
-          funderKpis: funderKpis || '',
-          trainerDayOff: trainerDayOff || '',
-          cotrainerDayOff: cotrainerDayOff || '',
-          projectMeetings: projectMeetings || '',
-          teamMeetings: teamMeetings || '',
-          approvalName: approvalName || '',
-          approvalRole: approvalRole || '',
-          ...(normalizedProjectEvaluations !== undefined ? { projectEvaluations: normalizedProjectEvaluations } : {})
-        }
-      },
+      { $set: $setFields },
       { upsert: true, returnDocument: 'after', strict: false }
     );
     res.json(newInfo);

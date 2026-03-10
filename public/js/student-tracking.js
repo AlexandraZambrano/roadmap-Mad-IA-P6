@@ -1610,21 +1610,53 @@
         const summary = document.getElementById('ficha-modules-progress-summary');
         if (!summary) return;
 
-        // Only show summary if there are auto-tracked modules (with progressPercent)
-        const autoModules = _completedModules.filter(m => m.progressPercent !== undefined && m.progressPercent !== null);
-        const allModules = _promotionModules.length ? _promotionModules : autoModules.map(m => ({ id: m.moduleId, name: m.moduleName }));
+        // Show summary if there are any tracked modules (auto or manual with courses)
+        const trackedModules = _completedModules.filter(m =>
+            (m.progressPercent !== undefined && m.progressPercent !== null) ||
+            (m.completedCourses && m.completedCourses.length > 0)
+        );
+        const allModules = _promotionModules.length ? _promotionModules : trackedModules.map(m => ({ id: m.moduleId, name: m.moduleName }));
 
-        if (!allModules.length || !autoModules.length) {
+        if (!allModules.length || !trackedModules.length) {
             summary.innerHTML = '';
             return;
         }
 
-        // Calculate overall bootcamp progress
+        // Calculate overall bootcamp progress combining projects + courses
+        let totalCombinedPct = 0, countForAvg = 0;
+        let totalCoursesAll = 0, completedCoursesAll = 0;
+
+        _completedModules.forEach(m => {
+            const projPct = (m.progressPercent !== undefined && m.progressPercent !== null)
+                ? Math.min(100, Math.max(0, parseInt(m.progressPercent) || 0)) : null;
+            const roadmapModule = _promotionModules.find(rm => String(rm.id) === String(m.moduleId));
+            const moduleCourses = roadmapModule ? (roadmapModule.courses || []) : [];
+            const completedCourses = (m.completedCourses || []).length;
+            const coursePct = moduleCourses.length ? Math.round((completedCourses / moduleCourses.length) * 100) : null;
+
+            totalCoursesAll += moduleCourses.length;
+            completedCoursesAll += completedCourses;
+
+            if (projPct !== null || coursePct !== null) {
+                const combined = (projPct !== null && coursePct !== null)
+                    ? Math.round((projPct + coursePct) / 2)
+                    : (projPct ?? coursePct);
+                totalCombinedPct += combined;
+                countForAvg++;
+            }
+        });
+
         const totalModules = allModules.length;
-        const completedModulesCount = autoModules.filter(m => parseInt(m.progressPercent) >= 100).length;
-        const avgProgress = autoModules.length
-            ? Math.round(autoModules.reduce((sum, m) => sum + (parseInt(m.progressPercent) || 0), 0) / autoModules.length)
-            : 0;
+        const completedModulesCount = _completedModules.filter(m => {
+            const projPct = m.progressPercent !== undefined ? parseInt(m.progressPercent) : null;
+            const roadmapModule = _promotionModules.find(rm => String(rm.id) === String(m.moduleId));
+            const moduleCourses = roadmapModule ? (roadmapModule.courses || []) : [];
+            const coursePct = moduleCourses.length ? Math.round(((m.completedCourses || []).length / moduleCourses.length) * 100) : null;
+            const combined = (projPct !== null && coursePct !== null) ? Math.round((projPct + coursePct) / 2) : (projPct ?? coursePct ?? 0);
+            return combined >= 100;
+        }).length;
+
+        const avgProgress = countForAvg > 0 ? Math.round(totalCombinedPct / countForAvg) : 0;
 
         const globalColor = avgProgress >= 100 ? '#198754'
                           : avgProgress >= 60  ? '#0d6efd'
@@ -1659,6 +1691,10 @@
                             <i class="bi bi-folder2-open me-1"></i>
                             <strong>${_teams.length}</strong> proyecto${_teams.length !== 1 ? 's' : ''} evaluado${_teams.length !== 1 ? 's' : ''}
                         </small>
+                        ${totalCoursesAll > 0 ? `<small class="text-muted">
+                            <i class="bi bi-journal-bookmark me-1"></i>
+                            <strong>${completedCoursesAll}</strong>/<strong>${totalCoursesAll}</strong> cursos completados
+                        </small>` : ''}
                     </div>
                 </div>
             </div>`;
@@ -1681,30 +1717,78 @@
                 : null;
             const isAutoEntry = pct !== null;
 
+            // Find roadmap courses for this module
+            const roadmapModule = _promotionModules.find(rm => String(rm.id) === String(m.moduleId));
+            const moduleCourses = roadmapModule ? (roadmapModule.courses || []) : [];
+            const completedCourses = new Set((m.completedCourses || []).map(c => String(c)));
+
+            // Courses checklist section
+            const coursesSection = moduleCourses.length ? `
+                <div class="mt-2 pt-2 border-top">
+                    <div class="small fw-semibold text-secondary mb-1">
+                        <i class="bi bi-journal-bookmark me-1"></i>Cursos del módulo
+                        <span class="ms-1 text-muted fw-normal">(${completedCourses.size}/${moduleCourses.length} completados)</span>
+                    </div>
+                    <div class="d-flex flex-column gap-1">
+                        ${moduleCourses.map((course, ci) => {
+                            const courseName = typeof course === 'string' ? course : (course.name || `Curso ${ci+1}`);
+                            const courseUrl = typeof course === 'object' ? (course.url || '') : '';
+                            const courseKey = String(ci);
+                            const checked = completedCourses.has(courseKey) ? 'checked' : '';
+                            return `<div class="form-check form-check-sm d-flex align-items-center gap-2 mb-0">
+                                <input class="form-check-input flex-shrink-0" type="checkbox" ${checked}
+                                    id="course-${i}-${ci}"
+                                    onchange="window.StudentTracking._toggleCourse(${i}, ${ci}, this.checked)">
+                                <label class="form-check-label small ${checked ? 'text-decoration-line-through text-muted' : ''}" for="course-${i}-${ci}" style="cursor:pointer;">
+                                    ${courseUrl
+                                        ? `<a href="${_esc(courseUrl)}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">${_esc(courseName)} <i class="bi bi-box-arrow-up-right" style="font-size:.65rem;"></i></a>`
+                                        : _esc(courseName)
+                                    }
+                                </label>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>` : '';
+
+            // Combined progress (projects + courses)
+            const courseProgressPct = moduleCourses.length
+                ? Math.round((completedCourses.size / moduleCourses.length) * 100)
+                : null;
+
+            const combinedPct = isAutoEntry
+                ? (moduleCourses.length
+                    ? Math.round((pct + (courseProgressPct ?? 0)) / 2)
+                    : pct)
+                : null;
+            const displayPct = combinedPct ?? pct;
+
             // Color of progress bar based on percentage
-            const barColor = pct >= 100 ? 'bg-success'
-                           : pct >= 60  ? 'bg-primary'
-                           : pct >= 30  ? 'bg-warning'
+            const barColor = displayPct >= 100 ? 'bg-success'
+                           : displayPct >= 60  ? 'bg-primary'
+                           : displayPct >= 30  ? 'bg-warning'
                            : 'bg-danger';
 
-            const borderColor = pct >= 100 ? 'border-success'
-                              : pct >= 60  ? 'border-primary'
-                              : pct >= 30  ? 'border-warning'
-                              : isAutoEntry ? 'border-danger' : 'border-primary';
+            const borderColor = displayPct >= 100 ? 'border-success'
+                              : displayPct >= 60  ? 'border-primary'
+                              : displayPct >= 30  ? 'border-warning'
+                              : (isAutoEntry || moduleCourses.length) ? 'border-danger' : 'border-primary';
 
-            const progressBar = isAutoEntry ? `
+            const progressBar = (isAutoEntry || moduleCourses.length) ? `
                 <div class="mt-2">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <small class="text-muted fw-semibold">Progreso del módulo</small>
-                        <small class="fw-bold" style="color:${pct >= 100 ? '#198754' : pct >= 60 ? '#0d6efd' : pct >= 30 ? '#ffc107' : '#dc3545'}">${pct}%</small>
+                        <small class="text-muted fw-semibold">
+                            Progreso del módulo
+                            ${moduleCourses.length && isAutoEntry ? `<span class="text-muted fw-normal">(proyectos + cursos)</span>` : ''}
+                        </small>
+                        <small class="fw-bold" style="color:${displayPct >= 100 ? '#198754' : displayPct >= 60 ? '#0d6efd' : displayPct >= 30 ? '#ffc107' : '#dc3545'}">${displayPct ?? '—'}%</small>
                     </div>
                     <div class="progress" style="height:8px;">
                         <div class="progress-bar ${barColor}" role="progressbar"
-                            style="width:${pct}%; transition: width 0.5s ease;"
-                            aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+                            style="width:${displayPct ?? 0}%; transition: width 0.5s ease;"
+                            aria-valuenow="${displayPct ?? 0}" aria-valuemin="0" aria-valuemax="100">
                         </div>
                     </div>
-                    ${pct >= 100 ? `<div class="mt-1"><span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Módulo completado</span></div>` : ''}
+                    ${(displayPct ?? 0) >= 100 ? `<div class="mt-1"><span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Módulo completado</span></div>` : ''}
                 </div>` : '';
 
             const gradeBadge = m.finalGrade
@@ -1713,7 +1797,7 @@
 
             const dateInfo = m.completionDate
                 ? `<i class="bi bi-calendar-check me-1"></i>${_fmtDate(m.completionDate)}`
-                : (pct >= 100 ? `<i class="bi bi-calendar-check me-1"></i>Hoy` : '');
+                : ((displayPct ?? 0) >= 100 ? `<i class="bi bi-calendar-check me-1"></i>Completado` : '');
 
             const notesInfo = m.notes
                 ? `<div class="mt-1 small text-muted fst-italic"><i class="bi bi-info-circle me-1"></i>${_esc(m.notes)}</div>`
@@ -1735,6 +1819,7 @@
                             <small class="text-muted">${dateInfo}</small>
                             ${notesInfo}
                             ${progressBar}
+                            ${coursesSection}
                         </div>
                         <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="window.StudentTracking._removeModule(${i})">
                             <i class="bi bi-trash"></i>
@@ -1802,6 +1887,33 @@
 
     function _removeModule(i) {
         _completedModules.splice(i, 1);
+        _markUnsaved('technical');
+        _renderModules();
+    }
+
+    /**
+     * Toggles a course as completed/uncompleted within a module entry.
+     * courseKey is the index (as string) of the course in the roadmap module's courses array.
+     */
+    function _toggleCourse(moduleIdx, courseIdx, checked) {
+        const m = _completedModules[moduleIdx];
+        if (!m) return;
+        if (!m.completedCourses) m.completedCourses = [];
+
+        const key = String(courseIdx);
+        if (checked) {
+            if (!m.completedCourses.includes(key)) m.completedCourses.push(key);
+        } else {
+            m.completedCourses = m.completedCourses.filter(k => k !== key);
+        }
+
+        // Set completion date if all courses done + auto-mark completionDate
+        const roadmapModule = _promotionModules.find(rm => String(rm.id) === String(m.moduleId));
+        const totalCourses = roadmapModule ? (roadmapModule.courses || []).length : 0;
+        if (totalCourses > 0 && m.completedCourses.length >= totalCourses && !m.completionDate) {
+            m.completionDate = _todayISO();
+        }
+
         _markUnsaved('technical');
         _renderModules();
     }
@@ -2532,7 +2644,7 @@
         _filterTeamMemberDropdown, _updateTeamMemberPills, _toggleTeamMembersSection,
         _onProjectSelectChange, _onProjectCompetenceChange, _addProjectCompetence, _removePendingCompetence,
         _openCompetenceForm, _saveCompetence, _removeCompetence,
-        _openModuleForm, _saveModule, _removeModule,
+        _openModuleForm, _saveModule, _removeModule, _toggleCourse,
         _openEmpSessionForm, _saveEmpSession, _removeEmpSession,
         _openIndSessionForm, _saveIndSession, _removeIndSession,
         _openIncidentForm, _saveIncident, _resolveIncident, _removeIncident,

@@ -76,8 +76,11 @@ const StudentSchema = new mongoose.Schema({
             moduleId: String,
             moduleName: String,
             completionDate: String,
+            finalGrade: String,
             grade: String,
-            notes: String
+            notes: String,
+            progressPercent: Number,
+            completedCourses: [String]
         }],
         completedPildoras: [{
             pildoraTitle: String,
