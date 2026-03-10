@@ -2060,10 +2060,29 @@ async function loadPromotion() {
             const _setTC = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
             _setTC('promotion-title', promotion.name);
             _setTC('promotion-desc', promotion.description || '');
-            _setTC('promotion-weeks', promotion.weeks || '-');
+            _setTC('promotion-duration', promotion.weeks || '-');
             _setTC('promotion-start', promotion.startDate || '-');
             _setTC('promotion-end', promotion.endDate || '-');
             _setTC('modules-count', (promotion.modules || []).length);
+            
+            // Set promotion status
+            const statusEl = document.getElementById('promotion-status');
+            if (statusEl) {
+                const now = new Date();
+                const startDate = new Date(promotion.startDate);
+                const endDate = new Date(promotion.endDate);
+                
+                if (now < startDate) {
+                    statusEl.textContent = 'Próximo';
+                    statusEl.className = 'badge bg-primary';
+                } else if (now > endDate) {
+                    statusEl.textContent = 'Finalizado';
+                    statusEl.className = 'badge bg-secondary';
+                } else {
+                    statusEl.textContent = 'Activo';
+                    statusEl.className = 'badge bg-success';
+                }
+            }
 
             // Load teaching content button
             if (promotion.teachingContentUrl) {
