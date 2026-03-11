@@ -6146,7 +6146,7 @@ function renderEvaluationTab() {
                             <button class="btn btn-sm btn-outline-info" onclick="openGroupsModal(${mIdx}, ${pIdx})" title="Definir grupos">
                                 <i class="bi bi-diagram-3 me-1"></i>Grupos
                             </button>` : ''}
-                            <button class="btn btn-sm btn-primary ms-auto" onclick="openEvaluationModal(${mIdx}, ${pIdx})"
+                            <button class="btn btn-sm btn-primary ms-auto" onclick="openEvaluationView(${mIdx}, ${pIdx})"
                                 style="background:#E85D26;border-color:#E85D26;">
                                 <i class="bi bi-clipboard-check me-1"></i>Evaluar
                             </button>
@@ -6762,7 +6762,15 @@ async function saveGroups() {
     await _persistEvaluations();
 
     bootstrap.Modal.getInstance(document.getElementById('groupsModal'))?.hide();
-    renderEvaluationTab();
+
+    // If the split view is open, refresh it; otherwise refresh the card grid
+    const splitView = document.getElementById('eval-project-view');
+    if (splitView && !splitView.classList.contains('hidden')) {
+        _renderEvalTargetsList(saved, window._evalState.students);
+        _showEvalRightEmpty();
+    } else {
+        renderEvaluationTab();
+    }
     showToast('Grupos guardados correctamente', 'success');
 }
 
@@ -6831,6 +6839,486 @@ function _applySuggestedMix() {
 
     _renderGroupsModalBody(saved, students);
     showToast('Distribución sugerida aplicada. Revisa los grupos y pulsa "Guardar grupos" cuando estés listo.', 'info');
+}
+
+// ==================== GOOGLE CLASSROOM–STYLE EVALUATION VIEW ====================
+
+/**
+ * Opens the inline split-panel evaluation view for a project.
+ * Left: student/group list with evaluation status.
+ * Right: competences + feedback for the selected target.
+ */
+function openEvaluationView(mIdx, pIdx) {
+    const { modules, competences, students, savedEvaluations } = window._evalState;
+    const mod = modules[mIdx];
+    const proj = mod.projects[pIdx];
+    const modId = mod.id || String(mIdx);
+
+    window._evalState.currentModuleIdx = mIdx;
+    window._evalState.currentProjectIdx = pIdx;
+    window._evalRemovedComps = {};
+    window._evalRemovedTools = {};
+
+    const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name) || {
+        moduleId: modId, moduleName: mod.name, projectName: proj.name,
+        type: 'individual', groups: [], evaluations: []
+    };
+    window._evalCurrentSaved = saved;
+
+    const projCompetences = (proj.competenceIds || []).map(cid =>
+        competences.find(c => String(c.id) === String(cid)) || { id: cid, name: `Competencia ${cid}`, area: '' }
+    );
+    window._evalCurrentProjectCompetences = projCompetences;
+
+    // Show/hide panels
+    const tabView    = document.getElementById('evaluation-tab-view');
+    const splitView  = document.getElementById('eval-project-view');
+    const histPanel  = document.getElementById('team-history-panel');
+    const legacyPanel= document.getElementById('student-eval-panel');
+    if (tabView)    tabView.classList.add('hidden');
+    if (histPanel)  histPanel.classList.add('hidden');
+    if (legacyPanel)legacyPanel.classList.add('hidden');
+    if (splitView)  splitView.classList.remove('hidden');
+
+    // Populate top bar
+    const titleEl    = document.getElementById('eval-view-title');
+    const subtitleEl = document.getElementById('eval-view-subtitle');
+    const groupsBtn  = document.getElementById('eval-view-groups-btn');
+    if (titleEl)    titleEl.textContent = `${proj.name} — ${mod.name || `Módulo ${mIdx + 1}`}`;
+    if (subtitleEl) subtitleEl.textContent = saved.type === 'grupal' ? 'Evaluación grupal' : 'Evaluación individual';
+    if (groupsBtn) {
+        if (saved.type === 'grupal') groupsBtn.classList.remove('d-none');
+        else groupsBtn.classList.add('d-none');
+    }
+
+    // Render targets list
+    _renderEvalTargetsList(saved, students);
+
+    // Clear right panel
+    _showEvalRightEmpty();
+    // Update empty-state hint based on type
+    const emptyEl = document.getElementById('eval-right-empty');
+    if (emptyEl) {
+        const isGrupal = saved.type === 'grupal';
+        emptyEl.innerHTML = `
+        <i class="bi bi-${isGrupal ? 'people' : 'person-check'} display-4 mb-3 text-muted opacity-50"></i>
+        <p class="mb-1 fw-semibold">Selecciona ${isGrupal ? 'un grupo' : 'un estudiante'}</p>
+        <p class="small">Haz clic en ${isGrupal ? 'un grupo' : 'un estudiante'} de la lista para comenzar su evaluación.</p>`;
+    }
+}
+
+/** Re-renders the left targets list (students or groups). */
+function _renderEvalTargetsList(saved, students) {
+    const listEl    = document.getElementById('eval-targets-list');
+    const labelEl   = document.getElementById('eval-targets-label');
+    const countEl   = document.getElementById('eval-targets-count');
+    if (!listEl) return;
+
+    const doneEvals = saved.evaluations || [];
+    const isGrupal  = saved.type === 'grupal';
+    const targets   = isGrupal
+        ? (saved.groups || []).map(g => ({ id: g.groupName, label: g.groupName, sub: `${(g.studentIds||[]).length} miembros`, isGroup: true }))
+        : students.map(s => ({ id: String(s.id || s._id), label: `${s.name || ''} ${s.lastname || ''}`.trim(), sub: s.email || '', isGroup: false }));
+
+    if (labelEl) labelEl.textContent = isGrupal ? 'Grupos' : 'Estudiantes';
+    if (countEl) countEl.textContent = targets.length;
+
+    if (targets.length === 0) {
+        listEl.innerHTML = `<li class="p-3 text-muted small fst-italic">${
+            isGrupal ? 'No hay grupos definidos. Usa el botón "Editar grupos".' : 'No hay estudiantes.'
+        }</li>`;
+        return;
+    }
+
+    listEl.innerHTML = targets.map(t => {
+        const done = doneEvals.some(e => String(e.targetId) === String(t.id));
+        const initials = t.label.split(' ').map(w => w[0] || '').slice(0,2).join('').toUpperCase() || '?';
+        const icon     = t.isGroup ? 'bi-people-fill' : '';
+        return `<li class="eval-target-item ${done ? 'evaluated' : ''}" data-target-id="${escapeHtml(String(t.id))}"
+                    onclick="selectEvalTarget('${escapeHtml(String(t.id))}')">
+            <div class="eval-target-avatar">${t.isGroup ? `<i class="bi bi-people-fill" style="font-size:.85rem;"></i>` : escapeHtml(initials)}</div>
+            <div class="eval-target-info">
+                <div class="eval-target-name">${escapeHtml(t.label)}</div>
+                <div class="eval-target-meta">${escapeHtml(t.sub)}</div>
+            </div>
+            ${done ? `<i class="bi bi-check-circle-fill eval-target-check" title="Evaluado"></i>` : ''}
+        </li>`;
+    }).join('');
+}
+
+/** Hides the right content area, shows the empty-state placeholder. */
+function _showEvalRightEmpty() {
+    const empty   = document.getElementById('eval-right-empty');
+    const content = document.getElementById('eval-right-content');
+    if (empty)   empty.classList.remove('d-none');
+    if (content) content.classList.add('d-none');
+}
+
+/** Shows the right content area, hides the empty-state placeholder. */
+function _showEvalRightContent() {
+    const empty   = document.getElementById('eval-right-empty');
+    const content = document.getElementById('eval-right-content');
+    if (empty)   empty.classList.add('d-none');
+    if (content) { content.classList.remove('d-none'); content.style.display = ''; }
+}
+
+/**
+ * Called when a target (student or group) is clicked in the left list.
+ * Loads their competences + feedback into the right panel.
+ */
+function selectEvalTarget(targetId) {
+    const saved = window._evalCurrentSaved;
+    const students = window._evalState.students;
+    if (!saved) return;
+
+    // Reset removed-comps for this target when switching
+    if (window._evalRemovedComps) delete window._evalRemovedComps[String(targetId)];
+
+    // Mark active in left list
+    document.querySelectorAll('#eval-targets-list .eval-target-item').forEach(li => {
+        li.classList.toggle('active', li.dataset.targetId === String(targetId));
+    });
+
+    const isGrupal  = saved.type === 'grupal';
+    const savedEval = (saved.evaluations || []).find(e => String(e.targetId) === String(targetId));
+
+    // Resolve display name
+    let displayName = String(targetId);
+    if (isGrupal) {
+        const grp = (saved.groups || []).find(g => g.groupName === targetId);
+        if (grp) {
+            const members = (grp.studentIds || []).map(sid => {
+                const st = students.find(s => String(s.id || s._id) === String(sid));
+                return st ? `${st.name || ''} ${st.lastname || ''}`.trim() : sid;
+            });
+            displayName = grp.groupName + (members.length ? ` · ${members.slice(0,3).map(n => escapeHtml(n)).join(', ')}${members.length > 3 ? '…' : ''}` : '');
+        }
+    } else {
+        const st = students.find(s => String(s.id || s._id) === String(targetId));
+        if (st) displayName = `${st.name || ''} ${st.lastname || ''}`.trim();
+    }
+
+    const isDone = !!(savedEval && savedEval.evaluatedAt);
+    const savedFeedback = savedEval ? (savedEval.feedback || '') : '';
+
+    // Build competences HTML using existing buildCompetencesHtml logic
+    const projCompetences = window._evalCurrentProjectCompetences || [];
+    const LEVEL_LABELS = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
+    const LEVEL_COLORS = ['secondary', 'danger', 'warning', 'success'];
+
+    // Re-use the existing buildCompetencesHtml inner function (which is scoped inside openEvaluationModal).
+    // We call _openStudentEvalSubModalFor to populate the body but redirect its output to the split panel.
+    // ── Instead, we build the HTML here directly from the shared sub-modal builder ──
+    // We store the built HTML into the right panel.
+
+    const headerEl = document.getElementById('eval-right-header');
+    const bodyEl   = document.getElementById('eval-right-body');
+
+    if (headerEl) {
+        headerEl.innerHTML = `
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="eval-target-avatar" style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0;background:${isDone ? 'linear-gradient(135deg,#198754,#20c997)' : 'linear-gradient(135deg,#E85D26,#f97316)'};">
+                ${isGrupal ? `<i class="bi bi-people-fill" style="font-size:1rem;"></i>` : escapeHtml(displayName.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase() || '?')}
+            </div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="fw-bold fs-6 text-truncate">${escapeHtml(displayName)}</div>
+                ${isDone ? `<span class="badge bg-success mt-1"><i class="bi bi-check-circle me-1"></i>Evaluado el ${new Date(savedEval.evaluatedAt).toLocaleDateString('es-ES')}</span>` : `<span class="badge bg-light text-muted border mt-1">Sin evaluar</span>`}
+            </div>
+        </div>`;
+    }
+
+    // Build the body using the sub-modal builder
+    // We need to temporarily reroute _openStudentEvalSubModalFor to write to our panel
+    window._evalViewActiveTargetId = String(targetId);
+
+    if (bodyEl) {
+        // Use the existing function that builds the sub-modal HTML; we adapt the output
+        const compHtml = _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences);
+        bodyEl.innerHTML = `
+        <div class="mb-3">
+            <div class="small fw-semibold text-secondary mb-2"><i class="bi bi-award me-1"></i>Competencias</div>
+            ${compHtml}
+        </div>
+        <div class="mt-3 mb-4">
+            <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback</label>
+            <textarea class="form-control" rows="3" placeholder="Comentarios de feedback para el informe..."
+                data-target-type="${isGrupal ? 'group' : 'individual'}"
+                data-target-id="${escapeHtml(String(targetId))}">${escapeHtml(savedFeedback)}</textarea>
+        </div>`;
+    }
+
+    _showEvalRightContent();
+
+    // Store on the save button panel
+    const splitView = document.getElementById('eval-project-view');
+    if (splitView) splitView.dataset.targetStudentId = String(targetId);
+}
+
+/**
+ * Builds competence cards HTML for the given targetId — shared by the split view and legacy modal.
+ * This is extracted from the inline function inside _openStudentEvalSubModalFor so it can be called
+ * both from the split view and from the legacy modal path.
+ */
+function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences) {
+    if (!projCompetences || !projCompetences.length) {
+        return `<p class="text-muted small">No hay competencias asociadas a este proyecto.</p>`;
+    }
+    const removedCompIds = window._evalRemovedComps?.[String(targetId)] || [];
+    const visibleComps = projCompetences.filter(c => !removedCompIds.includes(String(c.id)));
+    if (!visibleComps.length) {
+        return `<p class="text-muted small fst-italic">Todas las competencias han sido eliminadas de esta evaluación.</p>`;
+    }
+
+    const LEVEL_COLORS_IND = ['secondary', 'danger', 'warning', 'success'];
+    const LEVEL_LABELS_IND = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
+    const LEVEL_LABELS     = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
+    const LEVEL_COLORS     = ['secondary', 'danger', 'warning', 'success'];
+    const LEVEL_BG     = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
+    const LEVEL_BORDER = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
+    const LEVEL_TEXT   = { 1: 'Básico',  2: 'Medio',  3: 'Avanzado' };
+
+    let html = `<div class="eval-competences-list">`;
+    visibleComps.forEach(comp => {
+        const savedCompEntry = savedEval
+            ? (savedEval.competences || []).find(c => String(c.competenceId) === String(comp.id))
+            : null;
+        const currentLevel  = savedCompEntry ? savedCompEntry.level : 0;
+        const rawCompId     = String(comp.id);
+        const checkedDataForComp = savedCompEntry?.checkedIndicators
+            || savedEval?.checkedIndicators?.[rawCompId]
+            || {};
+
+        const toolsWithInds      = (comp.toolsWithIndicators || []).filter(t => t.indicators && t.indicators.length > 0);
+        const activeToolsWithInds = (() => {
+            const allT = (comp.selectedTools && comp.selectedTools.length)
+                ? comp.selectedTools
+                : (comp.allTools && comp.allTools.length ? comp.allTools : null);
+            const removed = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
+            if (!allT) return toolsWithInds.filter(t => !removed.includes(t.name));
+            const activeNames = new Set(allT.filter(n => !removed.includes(n)));
+            const filtered = toolsWithInds.filter(t => activeNames.has(t.name));
+            return filtered.length > 0 ? filtered : toolsWithInds.filter(t => !removed.includes(t.name));
+        })();
+
+        const compInds            = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
+        const hasToolIndicators   = activeToolsWithInds.some(t => t.indicators.length > 0);
+        const hasCompIndicators   = compInds.initial.length || compInds.medio.length || compInds.advance.length;
+
+        const safeCompId   = escapeHtml(rawCompId);
+        const safeTargetId = escapeHtml(String(targetId));
+        const prefix       = `sv-${safeCompId}-${safeTargetId}`;
+
+        // Counts
+        const checkedByLevel = { 1: 0, 2: 0, 3: 0 };
+        const totalByLevel   = { 1: 0, 2: 0, 3: 0 };
+        if (hasToolIndicators) {
+            activeToolsWithInds.forEach(tool => {
+                tool.indicators.forEach(ind => {
+                    if (totalByLevel[ind.levelId] !== undefined) totalByLevel[ind.levelId]++;
+                    const k = `tool-${tool.id}-${ind.id}`;
+                    if (checkedDataForComp[k] && checkedByLevel[ind.levelId] !== undefined) checkedByLevel[ind.levelId]++;
+                });
+            });
+        } else if (hasCompIndicators) {
+            [{ lvl:1, inds: compInds.initial }, { lvl:2, inds: compInds.medio }, { lvl:3, inds: compInds.advance }].forEach(({ lvl, inds }) => {
+                totalByLevel[lvl] = inds.length;
+                inds.forEach(ind => { if (checkedDataForComp[`comp-${ind.id}`]) checkedByLevel[lvl]++; });
+            });
+        }
+        let autoLevel = 0;
+        if (hasToolIndicators || hasCompIndicators) {
+            if (totalByLevel[1] > 0 && checkedByLevel[1] >= totalByLevel[1]) {
+                autoLevel = 1;
+                if (totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
+                    autoLevel = 2;
+                    if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
+                }
+            }
+            if (totalByLevel[1] === 0 && totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
+                autoLevel = Math.max(autoLevel, 2);
+                if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
+            }
+        }
+        const displayLevel  = (hasToolIndicators || hasCompIndicators) ? autoLevel : currentLevel;
+        const lvlBadgeColor = LEVEL_COLORS_IND[displayLevel] || 'secondary';
+        const lvlBadgeLabel = LEVEL_LABELS_IND[displayLevel] || 'Sin nivel';
+
+        // Indicator HTML (accordion per tool)
+        let indicatorsHtml = '';
+        if (hasToolIndicators) {
+            const accordionId = `acc-sv-${safeCompId}-${safeTargetId}`;
+            indicatorsHtml = `<div class="accordion accordion-flush" id="${accordionId}">` +
+            activeToolsWithInds.map((tool, toolIdx) => {
+                const byLevel = { 1: [], 2: [], 3: [] };
+                tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
+                const hasChecked  = tool.indicators.some(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`]);
+                const collapseId  = `${accordionId}-t${toolIdx}`;
+                const toolAutoLevel = (() => {
+                    let lvl = 0;
+                    for (const l of [1,2,3]) {
+                        if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`])) lvl = l;
+                        else if (byLevel[l].length > 0) break;
+                    }
+                    return lvl;
+                })();
+                const activeLevels = [1,2,3].filter(l => byLevel[l].length > 0);
+                const levelCols = activeLevels.map(lvl => {
+                    const inds = byLevel[lvl];
+                    return `<div class="col">
+                        <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
+                            <i class="bi bi-${lvl===1?'circle':lvl===2?'circle-half':'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
+                        </div>
+                        ${inds.map(ind => {
+                            const indKey   = `tool-${tool.id}-${ind.id}`;
+                            const isChecked = !!(checkedDataForComp[indKey]);
+                            return `<div class="form-check form-check-sm mb-0">
+                                <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
+                                    id="${prefix}-${escapeHtml(indKey)}"
+                                    onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
+                                <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
+                                    ${escapeHtml(ind.name)}
+                                    ${ind.description ? `<span class="text-muted fst-italic d-block" style="font-size:.65rem;">${escapeHtml(ind.description)}</span>` : ''}
+                                </label>
+                            </div>`;
+                        }).join('')}
+                    </div>`;
+                }).join('');
+                return `<div class="accordion-item border-0 border-bottom">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button py-2 px-2 small fw-semibold ${hasChecked ? '' : 'collapsed'}"
+                            type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="background:transparent;">
+                            <i class="bi bi-tools me-2 text-secondary"></i>${escapeHtml(tool.name)}
+                            ${toolAutoLevel > 0 ? `<span class="badge ms-2" style="background:${LEVEL_BG[toolAutoLevel]};color:${LEVEL_BORDER[toolAutoLevel]};border:1px solid ${LEVEL_BORDER[toolAutoLevel]};font-size:.65rem;">Nv.${toolAutoLevel}</span>` : ''}
+                        </button>
+                    </h2>
+                    <div id="${collapseId}" class="accordion-collapse collapse ${hasChecked ? 'show' : ''}" data-bs-parent="#${accordionId}">
+                        <div class="accordion-body p-2">
+                            <div class="row g-2">${levelCols}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('') + `</div>`;
+        } else if (hasCompIndicators) {
+            indicatorsHtml = [
+                { lvl:1, inds: compInds.initial },
+                { lvl:2, inds: compInds.medio },
+                { lvl:3, inds: compInds.advance }
+            ].filter(g => g.inds.length).map(({ lvl, inds }) => `
+                <div class="border rounded p-2 mb-2" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_BORDER[lvl]} !important;">
+                    <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]};">
+                        <i class="bi bi-${lvl===1?'circle':lvl===2?'circle-half':'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                    </div>
+                    ${inds.map(ind => {
+                        const indKey   = `comp-${ind.id}`;
+                        const isChecked = !!(checkedDataForComp[indKey]);
+                        return `<div class="form-check form-check-sm mb-0">
+                            <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
+                                id="${prefix}-${escapeHtml(indKey)}"
+                                onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
+                            <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
+                                ${escapeHtml(ind.name)}
+                                ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
+                            </label>
+                        </div>`;
+                    }).join('')}
+                </div>`
+            ).join('');
+        }
+
+        const indProgressHtml = (hasToolIndicators || hasCompIndicators) ? `
+            <div class="d-flex gap-2 flex-wrap mb-2 eval-ind-progress">
+                ${[1,2,3].filter(lvl => totalByLevel[lvl] > 0).map(lvl => `
+                    <span class="badge rounded-pill" style="background:${LEVEL_BG[lvl]}; color:${LEVEL_BORDER[lvl]}; border:1px solid ${LEVEL_BORDER[lvl]}; font-size:.72rem;">
+                        Nv.${lvl}: <span data-lvl-count="${lvl}">${checkedByLevel[lvl]}/${totalByLevel[lvl]}</span>
+                    </span>`).join('')}
+                <span class="badge bg-${lvlBadgeColor} ms-1" data-auto-level-badge>
+                    <i class="bi bi-award me-1"></i>Nivel calculado: <strong>${displayLevel}</strong> — ${lvlBadgeLabel}
+                </span>
+            </div>` : '';
+
+        const levelDescs = (comp.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
+        const manualLevelHtml = (!hasToolIndicators && !hasCompIndicators) ? `
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="small text-muted me-1">Nivel:</span>
+                ${LEVEL_LABELS.map((lbl, lvl) => {
+                    const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
+                    return `<button type="button"
+                        class="btn btn-sm level-btn ${currentLevel === lvl ? `btn-${LEVEL_COLORS[lvl]}` : 'btn-outline-secondary'}"
+                        data-target="${safeTargetId}" data-comp="${safeCompId}"
+                        data-comp-name="${escapeHtml(comp.name)}" data-level="${lvl}"
+                        onclick="toggleEvalLevel(this,'${safeTargetId}','${safeCompId}',${lvl},'${escapeHtml(comp.name)}')"
+                        title="${escapeHtml(lbl + desc)}">
+                        ${lvl === 0 ? '<i class="bi bi-dash"></i>' : `<strong>${lvl}</strong>`}
+                        <span class="ms-1 d-none d-md-inline" style="font-size:.7rem;">${escapeHtml(lbl)}</span>
+                    </button>`;
+                }).join('')}
+            </div>
+            ${currentLevel > 0 && levelDescs[currentLevel] ? `<div class="mt-1 small text-muted fst-italic level-desc-hint">${escapeHtml(levelDescs[currentLevel])}</div>` : `<div class="mt-1 level-desc-hint" style="min-height:1rem;"></div>`}
+        ` : '';
+
+        html += `<div class="eval-comp-card card mb-3 border" data-comp-id="${safeCompId}" data-target-id="${safeTargetId}">
+            <div class="card-header py-2 px-3 d-flex align-items-start justify-content-between gap-2" style="background:#f8f9fa;">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="fw-semibold">${escapeHtml(comp.name)}</span>
+                        ${comp.area ? `<span class="badge bg-secondary" style="font-size:.65rem;">${escapeHtml(comp.area)}</span>` : ''}
+                    </div>
+                    ${comp.description ? `<div class="text-muted small mt-1 fst-italic">${escapeHtml(comp.description)}</div>` : ''}
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" style="font-size:.7rem; padding:2px 6px;"
+                    title="Eliminar esta competencia de la evaluación"
+                    onclick="removeEvalCompetenceFromView('${safeTargetId}','${safeCompId}')">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="card-body py-2 px-3">
+                ${indProgressHtml}
+                ${indicatorsHtml ? `<div class="mb-2">
+                    <div class="small fw-semibold text-secondary mb-1"><i class="bi bi-list-check me-1"></i>Indicadores — marca los que cumple:</div>
+                    <div id="ind-container-${safeCompId}-${safeTargetId}">${indicatorsHtml}</div>
+                </div>` : ''}
+                ${manualLevelHtml}
+            </div>
+        </div>`;
+    });
+    html += `</div>`;
+    return html;
+}
+
+/** Removes a competence card from the split view (mirrors removeEvalCompetence for the modal). */
+function removeEvalCompetenceFromView(targetId, compId) {
+    if (!window._evalRemovedComps) window._evalRemovedComps = {};
+    if (!window._evalRemovedComps[String(targetId)]) window._evalRemovedComps[String(targetId)] = [];
+    if (!window._evalRemovedComps[String(targetId)].includes(String(compId))) {
+        window._evalRemovedComps[String(targetId)].push(String(compId));
+    }
+    const saved = window._evalCurrentSaved;
+    if (saved) {
+        const evalEntry = (saved.evaluations || []).find(e => e.targetId === String(targetId));
+        if (evalEntry) evalEntry.competences = (evalEntry.competences || []).filter(c => String(c.competenceId) !== String(compId));
+    }
+    const card = document.querySelector(`.eval-comp-card[data-comp-id="${CSS.escape(String(compId))}"][data-target-id="${CSS.escape(String(targetId))}"]`);
+    if (card) {
+        card.style.transition = 'opacity .2s';
+        card.style.opacity = '0';
+        setTimeout(() => card.remove(), 200);
+    }
+}
+
+/** Closes the split-view and returns to the evaluation tab. */
+function closeEvaluationView() {
+    const splitView = document.getElementById('eval-project-view');
+    const tabView   = document.getElementById('evaluation-tab-view');
+    if (splitView) splitView.classList.add('hidden');
+    if (tabView)   tabView.classList.remove('hidden');
+    renderEvaluationTab();
+}
+
+/** Opens the groups modal from the split-view top bar. */
+function openGroupsModalFromView() {
+    const mIdx = window._evalState?.currentModuleIdx;
+    const pIdx = window._evalState?.currentProjectIdx;
+    if (mIdx !== undefined && pIdx !== undefined) openGroupsModal(mIdx, pIdx);
 }
 
 function openEvaluationModal(mIdx, pIdx) {
@@ -7729,9 +8217,16 @@ function updateEvalIndicator(targetId, compId, indKey, level, checked, compName)
 }
 
 async function saveIndividualStudentEval() {
-    const panel = document.getElementById('student-eval-panel');
-    const studentId = panel ? panel.dataset.targetStudentId : null;
-    if (!studentId) return;
+    // Detect which panel is active: split view or legacy panel
+    const splitView = document.getElementById('eval-project-view');
+    const legacyPanel = document.getElementById('student-eval-panel');
+    const inSplitView = splitView && !splitView.classList.contains('hidden');
+
+    const studentId = inSplitView
+        ? (splitView.dataset.targetStudentId || null)
+        : (legacyPanel ? legacyPanel.dataset.targetStudentId : null);
+
+    if (!studentId) { showToast('Selecciona un estudiante primero', 'danger'); return; }
 
     const saved = window._evalCurrentSaved;
     if (!saved) return;
@@ -7745,8 +8240,9 @@ async function saveIndividualStudentEval() {
     }
 
     try {
-        // Collect feedback from the panel textarea
-        const ta = panel ? panel.querySelector('textarea[data-target-id]') : null;
+        // Collect feedback from whichever panel is active
+        const searchRoot = inSplitView ? document.getElementById('eval-right-body') : legacyPanel;
+        const ta = searchRoot ? searchRoot.querySelector(`textarea[data-target-id="${CSS.escape(studentId)}"]`) : null;
         const feedback = ta ? ta.value : '';
 
         let evalEntry = (saved.evaluations || []).find(e => e.targetId === studentId);
@@ -7771,23 +8267,30 @@ async function saveIndividualStudentEval() {
 
         await _persistEvaluations();
 
-        // Sync to student ficha
+        // Sync to student ficha (individual only)
         const { students } = window._evalState;
-        await _syncEvaluationsToStudentTracking(saved, mod, proj, students);
+        if (saved.type !== 'grupal') {
+            await _syncEvaluationsToStudentTracking(saved, mod, proj, students);
+        }
 
         showToast('Evaluación guardada correctamente', 'success');
 
-        // Return to the evaluation modal
-        _closeStudentEvalPanel();
-        openEvaluationModal(mIdx, pIdx);
+        if (inSplitView) {
+            // Stay in split view: refresh the target list and reload the right panel
+            _renderEvalTargetsList(saved, students);
+            // Re-open same target so the header shows "Evaluado"
+            selectEvalTarget(studentId);
+            // Reset button
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = originalBtnHtml; }
+        } else {
+            // Legacy path: close panel and reopen evaluation modal
+            _closeStudentEvalPanel();
+            openEvaluationModal(mIdx, pIdx);
+        }
     } catch (err) {
         console.error('[saveIndividualStudentEval]', err);
         showToast('Error al guardar la evaluación', 'danger');
-        // Restore button on error
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = originalBtnHtml;
-        }
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = originalBtnHtml; }
     }
 }
 
@@ -7805,13 +8308,22 @@ function _closeStudentEvalPanel() {
     }
 }
 
-/** Called by the "Cancelar" / "Volver" buttons in the inline eval panel. */
+/** Called by the "Cancelar" / "Volver" buttons in the inline eval panel or split view. */
 window.cancelStudentEvalPanel = function() {
-    _closeStudentEvalPanel();
-    const mIdx = window._evalState?.currentModuleIdx;
-    const pIdx = window._evalState?.currentProjectIdx;
-    if (mIdx !== undefined && pIdx !== undefined) {
-        openEvaluationModal(mIdx, pIdx);
+    const splitView = document.getElementById('eval-project-view');
+    const inSplitView = splitView && !splitView.classList.contains('hidden');
+    if (inSplitView) {
+        // In split view: just clear the right panel selection (go back to empty state)
+        _showEvalRightEmpty();
+        if (splitView) splitView.dataset.targetStudentId = '';
+        document.querySelectorAll('#eval-targets-list .eval-target-item').forEach(li => li.classList.remove('active'));
+    } else {
+        _closeStudentEvalPanel();
+        const mIdx = window._evalState?.currentModuleIdx;
+        const pIdx = window._evalState?.currentProjectIdx;
+        if (mIdx !== undefined && pIdx !== undefined) {
+            openEvaluationModal(mIdx, pIdx);
+        }
     }
 };
 

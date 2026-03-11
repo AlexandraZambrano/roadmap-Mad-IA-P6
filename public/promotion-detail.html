@@ -979,7 +979,64 @@
                         <div id="team-history-panel-body" class="pb-4"></div>
                     </div>
 
-                    <!-- ── Inline student-eval panel (replaces sub-modal) ── -->
+                    <!-- ── Google Classroom–style evaluation split view ── -->
+                    <div id="eval-project-view" class="hidden">
+                        <!-- Top bar -->
+                        <div class="eval-view-topbar d-flex align-items-center gap-3 py-3 mb-0">
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="closeEvaluationView()">
+                                <i class="bi bi-arrow-left me-1"></i>Volver
+                            </button>
+                            <div class="flex-grow-1 min-w-0">
+                                <h5 class="mb-0 fw-bold text-truncate" id="eval-view-title">Evaluación</h5>
+                                <p class="mb-0 text-muted small" id="eval-view-subtitle"></p>
+                            </div>
+                            <div class="d-flex gap-2 align-items-center flex-shrink-0">
+                                <button type="button" class="btn btn-sm btn-outline-info d-none" id="eval-view-groups-btn"
+                                    onclick="openGroupsModalFromView()">
+                                    <i class="bi bi-diagram-3 me-1"></i>Editar grupos
+                                </button>
+                                <button type="button" class="btn btn-sm btn-primary" id="save-eval-panel-btn"
+                                    onclick="saveIndividualStudentEval()"
+                                    style="background:#E85D26;border-color:#E85D26;min-width:150px;">
+                                    <i class="bi bi-save me-1"></i>Guardar evaluación
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Split layout -->
+                        <div class="eval-split-layout">
+                            <!-- LEFT: targets list -->
+                            <aside class="eval-targets-sidebar">
+                                <div class="eval-targets-header">
+                                    <span id="eval-targets-label" class="fw-semibold small text-secondary text-uppercase" style="letter-spacing:.05em;">Estudiantes</span>
+                                    <span class="badge bg-secondary ms-2" id="eval-targets-count"></span>
+                                </div>
+                                <ul class="eval-targets-list list-unstyled mb-0" id="eval-targets-list">
+                                    <!-- populated by JS -->
+                                </ul>
+                            </aside>
+
+                            <!-- RIGHT: competences + feedback -->
+                            <main class="eval-right-panel" id="eval-right-panel">
+                                <div class="eval-right-empty d-flex flex-column align-items-center justify-content-center text-center text-muted" id="eval-right-empty">
+                                    <i class="bi bi-person-check display-4 mb-3 text-muted opacity-50"></i>
+                                    <p class="mb-1 fw-semibold">Selecciona un estudiante</p>
+                                    <p class="small">Haz clic en un estudiante de la lista para comenzar su evaluación.</p>
+                                </div>
+                                <div class="d-none" id="eval-right-content">
+                                    <div class="eval-right-sticky-header" id="eval-right-header">
+                                        <!-- student name + status badge -->
+                                    </div>
+                                    <div class="eval-right-body p-3" id="eval-right-body">
+                                        <!-- competences + feedback injected here -->
+                                    </div>
+                                </div>
+                            </main>
+                        </div>
+                    </div>
+
+                    <!-- ── Legacy inline student-eval panel (kept for backward compat) ── -->
                     <div id="student-eval-panel" class="hidden">
                         <div class="d-flex align-items-center gap-3 my-4">
                             <button type="button" class="btn btn-outline-secondary btn-sm"
@@ -1002,11 +1059,6 @@
                                 <button type="button" class="btn btn-secondary"
                                     onclick="cancelStudentEvalPanel()">
                                     <i class="bi bi-x-circle me-1"></i>Cancelar
-                                </button>
-                                <button type="button" class="btn btn-primary" id="save-eval-panel-btn"
-                                    onclick="saveIndividualStudentEval()"
-                                    style="background:#E85D26;border-color:#E85D26;min-width:160px;">
-                                    <i class="bi bi-save me-1"></i>Guardar evaluación
                                 </button>
                             </div>
                         </div>
