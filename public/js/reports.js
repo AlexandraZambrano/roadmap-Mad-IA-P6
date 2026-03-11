@@ -382,10 +382,119 @@
         return `<span class="badge badge-${cls}">Nv.${level ?? '—'} ${label}</span>`;
     }
 
+    // ─── Motivo del Informe modal ─────────────────────────────────────────────
+    /**
+     * Shows a Bootstrap modal asking for the reason ("motivo") of the report.
+     * Safely hides any currently-open Bootstrap modal and restores it afterwards.
+     * Returns Promise<string|null>:
+     *   - string (possibly empty) when the user confirms
+     *   - null when the user cancels
+     */
+    function _askRazon(title) {
+        return new Promise(resolve => {
+            // ── Hide any currently-open Bootstrap modal so they don't stack ──
+            const openModalEl   = document.querySelector('.modal.show');
+            const openModalInst = openModalEl ? bootstrap.Modal.getInstance(openModalEl) : null;
+            if (openModalInst) openModalInst.hide();
+
+            // ── Build the modal DOM ──
+            const id = '_razon-informe-modal';
+            document.getElementById(id)?.remove();
+
+            const div = document.createElement('div');
+            div.innerHTML = `
+<div class="modal fade" id="${id}" tabindex="-1" aria-labelledby="${id}-label" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+      <div class="modal-header" style="background:#1A1A2E;color:#fff;border-bottom:2px solid #FF6B35;">
+        <h5 class="modal-title" id="${id}-label" style="font-size:1rem;">
+          <i class="bi bi-file-earmark-text me-2" style="color:#FF6B35;"></i>${_esc(title || 'Informe de Seguimiento Técnico')}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body pb-2">
+        <label class="form-label fw-semibold mb-1" style="font-size:.875rem;color:#4A4A6A;">
+          Motivo del informe <span class="text-muted fw-normal">(opcional)</span>
+        </label>
+        <textarea id="${id}-textarea" class="form-control" rows="4"
+          placeholder="Ej: Seguimiento mensual de progreso, revisión por solicitud de financiador, evaluación de fin de módulo…"
+          style="font-size:.875rem;resize:vertical;"></textarea>
+        <div class="form-text mt-1">Déjalo en blanco para generar el informe sin motivo.</div>
+      </div>
+      <div class="modal-footer pt-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+          <i class="bi bi-x me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-sm" id="${id}-confirm"
+          style="background:#FF6B35;color:#fff;border:none;">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Generar PDF
+        </button>
+      </div>
+    </div>
+  </div>
+</div>`;
+            document.body.appendChild(div.firstElementChild);
+
+            const modalEl  = document.getElementById(id);
+            const modal    = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+            let   resolved = false;
+
+            // ── Confirm ──
+            document.getElementById(`${id}-confirm`).addEventListener('click', () => {
+                if (resolved) return;
+                resolved = true;
+                const val = (document.getElementById(`${id}-textarea`)?.value || '').trim();
+                modal.hide();
+                resolve(val); // empty string = confirmed without text
+            });
+
+            // ── After modal closes (either path) — clean up DOM and handle cancel ──
+            modalEl.addEventListener('hidden.bs.modal', () => {
+                modalEl.remove();
+                if (!resolved) {
+                    resolved = true;
+                    // Restore previously-hidden modal
+                    if (openModalInst) {
+                        try { openModalInst.show(); } catch (_) {}
+                    }
+                    resolve(null); // cancelled
+                }
+            }, { once: true });
+
+            modal.show();
+            modalEl.addEventListener('shown.bs.modal', () => {
+                document.getElementById(`${id}-textarea`)?.focus();
+            }, { once: true });
+        });
+    }
+
+    // ─── Reason block HTML (injected right after the header) ─────────────────
+    function _razonBlock(razonInforme) {
+        if (!razonInforme) return '';
+        return `<div style="
+            margin-bottom: 14pt;
+            padding: 8pt 12pt;
+            background: #f8f9fa;
+            border-left: 4px solid ${PRIMARY};
+            border-radius: 0 6pt 6pt 0;
+            font-size: 9.5pt;
+            line-height: 1.6;
+        ">
+            <div>
+                <span style="color:${SECONDARY}; font-weight:600;">Motivo del informe:&nbsp;</span>
+                <span style="color:#222;">${_esc(razonInforme)}</span>
+            </div>
+        </div>`;
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     // 1. FICHA SEGUIMIENTO TÉCNICO
     // ════════════════════════════════════════════════════════════════════════
     async function printTechnical(studentId, promotionId) {
+        // Ask for reason first — null means user cancelled
+        const razonInforme = await _askRazon('Informe de Seguimiento Técnico');
+        if (razonInforme === null) return;
+
         const token = localStorage.getItem('token');
         try {
             const [stuRes, promoRes, pildarasRes] = await Promise.all([
@@ -407,6 +516,9 @@
                 promo.name,
                 _today()
             );
+
+            // ── Motivo del informe (right after header) ──
+            html += _razonBlock(razonInforme);
 
             // ── Notas del profesor ──
             html += `<h3><span style="color:${PRIMARY}">✦</span> Notas del Profesor</h3>`;
@@ -1382,10 +1494,13 @@ async function printActaInicio(promotionId) {
     }
 
     /** Fetch all projects (teams) that belong to a named project across multiple students */
-    function _techPageHtml(s, promo) {
+    function _techPageHtml(s, promo, razonInforme) {
         const tt = s.technicalTracking || {};
         const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
         let html = _header('Ficha de Seguimiento Técnico', fullName, promo.name, _today());
+
+        // ── Motivo del informe (right after header) ──
+        html += _razonBlock(razonInforme || '');
 
         html += `<div class="section-box accent row2">
             <div>
@@ -1500,6 +1615,11 @@ async function printActaInicio(promotionId) {
     // ── 6a. Bulk Technical ───────────────────────────────────────────────────
     async function printBulkTechnical(studentIds, promotionId) {
         if (!studentIds?.length) { alert('Selecciona al menos un estudiante.'); return; }
+
+        // Ask for reason first — null means user cancelled
+        const razonInforme = await _askRazon('Informe de Seguimiento Técnico');
+        if (razonInforme === null) return;
+
         const token = localStorage.getItem('token');
         try {
             const promoRes = await fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -1510,7 +1630,7 @@ async function printActaInicio(promotionId) {
                 const s = students[0];
                 const fullName = `${s.name||''} ${s.lastname||''}`.trim();
                 _showSaving('Generando PDF…');
-                await _savePdf(_techPageHtml(s, promo), `tecnico_${fullName.replace(/\s+/g,'-')}.pdf`);
+                await _savePdf(_techPageHtml(s, promo, razonInforme), `tecnico_${fullName.replace(/\s+/g,'-')}.pdf`);
             } else {
                 // Sequential processing — one iframe at a time
                 const files = [];
@@ -1519,7 +1639,7 @@ async function printActaInicio(promotionId) {
                     const fullName = `${s.name||''} ${s.lastname||''}`.trim();
                     const fname = `tecnico_${fullName.replace(/\s+/g,'-')}.pdf`;
                     _showSaving(`Generando PDF ${i + 1} de ${students.length}: ${fullName}…`);
-                    const blob = await _getPdfBlob(_techPageHtml(s, promo), fname);
+                    const blob = await _getPdfBlob(_techPageHtml(s, promo, razonInforme), fname);
                     files.push({ blob, filename: fname });
                 }
                 _showSaving(`Comprimiendo ${files.length} PDFs…`);
