@@ -6161,82 +6161,72 @@ function _evalProjectKey(moduleId, projectName) {
 
 // ==================== HISTÓRICO DE EQUIPOS ====================
 
-function openTeamHistoryModal() {
+// ── Shared helper: compute pairCount & pairProjects from all grupal saved evaluations ──
+function _computePairCount() {
+    const { modules, savedEvaluations } = window._evalState;
+    const pairCount = {};   // keyA → keyB → count  (keyA < keyB always)
+    const pairProjects = {}; // keyA → keyB → [label, ...]
+
+    modules.forEach((mod, mIdx) => {
+        (mod.projects || []).forEach((proj) => {
+            const modId = mod.id || String(mIdx);
+            const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+            if (!saved || saved.type !== 'grupal' || !saved.groups) return;
+            saved.groups.forEach(grp => {
+                const ids = (grp.studentIds || []).map(String);
+                for (let i = 0; i < ids.length; i++) {
+                    for (let j = i + 1; j < ids.length; j++) {
+                        const a = ids[i] < ids[j] ? ids[i] : ids[j];
+                        const b = ids[i] < ids[j] ? ids[j] : ids[i];
+                        if (!pairCount[a]) pairCount[a] = {};
+                        if (!pairProjects[a]) pairProjects[a] = {};
+                        pairCount[a][b] = (pairCount[a][b] || 0) + 1;
+                        if (!pairProjects[a][b]) pairProjects[a][b] = [];
+                        const label = `${proj.name} (${mod.name || `Módulo ${mIdx + 1}`})`;
+                        if (!pairProjects[a][b].includes(label)) pairProjects[a][b].push(label);
+                    }
+                }
+            });
+        });
+    });
+
+    return { pairCount, pairProjects };
+}
+
+function _getPairCount(pairCount, a, b) {
+    const ka = a < b ? a : b, kb = a < b ? b : a;
+    return (pairCount[ka] && pairCount[ka][kb]) || 0;
+}
+
+// ── Open inline history view (replaces modal approach) ───────────────────────
+function openTeamHistoryView() {
+    const evalTabView      = document.getElementById('evaluation-tab-view');
+    const studentEvalPanel = document.getElementById('student-eval-panel');
+    const historyPanel     = document.getElementById('team-history-panel');
+    const historyBody      = document.getElementById('team-history-panel-body');
+    if (!historyPanel || !historyBody) return;
+
+    // Hide other sub-views
+    if (evalTabView)      evalTabView.classList.add('hidden');
+    if (studentEvalPanel) studentEvalPanel.classList.add('hidden');
+    historyPanel.classList.remove('hidden');
+
+    // Build content
     const { modules, savedEvaluations, students } = window._evalState;
 
-    // ── 1. Collect all grupal projects that have defined groups ──────────────
-    const grupalProjects = []; // [{mIdx, pIdx, modId, modName, projName, groups:[{groupName,studentIds}]}]
+    // Grupal projects with groups
+    const grupalProjects = [];
     modules.forEach((mod, mIdx) => {
         (mod.projects || []).forEach((proj, pIdx) => {
             const modId = mod.id || String(mIdx);
             const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
             if (saved && saved.type === 'grupal' && saved.groups && saved.groups.length > 0) {
-                grupalProjects.push({
-                    mIdx, pIdx, modId,
-                    modName: mod.name || `Módulo ${mIdx + 1}`,
-                    projName: proj.name,
-                    groups: saved.groups
-                });
+                grupalProjects.push({ mIdx, pIdx, modId, modName: mod.name || `Módulo ${mIdx + 1}`, projName: proj.name, groups: saved.groups });
             }
         });
     });
 
-    // ── 2. Build student display map ─────────────────────────────────────────
-    const studentMap = new Map(); // id → fullName
-    students.forEach(s => {
-        const id = String(s.id || s._id);
-        studentMap.set(id, ((s.name || '') + ' ' + (s.lastname || '')).trim());
-    });
-
-    // ── 3. Compute pairings matrix: pairCount[idA][idB] = number of times together ──
-    // Also track which projects each pair shared
-    const pairCount = {}; // idA → idB → count
-    const pairProjects = {}; // idA → idB → [projLabel, ...]
-    const allStudentIds = new Set();
-
-    grupalProjects.forEach(gp => {
-        gp.groups.forEach(grp => {
-            const ids = (grp.studentIds || []).map(String);
-            ids.forEach(id => allStudentIds.add(id));
-            for (let i = 0; i < ids.length; i++) {
-                for (let j = i + 1; j < ids.length; j++) {
-                    const a = ids[i], b = ids[j];
-                    const keyA = a < b ? a : b;
-                    const keyB = a < b ? b : a;
-                    if (!pairCount[keyA]) pairCount[keyA] = {};
-                    if (!pairProjects[keyA]) pairProjects[keyA] = {};
-                    pairCount[keyA][keyB] = (pairCount[keyA][keyB] || 0) + 1;
-                    if (!pairProjects[keyA][keyB]) pairProjects[keyA][keyB] = [];
-                    pairProjects[keyA][keyB].push(`${gp.projName} (${gp.modName})`);
-                }
-            }
-        });
-    });
-
-    // Expose pairCount to matrix rendering helper
-    pairCount_closure = pairCount;
-
-    // ── 4. Build per-student partner summary ─────────────────────────────────
-    // studentPartners[id] = [{partnerId, count, projects:[...]}]
-    const studentPartners = {};
-    allStudentIds.forEach(id => { studentPartners[id] = []; });
-    Object.keys(pairCount).forEach(a => {
-        Object.keys(pairCount[a]).forEach(b => {
-            const count = pairCount[a][b];
-            const projs = pairProjects[a][b];
-            if (!studentPartners[a]) studentPartners[a] = [];
-            if (!studentPartners[b]) studentPartners[b] = [];
-            studentPartners[a].push({ partnerId: b, count, projects: projs });
-            studentPartners[b].push({ partnerId: a, count, projects: projs });
-        });
-    });
-
-    // Sort each student's partner list by count desc
-    Object.keys(studentPartners).forEach(id => {
-        studentPartners[id].sort((x, y) => y.count - x.count);
-    });
-
-    // ── 5. Build all grupal projects list for the "Crear grupos" selector ────
+    // All grupal projects (even without groups) — for the "create groups" selector
     const allGrupalForSelect = [];
     modules.forEach((mod, mIdx) => {
         (mod.projects || []).forEach((proj, pIdx) => {
@@ -6248,55 +6238,64 @@ function openTeamHistoryModal() {
         });
     });
 
-    // ── 6. Render modal ───────────────────────────────────────────────────────
-    const id = 'teamHistoryModal';
-    document.getElementById(id)?.remove();
-
-    const modalEl = document.createElement('div');
-    modalEl.className = 'modal fade';
-    modalEl.id = id;
-    modalEl.tabIndex = -1;
-    modalEl.innerHTML = `
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header" style="background:linear-gradient(135deg,#E85D26,#c44a1a);color:#fff;">
-                <h5 class="modal-title fw-bold">
-                    <i class="bi bi-people-fill me-2"></i>Histórico de equipos
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-3">
-                ${_renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, studentPartners, allGrupalForSelect)}
-            </div>
-            <div class="modal-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="text-muted small">
-                    <span class="badge me-1" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;">Amarillo</span> = han coincidido 1 vez &nbsp;
-                    <span class="badge me-1" style="background:#f8d7da;color:#842029;border:1px solid #f5c2c7;">Rojo</span> = han coincidido 2+ veces
-                </div>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>`;
-    document.body.appendChild(modalEl);
-
-    // Wire up the "Abrir grupos" button after modal is in DOM
-    modalEl.addEventListener('shown.bs.modal', () => {
-        const btn = modalEl.querySelector('#th-open-groups-btn');
-        if (btn) {
-            btn.addEventListener('click', () => {
-                const sel = modalEl.querySelector('#th-project-select');
-                if (!sel || !sel.value) { showToast('Selecciona un proyecto primero', 'warning'); return; }
-                const [mIdxStr, pIdxStr] = sel.value.split('|');
-                const mIdx = parseInt(mIdxStr), pIdx = parseInt(pIdxStr);
-                // Hide this modal, open groups modal
-                bootstrap.Modal.getInstance(modalEl)?.hide();
-                openGroupsModal(mIdx, pIdx);
-            });
-        }
+    // Student map
+    const studentMap = new Map();
+    students.forEach(s => {
+        const id = String(s.id || s._id);
+        studentMap.set(id, ((s.name || '') + ' ' + (s.lastname || '')).trim());
     });
 
-    new bootstrap.Modal(modalEl).show();
+    // Compute pairings
+    const { pairCount, pairProjects } = _computePairCount();
+    pairCount_closure = pairCount; // keep closure for matrix
+
+    // Collect all student IDs seen in any grupal group
+    const allStudentIds = new Set();
+    grupalProjects.forEach(gp => gp.groups.forEach(g => (g.studentIds || []).forEach(id => allStudentIds.add(String(id)))));
+
+    // Per-student partner summary
+    const studentPartners = {};
+    allStudentIds.forEach(id => { studentPartners[id] = []; });
+    Object.keys(pairCount).forEach(a => {
+        Object.keys(pairCount[a]).forEach(b => {
+            const count = pairCount[a][b];
+            const projs = pairProjects[a][b];
+            if (allStudentIds.has(a)) {
+                if (!studentPartners[a]) studentPartners[a] = [];
+                studentPartners[a].push({ partnerId: b, count, projects: projs });
+            }
+            if (allStudentIds.has(b)) {
+                if (!studentPartners[b]) studentPartners[b] = [];
+                studentPartners[b].push({ partnerId: a, count, projects: projs });
+            }
+        });
+    });
+    Object.keys(studentPartners).forEach(id => studentPartners[id].sort((x, y) => y.count - x.count));
+
+    historyBody.innerHTML = _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, studentPartners, allGrupalForSelect);
+
+    // Wire up the "open groups" button
+    const btn = historyBody.querySelector('#th-open-groups-btn');
+    if (btn) {
+        btn.addEventListener('click', () => {
+            const sel = historyBody.querySelector('#th-project-select');
+            if (!sel || !sel.value) { showToast('Selecciona un proyecto primero', 'warning'); return; }
+            const [mIdxStr, pIdxStr] = sel.value.split('|');
+            closeTeamHistoryView(); // go back to eval view before opening modal
+            openGroupsModal(parseInt(mIdxStr), parseInt(pIdxStr));
+        });
+    }
 }
+
+function closeTeamHistoryView() {
+    const evalTabView  = document.getElementById('evaluation-tab-view');
+    const historyPanel = document.getElementById('team-history-panel');
+    if (historyPanel) historyPanel.classList.add('hidden');
+    if (evalTabView)   evalTabView.classList.remove('hidden');
+}
+
+// Keep backward compat alias used by button onclick
+function openTeamHistoryModal() { openTeamHistoryView(); }
 
 function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, studentPartners, allGrupalForSelect) {
     if (grupalProjects.length === 0) {
@@ -6306,16 +6305,12 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
         </div>`;
     }
 
-    // ── Summary legend ───────────────────────────────────────────────────────
-    let html = `
-    <div class="mb-3">
-        <p class="text-muted small mb-2">
-            Muestra con quién ha coincidido cada estudiante en proyectos grupales.
-            Las celdas indican el número de veces que dos estudiantes han sido compañeros de equipo.
-        </p>
-    </div>`;
+    let html = `<p class="text-muted small mb-3">
+        Muestra con quién ha coincidido cada estudiante en proyectos grupales.
+        Las celdas indican el número de veces que han sido compañeros de equipo.
+    </p>`;
 
-    // ── Project summary strips ────────────────────────────────────────────────
+    // ── Project summary pills ────────────────────────────────────────────────
     html += `<div class="mb-4">
         <h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-diagram-3 me-1"></i>Proyectos grupales registrados</h6>
         <div class="d-flex flex-wrap gap-2">`;
@@ -6327,26 +6322,17 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
     });
     html += `</div></div>`;
 
-    // ── Per-student partner cards ─────────────────────────────────────────────
-    const sortedStudentIds = Array.from(allStudentIds).sort((a, b) => {
-        const na = studentMap.get(a) || a, nb = studentMap.get(b) || b;
-        return na.localeCompare(nb);
-    });
+    // ── Per-student table ────────────────────────────────────────────────────
+    const sortedStudentIds = Array.from(allStudentIds).sort((a, b) =>
+        (studentMap.get(a) || a).localeCompare(studentMap.get(b) || b));
 
-    // Count how many times each student has repeated with anyone
-    const repeaterFlag = {}; // id → max repeat count
-    sortedStudentIds.forEach(id => {
-        const max = (studentPartners[id] || []).reduce((m, p) => Math.max(m, p.count), 0);
-        repeaterFlag[id] = max;
-    });
-
-    html += `<h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-person-lines-fill me-1"></i>Coincidencias por estudiante</h6>`;
-    html += `<div class="table-responsive">
+    html += `<h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-person-lines-fill me-1"></i>Coincidencias por estudiante</h6>
+    <div class="table-responsive mb-4">
     <table class="table table-bordered table-sm align-middle" style="font-size:.85rem;">
         <thead class="table-light">
             <tr>
                 <th style="min-width:160px;">Estudiante</th>
-                <th>Compañeros de equipo (veces coincididas)</th>
+                <th>Compañeros de equipo</th>
             </tr>
         </thead>
         <tbody>`;
@@ -6354,86 +6340,66 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
     sortedStudentIds.forEach(id => {
         const name = studentMap.get(id) || id;
         const partners = studentPartners[id] || [];
-        const rowBg = repeaterFlag[id] >= 2 ? 'style="background:#fff8f8;"' : '';
-
+        const maxRepeat = partners.reduce((m, p) => Math.max(m, p.count), 0);
+        const rowBg = maxRepeat >= 2 ? 'style="background:#fff8f8;"' : '';
         html += `<tr ${rowBg}>
             <td class="fw-semibold">${escapeHtml(name)}</td>
             <td>`;
-
         if (partners.length === 0) {
             html += `<span class="text-muted fst-italic small">Sin coincidencias</span>`;
         } else {
             html += `<div class="d-flex flex-wrap gap-1">`;
             partners.forEach(p => {
-                const partnerName = studentMap.get(p.partnerId) || p.partnerId;
-                const projTitles = p.projects.join(', ');
-                let badgeStyle, badgeText;
-                if (p.count >= 2) {
-                    badgeStyle = 'background:#f8d7da;color:#842029;border:1px solid #f5c2c7;';
-                    badgeText = `⚠ ${p.count}×`;
-                } else {
-                    badgeStyle = 'background:#fff3cd;color:#856404;border:1px solid #ffc107;';
-                    badgeText = `${p.count}×`;
-                }
-                html += `<span class="badge rounded-pill" style="${badgeStyle}font-size:.8rem;"
-                    title="${escapeHtml(projTitles)}">
-                    ${escapeHtml(partnerName)} <strong>${badgeText}</strong>
+                const pName = studentMap.get(p.partnerId) || p.partnerId;
+                const tip = p.projects.join(', ');
+                const style = p.count >= 2
+                    ? 'background:#f8d7da;color:#842029;border:1px solid #f5c2c7;'
+                    : 'background:#fff3cd;color:#856404;border:1px solid #ffc107;';
+                const icon = p.count >= 2 ? '⚠ ' : '';
+                html += `<span class="badge rounded-pill" style="${style}font-size:.8rem;" title="${escapeHtml(tip)}">
+                    ${escapeHtml(pName)} <strong>${icon}${p.count}×</strong>
                 </span>`;
             });
             html += `</div>`;
         }
-
         html += `</td></tr>`;
     });
-
     html += `</tbody></table></div>`;
 
-    // ── Matrix view (compact) ─────────────────────────────────────────────────
+    // ── Matrix (if ≤ 20 students) ─────────────────────────────────────────────
     if (sortedStudentIds.length <= 20) {
         html += `
-        <details class="mt-4">
+        <details class="mb-4">
             <summary class="fw-semibold text-secondary mb-2" style="cursor:pointer;">
                 <i class="bi bi-grid-3x3-gap me-1"></i>Ver matriz de coincidencias
             </summary>
             <div class="table-responsive mt-2">
             <table class="table table-bordered table-sm text-center align-middle" style="font-size:.78rem;">
-                <thead class="table-light">
-                    <tr>
-                        <th style="min-width:120px;"></th>`;
+                <thead class="table-light"><tr><th style="min-width:120px;"></th>`;
         sortedStudentIds.forEach(id => {
-            const name = studentMap.get(id) || id;
-            const shortName = name.split(' ').map((w,i) => i === 0 ? w : w[0]+'.').join(' ');
-            html += `<th title="${escapeHtml(name)}" style="max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(shortName)}</th>`;
+            const short = (studentMap.get(id) || id).split(' ').map((w,i) => i === 0 ? w : w[0]+'.').join(' ');
+            html += `<th title="${escapeHtml(studentMap.get(id)||id)}" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(short)}</th>`;
         });
         html += `</tr></thead><tbody>`;
         sortedStudentIds.forEach(rowId => {
-            const rowName = studentMap.get(rowId) || rowId;
-            html += `<tr><td class="fw-semibold text-start" style="min-width:120px;">${escapeHtml(rowName)}</td>`;
+            html += `<tr><td class="fw-semibold text-start">${escapeHtml(studentMap.get(rowId)||rowId)}</td>`;
             sortedStudentIds.forEach(colId => {
-                if (rowId === colId) {
-                    html += `<td style="background:#f8f9fa;">—</td>`;
-                    return;
-                }
-                const a = rowId < colId ? rowId : colId;
-                const b = rowId < colId ? colId : rowId;
-                const count = (pairCount_closure?.[a]?.[b]) || 0;
-                if (count === 0) {
-                    html += `<td class="text-muted" style="color:#ccc!important;">·</td>`;
-                } else if (count === 1) {
-                    html += `<td style="background:#fff3cd;color:#856404;font-weight:600;">${count}</td>`;
-                } else {
-                    html += `<td style="background:#f8d7da;color:#842029;font-weight:700;">${count}</td>`;
-                }
+                if (rowId === colId) { html += `<td style="background:#f8f9fa;">—</td>`; return; }
+                const a = rowId < colId ? rowId : colId, b = rowId < colId ? colId : rowId;
+                const cnt = (pairCount_closure?.[a]?.[b]) || 0;
+                if (cnt === 0) html += `<td style="color:#ccc;">·</td>`;
+                else if (cnt === 1) html += `<td style="background:#fff3cd;color:#856404;font-weight:600;">${cnt}</td>`;
+                else html += `<td style="background:#f8d7da;color:#842029;font-weight:700;">${cnt}</td>`;
             });
             html += `</tr>`;
         });
         html += `</tbody></table></div></details>`;
     }
 
-    // ── Create groups for another project ─────────────────────────────────────
+    // ── Create/edit groups for a project ──────────────────────────────────────
     if (allGrupalForSelect.length > 0) {
         html += `
-        <div class="card mt-4 border-0 shadow-sm">
+        <div class="card border-0 shadow-sm">
             <div class="card-body">
                 <h6 class="fw-semibold mb-3"><i class="bi bi-plus-circle text-primary me-2"></i>Crear / editar grupos para un proyecto</h6>
                 <div class="d-flex gap-2 flex-wrap align-items-center">
@@ -6449,17 +6415,22 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
                 </div>
                 <p class="text-muted small mt-2 mb-0">
                     <i class="bi bi-lightbulb me-1 text-warning"></i>
-                    Usa el histórico de arriba para evitar repetir compañeros y forma grupos equilibrados.
+                    Usa el histórico de arriba para evitar repetir compañeros y formar grupos equilibrados.
                 </p>
             </div>
         </div>`;
     }
 
+    // ── Legend ────────────────────────────────────────────────────────────────
+    html += `<div class="text-muted small mt-3">
+        <span class="badge me-1" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;">Amarillo</span> = han coincidido 1 vez &nbsp;
+        <span class="badge me-1" style="background:#f8d7da;color:#842029;border:1px solid #f5c2c7;">Rojo</span> = han coincidido 2+ veces
+    </div>`;
+
     return html;
 }
 
-// Expose pairCount to matrix rendering (closure variable)
-// We keep a module-level variable updated when the modal opens
+// Module-level closure variable for matrix rendering
 let pairCount_closure = {};
 
 async function setEvalProjectType(mIdx, pIdx, type) {
@@ -6488,7 +6459,6 @@ async function setEvalProjectType(mIdx, pIdx, type) {
     await _persistEvaluations();
     renderEvaluationTab();
 }
-
 // ─── Group management modal (standalone, before evaluation) ──────────────────
 
 function openGroupsModal(mIdx, pIdx) {
@@ -6576,9 +6546,33 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
         </button>
     </div>`;
 
+    // ── Smart mix suggestion bar ──────────────────────────────────────────────
+    const defaultGroupCount = Math.max(groups.length, 2);
+    html += `
+    <div class="card mb-3 border-0" style="background:#f0f7ff;">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="fw-semibold small">
+                    <i class="bi bi-magic text-primary me-1"></i>Sugerir distribución inteligente
+                </span>
+                <div class="d-flex align-items-center gap-1">
+                    <label class="small text-muted mb-0">Grupos:</label>
+                    <input type="number" id="suggest-num-groups" class="form-control form-control-sm"
+                        style="width:65px;" min="1" max="30" value="${defaultGroupCount}">
+                </div>
+                <button class="btn btn-sm btn-outline-primary" onclick="_applySuggestedMix()">
+                    ✨ Sugerir
+                </button>
+            </div>
+            <p class="text-muted mb-0 mt-1" style="font-size:.78rem;">
+                Distribuye a los estudiantes minimizando la repetición de compañeros de equipos anteriores.
+            </p>
+        </div>
+    </div>`;
+
     if (groups.length === 0) {
         html += `<div class="alert alert-info py-2 small"><i class="bi bi-info-circle me-1"></i>
-            No hay grupos todavía. Pulsa "Añadir grupo" para crear el primero.</div>`;
+            No hay grupos todavía. Pulsa "Añadir grupo" o usa "Sugerir" para crearlos automáticamente.</div>`;
     }
 
     // ── Accordion: one item per group ─────────────────────────────────────────
@@ -6758,6 +6752,73 @@ async function saveGroups() {
     bootstrap.Modal.getInstance(document.getElementById('groupsModal'))?.hide();
     renderEvaluationTab();
     showToast('Grupos guardados correctamente', 'success');
+}
+
+// ── Smart group suggestion ─────────────────────────────────────────────────────
+
+/**
+ * Greedy algorithm: assign students to groups minimising repeated pairings.
+ * @param {Array} students  - already excludes withdrawn students
+ * @param {number} numGroups
+ * @returns {Array} [{groupName, studentIds}]
+ */
+function _suggestGroupMix(students, numGroups) {
+    const { pairCount } = _computePairCount();
+    const pool = [...students];
+
+    // Shuffle for fairness (avoid alphabetical bias)
+    for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    const groups = Array.from({ length: numGroups }, (_, i) => ({
+        groupName: `Grupo ${i + 1}`,
+        studentIds: []
+    }));
+
+    // Greedy: for each student assign to the group with the lowest total pairing score
+    pool.forEach(s => {
+        const sid = String(s.id || s._id);
+        let bestGroup = 0, bestScore = Infinity;
+        groups.forEach((g, gi) => {
+            const score = g.studentIds.reduce(
+                (sum, mid) => sum + _getPairCount(pairCount, sid, mid), 0
+            );
+            if (score < bestScore) { bestScore = score; bestGroup = gi; }
+        });
+        groups[bestGroup].studentIds.push(sid);
+    });
+
+    return groups;
+}
+
+/**
+ * Called by the "✨ Sugerir" button inside the groups modal.
+ * Computes a suggestion and applies it to the current saved entry, then re-renders.
+ */
+function _applySuggestedMix() {
+    const saved = window._evalCurrentSaved;
+    const students = window._evalState?.students;
+    if (!saved || !students) return;
+
+    const input = document.getElementById('suggest-num-groups');
+    const numGroups = Math.max(1, parseInt(input?.value || '2', 10));
+
+    const suggestedGroups = _suggestGroupMix(students, numGroups);
+
+    // Preserve existing group names if the count matches, otherwise use defaults
+    suggestedGroups.forEach((g, i) => {
+        if (saved.groups && saved.groups[i]?.groupName) {
+            g.groupName = saved.groups[i].groupName;
+        }
+    });
+
+    // Clear any evaluations for groups that no longer exist
+    saved.groups = suggestedGroups;
+
+    _renderGroupsModalBody(saved, students);
+    showToast('Distribución sugerida aplicada. Revisa los grupos y pulsa "Guardar grupos" cuando estés listo.', 'info');
 }
 
 function openEvaluationModal(mIdx, pIdx) {
