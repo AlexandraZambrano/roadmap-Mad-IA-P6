@@ -3402,7 +3402,7 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
             school, projectType, positiveExitStart, positiveExitEnd, totalHours,
             modality, presentialDays, materials, internships, funders, funderDeadlines,
             okrKpis, funderKpis, trainerDayOff, cotrainerDayOff, projectMeetings, teamMeetings,
-            approvalName, approvalRole, projectEvaluations } = req.body;
+            approvalName, approvalRole, projectEvaluations, projectCompetences } = req.body;
 
     // Build a $set object with ONLY the fields that were explicitly sent in the request body.
     // This prevents partial saves (e.g. _persistEvaluations sending only projectEvaluations)
@@ -3438,6 +3438,7 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
     if (body.hasOwnProperty('approvalName'))           $setFields.approvalName = approvalName || '';
     if (body.hasOwnProperty('approvalRole'))           $setFields.approvalRole = approvalRole || '';
     if (Array.isArray(projectEvaluations))             $setFields.projectEvaluations = projectEvaluations;
+    if (Array.isArray(projectCompetences))             $setFields.projectCompetences = projectCompetences;
 
     const newInfo = await ExtendedInfo.findOneAndUpdate(
       { promotionId: req.params.promotionId },

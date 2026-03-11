@@ -545,9 +545,13 @@ Evaluación Global al Final del Bootcamp
                 assignmentToggle.checked = !!extendedInfoData.pildorasAssignmentOpen;
             }
 
-            // Init Competencias module
+            // Init Competencias module in view-only mode (competences are now defined per-project in Evaluation)
             if (window.ProgramCompetences) {
-                window.ProgramCompetences.init(extendedInfoData.competences || []);
+                if (window.ProgramCompetences.initViewOnly) {
+                    window.ProgramCompetences.initViewOnly(extendedInfoData.competences || []);
+                } else {
+                    window.ProgramCompetences.init(extendedInfoData.competences || []);
+                }
             }
 
         }
@@ -1565,17 +1569,35 @@ async function saveExtendedInfo() {
     extendedInfoData.schedule = schedule;
     extendedInfoData.evaluation = evaluation;
 
-    // Gather Competencias from ProgramCompetences module
-    if (window.ProgramCompetences) {
+    // Gather Competencias — now aggregated from per-project definitions (in evaluation tab)
+    // If there are no project-competences yet, fall back to ProgramCompetences for backward compat
+    if (window._evalState && window._evalState.projectCompetences && window._evalState.projectCompetences.length) {
+        // Re-aggregate and save (honors any manual edits since last save)
+        const catalog = window._evalState.catalog || window._extendedInfoCompetences || [];
+        const compMap = new Map();
+        window._evalState.projectCompetences.forEach(pc => {
+            (pc.competenceIds || []).forEach(cid => {
+                const cidStr = String(cid);
+                const catalogEntry = catalog.find(c => String(c.id) === cidStr);
+                if (!catalogEntry) return;
+                if (!compMap.has(cidStr)) compMap.set(cidStr, { ...catalogEntry, selectedTools: new Set() });
+                ((pc.competenceTools && pc.competenceTools[cidStr]) || []).forEach(t => compMap.get(cidStr).selectedTools.add(t));
+            });
+        });
+        extendedInfoData.competences = [...compMap.values()].map(c => ({
+            id: c.id, name: c.name, area: c.area, description: c.description || '',
+            levels: c.levels || [], allTools: c.allTools || [],
+            selectedTools: [...c.selectedTools], evalModules: []
+        }));
+    } else if (window.ProgramCompetences) {
+        // Legacy fallback: if competences were defined in program tab
         const freshComps = window.ProgramCompetences.getCompetences();
         if (freshComps && freshComps.length > 0) {
             extendedInfoData.competences = freshComps;
         }
-        // If freshComps is empty keep the server-loaded value to avoid wiping stored competences
-        // Clear unsaved badge regardless
-        const badge = document.getElementById('competences-unsaved-badge');
-        if (badge) badge.classList.add('d-none');
     }
+    const badge = document.getElementById('competences-unsaved-badge');
+    if (badge) badge.classList.add('d-none');
 
     // Keep legacy pildoras for backward compatibility (flatten all module pildoras)
     const allPildoras = [];
@@ -6029,8 +6051,10 @@ async function loadEvaluation() {
 
         window._evalState.modules = promo.modules || [];
         window._evalState.competences = enrichedCompetences;
+        window._evalState.catalog = catalog;  // full catalog for competence picker
         window._evalState.students = studentsData.filter(s => !s.isWithdrawn);
         window._evalState.savedEvaluations = ext.projectEvaluations || [];
+        window._evalState.projectCompetences = ext.projectCompetences || []; // per-project competence definitions
 
         renderEvaluationTab();
     } catch (err) {
@@ -6115,6 +6139,14 @@ function renderEvaluationTab() {
                 ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>${evalCount}/${totalTargets} evaluado${evalCount !== 1 ? 's' : ''}</span>`
                 : `<span class="badge bg-light text-muted border">Sin evaluar</span>`;
 
+            // Per-project competence count (from projectCompetences, not proj.competenceIds)
+            const projCompDef = (window._evalState.projectCompetences || []).find(
+                pc => pc.moduleId === (mod.id || String(mIdx)) && pc.projectName === proj.name
+            );
+            const projCompCount = projCompDef ? (projCompDef.competenceIds || []).length : 0;
+            const compBadgeStyle = projCompCount > 0 ? 'background:#E85D26;color:#fff;' : '';
+            const compBadgeClass = projCompCount > 0 ? '' : 'bg-light text-muted border';
+
             html += `
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 ${hasEval ? 'border-success' : ''}">
@@ -6125,7 +6157,11 @@ function renderEvaluationTab() {
                         </div>
                         ${proj.url ? `<a href="${escapeHtml(proj.url)}" target="_blank" class="text-muted small mb-2 text-truncate d-block"><i class="bi bi-link-45deg me-1"></i>${escapeHtml(proj.url)}</a>` : ''}
                         <div class="d-flex gap-2 flex-wrap mb-2">
-                            <span class="badge bg-light text-dark border"><i class="bi bi-award me-1"></i>${compCount} competencia${compCount !== 1 ? 's' : ''}</span>
+                            <button class="badge border-0 ${compBadgeClass}" style="${compBadgeStyle}cursor:pointer;"
+                                onclick="openEvalProjectCompetencePicker(${mIdx}, ${pIdx})" title="Definir competencias de este proyecto">
+                                <i class="bi bi-award me-1"></i>${projCompCount} competencia${projCompCount !== 1 ? 's' : ''}
+                                <i class="bi bi-pencil-square ms-1 opacity-75" style="font-size:.7rem;"></i>
+                            </button>
                             <span class="badge ${projType === 'grupal' ? 'bg-info text-dark' : 'bg-warning text-dark'}">
                                 <i class="bi bi-${projType === 'grupal' ? 'people' : 'person'} me-1"></i>${projType}
                             </span>
@@ -6169,6 +6205,381 @@ function renderEvaluationTab() {
 
 function _evalProjectKey(moduleId, projectName) {
     return `${moduleId}__${projectName}`;
+}
+
+// ==================== COMPETENCE PICKER (per-project, from Evaluation tab) ====================
+
+/**
+ * Opens the per-project competence+tools definition modal.
+ * Stores data in window._evalState.projectCompetences[].
+ */
+function openEvalProjectCompetencePicker(mIdx, pIdx) {
+    const { modules, catalog } = window._evalState;
+    const mod  = modules[mIdx];
+    const proj = mod.projects[pIdx];
+    const modId = mod.id || String(mIdx);
+
+    // Find or create the entry for this project
+    if (!window._evalState.projectCompetences) window._evalState.projectCompetences = [];
+    let pcEntry = window._evalState.projectCompetences.find(
+        pc => pc.moduleId === modId && pc.projectName === proj.name
+    );
+    if (!pcEntry) {
+        // Start with empty selection — competences are defined here, not in the roadmap
+        pcEntry = {
+            moduleId: modId,
+            projectName: proj.name,
+            competenceIds: [],
+            competenceTools: {}
+        };
+    }
+
+    // Use full catalog (always all competences available)
+    const fullCatalog = (catalog && catalog.length) ? catalog : (window._extendedInfoCompetences || []);
+
+    if (!fullCatalog.length) {
+        showToast('No se encontró el catálogo de competencias. Intenta recargar la página.', 'danger');
+        return;
+    }
+
+    // Store working copy
+    window._evalProjPickerState = {
+        mIdx, pIdx, modId,
+        projName: proj.name,
+        modName: mod.name || `Módulo ${mIdx + 1}`,
+        selectedIds: new Set((pcEntry.competenceIds || []).map(String)),
+        competenceTools: JSON.parse(JSON.stringify(pcEntry.competenceTools || {})),
+        catalog: fullCatalog
+    };
+
+    // Build modal HTML
+    const areaSet = new Set(fullCatalog.map(c => c.area || 'Sin área'));
+    const areaOptions = [...areaSet].sort().map(a =>
+        `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`
+    ).join('');
+
+    const rows = fullCatalog.map(c => _buildPickerRow(c, window._evalProjPickerState)).join('');
+
+    // Inject or create modal
+    let modal = document.getElementById('eval-proj-comp-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'eval-proj-comp-modal';
+        modal.className = 'modal fade';
+        modal.setAttribute('tabindex', '-1');
+        modal.innerHTML = `<div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,#fff8f5,#fff3ee);border-bottom:2px solid #E85D26;">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">
+                            <i class="bi bi-award me-2" style="color:#E85D26;"></i>
+                            Competencias del proyecto: <span id="epcp-proj-title"></span>
+                        </h5>
+                        <small class="text-muted" id="epcp-mod-subtitle"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="p-3 border-bottom bg-light d-flex flex-wrap gap-2 align-items-center">
+                        <div class="input-group input-group-sm" style="max-width:260px;">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="epcp-search" placeholder="Buscar competencia...">
+                        </div>
+                        <select class="form-select form-select-sm w-auto" id="epcp-area-filter">
+                            <option value="">Todas las áreas</option>
+                            ${areaOptions}
+                        </select>
+                        <span class="ms-auto badge bg-light text-dark border" id="epcp-selected-count">0 seleccionadas</span>
+                    </div>
+                    <div id="epcp-list" class="p-3" style="max-height:60vh;overflow-y:auto;">
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Selecciona las competencias y elige qué herramientas se evaluarán en este proyecto.</small>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" style="background:#E85D26;border-color:#E85D26;" onclick="saveEvalProjectCompetences()">
+                            <i class="bi bi-check-lg me-1"></i>Guardar competencias
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+
+        // Live filter
+        modal.querySelector('#epcp-search').addEventListener('input', _filterEvalProjPicker);
+        modal.querySelector('#epcp-area-filter').addEventListener('change', _filterEvalProjPicker);
+    }
+
+    // Update modal header
+    modal.querySelector('#epcp-proj-title').textContent = proj.name;
+    modal.querySelector('#epcp-mod-subtitle').textContent = mod.name || `Módulo ${mIdx + 1}`;
+
+    // Re-render list (fresh state)
+    _renderEvalProjPickerList();
+
+    const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+    bsModal.show();
+}
+
+function _buildPickerRow(comp, state) {
+    const isSelected = state.selectedIds.has(String(comp.id));
+    const selectedTools = state.competenceTools[String(comp.id)] || [];
+    const allTools = comp.allTools || [];
+    const toolsHtml = allTools.map(t => {
+        const checked = selectedTools.includes(t) ? 'checked' : '';
+        return `<div class="form-check form-check-inline">
+            <input class="form-check-input epcp-tool-check" type="checkbox" value="${escapeHtml(t)}"
+                data-comp-id="${escapeHtml(String(comp.id))}"
+                id="epcp-tool-${escapeHtml(String(comp.id))}-${escapeHtml(t)}"
+                ${checked} ${isSelected ? '' : 'disabled'}
+                onchange="window._evalProjPickerToggleTool(this)">
+            <label class="form-check-label small" for="epcp-tool-${escapeHtml(String(comp.id))}-${escapeHtml(t)}">${escapeHtml(t)}</label>
+        </div>`;
+    }).join('');
+
+    return `<div class="epcp-row border rounded mb-2 p-2 ${isSelected ? 'border-warning bg-white' : 'bg-light'}"
+            data-comp-id="${escapeHtml(String(comp.id))}"
+            data-area="${escapeHtml(comp.area || '')}"
+            data-name="${escapeHtml((comp.name || '').toLowerCase())}">
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-check mb-0 flex-shrink-0">
+                <input class="form-check-input epcp-comp-check" type="checkbox" value="${escapeHtml(String(comp.id))}"
+                    id="epcp-comp-${escapeHtml(String(comp.id))}"
+                    ${isSelected ? 'checked' : ''}
+                    onchange="window._evalProjPickerToggleComp(this)">
+            </div>
+            <label class="form-check-label fw-semibold d-flex align-items-center gap-2 flex-grow-1" for="epcp-comp-${escapeHtml(String(comp.id))}">
+                <span class="badge bg-secondary" style="font-size:.7rem;">${escapeHtml(comp.area || 'Sin área')}</span>
+                ${escapeHtml(comp.name)}
+            </label>
+            ${allTools.length ? `<span class="badge bg-light text-muted border small">${selectedTools.length}/${allTools.length} herramientas</span>` : ''}
+        </div>
+        ${allTools.length ? `<div class="mt-2 ps-4 epcp-tools-section" ${isSelected ? '' : 'style="display:none;"'}>
+            <small class="text-muted fw-semibold d-block mb-1"><i class="bi bi-tools me-1"></i>Herramientas a evaluar:</small>
+            <div class="d-flex flex-wrap gap-1">${toolsHtml}</div>
+            <button type="button" class="btn btn-link btn-sm p-0 mt-1 text-primary epcp-select-all-tools"
+                data-comp-id="${escapeHtml(String(comp.id))}"
+                onclick="window._evalProjPickerSelectAllTools('${escapeHtml(String(comp.id))}')">
+                <i class="bi bi-check-all me-1"></i>Seleccionar todas
+            </button>
+        </div>` : ''}
+    </div>`;
+}
+
+function _renderEvalProjPickerList() {
+    const state = window._evalProjPickerState;
+    if (!state) return;
+    const listEl = document.getElementById('epcp-list');
+    if (!listEl) return;
+    listEl.innerHTML = state.catalog.map(c => _buildPickerRow(c, state)).join('');
+    _updateEvalProjPickerCount();
+}
+
+function _filterEvalProjPicker() {
+    const state = window._evalProjPickerState;
+    if (!state) return;
+    const search = (document.getElementById('epcp-search')?.value || '').toLowerCase();
+    const area   = document.getElementById('epcp-area-filter')?.value || '';
+
+    document.querySelectorAll('#epcp-list .epcp-row').forEach(row => {
+        const rowArea = row.dataset.area || '';
+        const rowName = row.dataset.name || '';
+        const matches = (!area || rowArea === area) && (!search || rowName.includes(search));
+        row.style.display = matches ? '' : 'none';
+    });
+}
+
+function _updateEvalProjPickerCount() {
+    const state = window._evalProjPickerState;
+    if (!state) return;
+    const countEl = document.getElementById('epcp-selected-count');
+    if (countEl) countEl.textContent = `${state.selectedIds.size} seleccionada${state.selectedIds.size !== 1 ? 's' : ''}`;
+}
+
+window._evalProjPickerToggleComp = function(checkbox) {
+    const state = window._evalProjPickerState;
+    if (!state) return;
+    const compId = String(checkbox.value);
+    const row = checkbox.closest('.epcp-row');
+
+    if (checkbox.checked) {
+        state.selectedIds.add(compId);
+        // Default: all tools selected
+        const comp = state.catalog.find(c => String(c.id) === compId);
+        if (comp && comp.allTools && comp.allTools.length) {
+            state.competenceTools[compId] = [...comp.allTools];
+        }
+        if (row) {
+            row.classList.replace('bg-light', 'bg-white');
+            row.classList.add('border-warning');
+            const toolsSec = row.querySelector('.epcp-tools-section');
+            if (toolsSec) toolsSec.style.display = '';
+            row.querySelectorAll('.epcp-tool-check').forEach(cb => { cb.disabled = false; cb.checked = true; });
+        }
+    } else {
+        state.selectedIds.delete(compId);
+        delete state.competenceTools[compId];
+        if (row) {
+            row.classList.replace('bg-white', 'bg-light');
+            row.classList.remove('border-warning');
+            const toolsSec = row.querySelector('.epcp-tools-section');
+            if (toolsSec) toolsSec.style.display = 'none';
+            row.querySelectorAll('.epcp-tool-check').forEach(cb => { cb.disabled = true; cb.checked = false; });
+        }
+    }
+    _updateEvalProjPickerCount();
+};
+
+window._evalProjPickerToggleTool = function(checkbox) {
+    const state = window._evalProjPickerState;
+    if (!state) return;
+    const compId = String(checkbox.dataset.compId);
+    const tool   = checkbox.value;
+    if (!state.competenceTools[compId]) state.competenceTools[compId] = [];
+    if (checkbox.checked) {
+        if (!state.competenceTools[compId].includes(tool)) state.competenceTools[compId].push(tool);
+    } else {
+        state.competenceTools[compId] = state.competenceTools[compId].filter(t => t !== tool);
+    }
+    // Update tool count badge in row
+    const row = checkbox.closest('.epcp-row');
+    if (row) {
+        const comp = state.catalog.find(c => String(c.id) === compId);
+        const allCount = comp ? (comp.allTools || []).length : 0;
+        const selCount = (state.competenceTools[compId] || []).length;
+        const badge = row.querySelector('.badge.bg-light.text-muted');
+        if (badge) badge.textContent = `${selCount}/${allCount} herramientas`;
+    }
+};
+
+window._evalProjPickerSelectAllTools = function(compId) {
+    const state = window._evalProjPickerState;
+    if (!state) return;
+    const comp = state.catalog.find(c => String(c.id) === compId);
+    if (!comp) return;
+    state.competenceTools[compId] = [...(comp.allTools || [])];
+    // Update checkboxes in DOM
+    document.querySelectorAll(`.epcp-tool-check[data-comp-id="${escapeHtml(compId)}"]`).forEach(cb => { cb.checked = true; });
+    // Update count badge
+    const row = document.querySelector(`.epcp-row[data-comp-id="${escapeHtml(compId)}"]`);
+    if (row) {
+        const badge = row.querySelector('.badge.bg-light.text-muted');
+        if (badge) badge.textContent = `${state.competenceTools[compId].length}/${state.competenceTools[compId].length} herramientas`;
+    }
+};
+
+async function saveEvalProjectCompetences() {
+    const state = window._evalProjPickerState;
+    if (!state) return;
+
+    if (!window._evalState.projectCompetences) window._evalState.projectCompetences = [];
+
+    const entry = {
+        moduleId: state.modId,
+        projectName: state.projName,
+        competenceIds: [...state.selectedIds].map(id => isNaN(Number(id)) ? id : Number(id)),
+        competenceTools: state.competenceTools
+    };
+
+    const idx = window._evalState.projectCompetences.findIndex(
+        pc => pc.moduleId === state.modId && pc.projectName === state.projName
+    );
+    if (idx >= 0) window._evalState.projectCompetences[idx] = entry;
+    else window._evalState.projectCompetences.push(entry);
+
+    // Persist to server
+    await _persistProjectCompetences();
+
+    // Also aggregate → update extendedInfo.competences for the program tab
+    await _aggregateAndSyncCompetencesToProgram();
+
+    // Close modal
+    const modal = document.getElementById('eval-proj-comp-modal');
+    if (modal) bootstrap.Modal.getOrCreateInstance(modal).hide();
+
+    // Re-render evaluation tab to update badge count
+    renderEvaluationTab();
+    showToast('Competencias del proyecto guardadas ✓', 'success');
+}
+
+async function _persistProjectCompetences() {
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ projectCompetences: window._evalState.projectCompetences })
+        });
+        if (!res.ok) console.error('[_persistProjectCompetences] Error:', res.status);
+    } catch (err) {
+        console.error('[_persistProjectCompetences] Exception:', err);
+    }
+}
+
+/**
+ * Aggregates competences defined across all projects → writes to extendedInfo.competences.
+ * Deduplicates by competence ID; merges tools (union).
+ * Then updates ProgramCompetences display (read-only).
+ */
+async function _aggregateAndSyncCompetencesToProgram() {
+    const { catalog, projectCompetences } = window._evalState;
+    if (!projectCompetences) return;
+
+    // Build a map: competenceId → { ...catalogEntry, selectedTools: Set }
+    const compMap = new Map();
+    projectCompetences.forEach(pc => {
+        (pc.competenceIds || []).forEach(cid => {
+            const cidStr = String(cid);
+            const catalogEntry = (catalog || []).find(c => String(c.id) === cidStr);
+            if (!catalogEntry) return;
+            if (!compMap.has(cidStr)) {
+                compMap.set(cidStr, {
+                    ...catalogEntry,
+                    selectedTools: new Set()
+                });
+            }
+            // Union of tools from all projects that reference this competence
+            const tools = (pc.competenceTools && pc.competenceTools[cidStr]) || [];
+            tools.forEach(t => compMap.get(cidStr).selectedTools.add(t));
+        });
+    });
+
+    // Convert to array for saving
+    const aggregated = [...compMap.values()].map(c => ({
+        id: c.id,
+        name: c.name,
+        area: c.area,
+        description: c.description || '',
+        levels: c.levels || [],
+        allTools: c.allTools || [],
+        selectedTools: [...c.selectedTools],
+        evalModules: []
+    }));
+
+    // Update extendedInfoData (for next Save All Changes)
+    if (typeof extendedInfoData !== 'undefined') {
+        extendedInfoData.competences = aggregated;
+    }
+    window._extendedInfoCompetences = aggregated;
+
+    // Update ProgramCompetences display (view-only mode)
+    if (window.ProgramCompetences && window.ProgramCompetences.initViewOnly) {
+        window.ProgramCompetences.initViewOnly(aggregated);
+    }
+
+    // Persist aggregated competences immediately
+    const token = localStorage.getItem('token');
+    try {
+        await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ competences: aggregated })
+        });
+    } catch (err) {
+        console.error('[_aggregateAndSyncCompetencesToProgram] Error persisting:', err);
+    }
 }
 
 // ==================== HISTÓRICO DE EQUIPOS ====================
@@ -6865,9 +7276,24 @@ function openEvaluationView(mIdx, pIdx) {
     };
     window._evalCurrentSaved = saved;
 
-    const projCompetences = (proj.competenceIds || []).map(cid =>
-        competences.find(c => String(c.id) === String(cid)) || { id: cid, name: `Competencia ${cid}`, area: '' }
+    // Build project competences exclusively from the evaluation picker (projectCompetences).
+    // No longer falls back to proj.competenceIds (roadmap) — competences must be defined in Evaluación.
+    const pcEntry = (window._evalState.projectCompetences || []).find(
+        pc => pc.moduleId === modId && pc.projectName === proj.name
     );
+    const compIdsForProj = pcEntry ? (pcEntry.competenceIds || []) : [];
+    const catalog = window._evalState.catalog || [];
+    const projCompetences = compIdsForProj.map(cid => {
+        // Prefer full catalog entry (has toolsWithIndicators, competenceIndicators) over enriched list
+        const full = catalog.find(c => String(c.id) === String(cid));
+        const found = full || competences.find(c => String(c.id) === String(cid));
+        if (!found) return { id: cid, name: `Competencia ${cid}`, area: '', allTools: [], selectedTools: [], toolsWithIndicators: [], competenceIndicators: { initial: [], medio: [], advance: [] } };
+        // Use per-project tool selection from picker; fall back to all tools
+        const projTools = (pcEntry && pcEntry.competenceTools && pcEntry.competenceTools[String(cid)])
+            ? pcEntry.competenceTools[String(cid)]
+            : (found.allTools || []);
+        return { ...found, selectedTools: projTools };
+    });
     window._evalCurrentProjectCompetences = projCompetences;
 
     // Show/hide panels
@@ -7088,24 +7514,30 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
             || savedEval?.checkedIndicators?.[rawCompId]
             || {};
 
-        const toolsWithInds      = (comp.toolsWithIndicators || []).filter(t => t.indicators && t.indicators.length > 0);
-        const activeToolsWithInds = (() => {
-            const allT = (comp.selectedTools && comp.selectedTools.length)
-                ? comp.selectedTools
-                : (comp.allTools && comp.allTools.length ? comp.allTools : null);
-            const removed = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
-            if (!allT) return toolsWithInds.filter(t => !removed.includes(t.name));
-            const activeNames = new Set(allT.filter(n => !removed.includes(n)));
-            const filtered = toolsWithInds.filter(t => activeNames.has(t.name));
-            return filtered.length > 0 ? filtered : toolsWithInds.filter(t => !removed.includes(t.name));
-        })();
+        const removed_sv = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
+        // Determine the active tool names for this competence in this project
+        const activeTool_sv = (comp.selectedTools && comp.selectedTools.length > 0)
+            ? comp.selectedTools
+            : (comp.allTools && comp.allTools.length > 0 ? comp.allTools : []);
+        const activeNames_sv = new Set(activeTool_sv.filter(n => !removed_sv.includes(n)));
+
+        // All tool objects (with or without indicators) — keyed by name for lookup
+        const allToolObjs_sv = comp.toolsWithIndicators || [];
+        // Active tools that DO have indicators → shown as accordion checkboxes
+        const activeToolsWithInds = activeNames_sv.size > 0
+            ? allToolObjs_sv.filter(t => activeNames_sv.has(t.name) && t.indicators && t.indicators.length > 0)
+            : allToolObjs_sv.filter(t => t.indicators && t.indicators.length > 0);
+        // Active tools that have NO indicators → shown as a warning notice
+        const activeToolsNoInds = activeNames_sv.size > 0
+            ? activeTool_sv.filter(n => !removed_sv.includes(n) && !allToolObjs_sv.find(t => t.name === n && t.indicators && t.indicators.length > 0))
+            : [];
 
         const compInds            = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
         const hasToolIndicators   = activeToolsWithInds.some(t => t.indicators.length > 0);
         const hasCompIndicators   = compInds.initial.length || compInds.medio.length || compInds.advance.length;
 
-        const safeCompId   = escapeHtml(rawCompId);
-        const safeTargetId = escapeHtml(String(targetId));
+        const safeCompId   = String(rawCompId).replace(/[^a-zA-Z0-9-]/g, '-');
+        const safeTargetId = String(targetId).replace(/[^a-zA-Z0-9-]/g, '-');
         const prefix       = `sv-${safeCompId}-${safeTargetId}`;
 
         // Counts
@@ -7277,6 +7709,13 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                     <div class="small fw-semibold text-secondary mb-1"><i class="bi bi-list-check me-1"></i>Indicadores — marca los que cumple:</div>
                     <div id="ind-container-${safeCompId}-${safeTargetId}">${indicatorsHtml}</div>
                 </div>` : ''}
+                ${activeToolsNoInds.length > 0 ? `<div class="alert alert-warning py-2 px-3 mb-2" style="font-size:.8rem;">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>Sin indicadores:</strong> las herramientas
+                    <strong>${activeToolsNoInds.map(n => escapeHtml(n)).join(', ')}</strong>
+                    no tienen indicadores definidos en el catálogo.
+                    Puedes evaluarlas manualmente con el nivel de abajo, o solicitar que se añadan indicadores en la API externa.
+                </div>` : ''}
                 ${manualLevelHtml}
             </div>
         </div>`;
@@ -7338,9 +7777,23 @@ function openEvaluationModal(mIdx, pIdx) {
         type: 'individual', groups: [], evaluations: []
     };
 
-    const projCompetences = (proj.competenceIds || []).map(cid => {
-        return competences.find(c => String(c.id) === String(cid)) || { id: cid, name: `Competencia ${cid}`, area: '' };
-    });
+    const projCompetences = (() => {
+        const pcEntry = (window._evalState.projectCompetences || []).find(
+            pc => pc.moduleId === modId && pc.projectName === proj.name
+        );
+        // No longer falls back to proj.competenceIds (roadmap) — competences are defined in Evaluación only.
+        const compIds = pcEntry ? (pcEntry.competenceIds || []) : [];
+        const catalog = window._evalState.catalog || [];
+        return compIds.map(cid => {
+            // Prefer full catalog entry (has toolsWithIndicators, competenceIndicators)
+            const full = catalog.find(c => String(c.id) === String(cid));
+            const found = full || competences.find(c => String(c.id) === String(cid)) || { id: cid, name: `Competencia ${cid}`, area: '', allTools: [], toolsWithIndicators: [], competenceIndicators: { initial: [], medio: [], advance: [] } };
+            const projTools = (pcEntry && pcEntry.competenceTools && pcEntry.competenceTools[String(cid)])
+                ? pcEntry.competenceTools[String(cid)]
+                : (found.allTools || []);
+            return { ...found, selectedTools: projTools };
+        });
+    })();
 
     // DEBUG: log competence tool data
     console.log('[Eval] projCompetences:', projCompetences.map(c => ({
@@ -7389,24 +7842,28 @@ function openEvaluationModal(mIdx, pIdx) {
                 || {};
             const levelDescs = (comp.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
 
-            const toolsWithInds = (comp.toolsWithIndicators || []).filter(t => t.indicators && t.indicators.length > 0);
-            const activeToolsWithInds = (() => {
-                const allT = (comp.selectedTools && comp.selectedTools.length)
-                    ? comp.selectedTools
-                    : (comp.allTools && comp.allTools.length ? comp.allTools : null);
-                const removed = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
-                if (!allT) return toolsWithInds.filter(t => !removed.includes(t.name));
-                const activeNames = new Set(allT.filter(n => !removed.includes(n)));
-                const filtered = toolsWithInds.filter(t => activeNames.has(t.name));
-                return filtered.length > 0 ? filtered : toolsWithInds.filter(t => !removed.includes(t.name));
-            })();
+            const allToolsWithInds = (comp.toolsWithIndicators || []).filter(t => t.indicators && t.indicators.length > 0);
+            const removed_modal = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
+            const activeTool_modal = (comp.selectedTools && comp.selectedTools.length > 0)
+                ? comp.selectedTools
+                : (comp.allTools && comp.allTools.length > 0 ? comp.allTools : []);
+            const activeNames_modal = new Set(activeTool_modal.filter(n => !removed_modal.includes(n)));
+            const allToolObjs_modal = comp.toolsWithIndicators || [];
+            // Active tools that DO have indicators → shown as accordion checkboxes
+            const activeToolsWithInds = activeNames_modal.size > 0
+                ? allToolObjs_modal.filter(t => activeNames_modal.has(t.name) && t.indicators && t.indicators.length > 0)
+                : allToolObjs_modal.filter(t => t.indicators && t.indicators.length > 0);
+            // Active tools that have NO indicators → shown as a warning notice
+            const activeToolsNoInds_modal = activeNames_modal.size > 0
+                ? activeTool_modal.filter(n => !removed_modal.includes(n) && !allToolObjs_modal.find(t => t.name === n && t.indicators && t.indicators.length > 0))
+                : [];
 
             const compInds = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
             const hasToolIndicators = activeToolsWithInds.some(t => t.indicators.length > 0);
             const hasCompIndicators = compInds.initial.length || compInds.medio.length || compInds.advance.length;
 
-            const safeCompId = escapeHtml(rawCompId);
-            const safeTargetId = escapeHtml(String(targetId));
+            const safeCompId = String(rawCompId).replace(/[^a-zA-Z0-9-]/g, '-');
+            const safeTargetId = String(targetId).replace(/[^a-zA-Z0-9-]/g, '-');
             const prefix = `grp-ind-${safeCompId}-${safeTargetId}`;
 
             // Count checked/total indicators to compute auto-level
@@ -7580,6 +8037,13 @@ function openEvaluationModal(mIdx, pIdx) {
                     ${indicatorsHtml ? `<div class="mb-2">
                         <div class="small fw-semibold text-secondary mb-1"><i class="bi bi-list-check me-1"></i>Indicadores — marca los que cumple:</div>
                         <div id="ind-container-${safeCompId}-${safeTargetId}">${indicatorsHtml}</div>
+                    </div>` : ''}
+                    ${activeToolsNoInds_modal.length > 0 ? `<div class="alert alert-warning py-2 px-3 mb-2" style="font-size:.8rem;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Sin indicadores:</strong> las herramientas
+                        <strong>${activeToolsNoInds_modal.map(n => escapeHtml(n)).join(', ')}</strong>
+                        no tienen indicadores definidos en el catálogo.
+                        Puedes evaluarlas manualmente con el nivel de abajo, o solicitar que se añadan indicadores en la API externa.
                     </div>` : ''}
                     ${manualLevelHtml}
                 </div>
@@ -7793,26 +8257,20 @@ function _openStudentEvalSubModalFor(studentId) {
 
             // Build the indicators structure from toolsWithIndicators + competenceIndicators
             // Priority: use toolsWithIndicators if available and have indicators; else use competenceIndicators
-            const toolsWithInds = (comp.toolsWithIndicators || []).filter(t => t.indicators && t.indicators.length > 0);
-
-            // Filter to only the tools visible in this evaluation (selectedTools or allTools, minus removed).
-            // If neither selectedTools nor allTools is populated, show ALL tools from toolsWithInds.
-            const activeToolsWithInds = (() => {
-                const allT = (comp.selectedTools && comp.selectedTools.length)
-                    ? comp.selectedTools
-                    : (comp.allTools && comp.allTools.length ? comp.allTools : null);
-                if (!allT) {
-                    // No name-based filter available — include all tools that have indicators
-                    const removed = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
-                    return toolsWithInds.filter(t => !removed.includes(t.name));
-                }
-                const removed = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
-                const activeNames = new Set(allT.filter(n => !removed.includes(n)));
-                // If every tool in toolsWithInds matches, return all; otherwise filter by name
-                const filtered = toolsWithInds.filter(t => activeNames.has(t.name));
-                // If filtering yields nothing but toolsWithInds has data, show all (name mismatch guard)
-                return filtered.length > 0 ? filtered : toolsWithInds.filter(t => !removed.includes(t.name));
-            })();
+            const toolsWithInds_t3 = comp.toolsWithIndicators || [];
+            const removed_t3 = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
+            const activeTool_t3 = (comp.selectedTools && comp.selectedTools.length > 0)
+                ? comp.selectedTools
+                : (comp.allTools && comp.allTools.length > 0 ? comp.allTools : []);
+            const activeNames_t3 = new Set(activeTool_t3.filter(n => !removed_t3.includes(n)));
+            // Active tools that DO have indicators → shown as accordion checkboxes
+            const activeToolsWithInds = activeNames_t3.size > 0
+                ? toolsWithInds_t3.filter(t => activeNames_t3.has(t.name) && t.indicators && t.indicators.length > 0)
+                : toolsWithInds_t3.filter(t => t.indicators && t.indicators.length > 0);
+            // Active tools that have NO indicators → shown as a warning notice
+            const activeToolsNoInds_t3 = activeNames_t3.size > 0
+                ? activeTool_t3.filter(n => !removed_t3.includes(n) && !toolsWithInds_t3.find(t => t.name === n && t.indicators && t.indicators.length > 0))
+                : [];
 
             // Fallback to general competence indicators grouped by level
             const compInds = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
@@ -7820,8 +8278,8 @@ function _openStudentEvalSubModalFor(studentId) {
             const hasCompIndicators = compInds.initial.length || compInds.medio.length || compInds.advance.length;
 
             // Unique ID prefix for this competence+target combo
-            const safeCompId = escapeHtml(String(comp.id));
-            const safeTargetId = escapeHtml(String(targetId));
+            const safeCompId = String(comp.id).replace(/[^a-zA-Z0-9-]/g, '-');
+            const safeTargetId = String(targetId).replace(/[^a-zA-Z0-9-]/g, '-');
             const prefix = `ind-${safeCompId}-${safeTargetId}`;
 
             // Build indicators HTML — accordion per tool, levels side-by-side
@@ -8028,6 +8486,13 @@ function _openStudentEvalSubModalFor(studentId) {
                             </div>
                            </div>`
                         : ''}
+                    ${activeToolsNoInds_t3.length > 0 ? `<div class="alert alert-warning py-2 px-3 mb-2" style="font-size:.8rem;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Sin indicadores:</strong> las herramientas
+                        <strong>${activeToolsNoInds_t3.map(n => escapeHtml(n)).join(', ')}</strong>
+                        no tienen indicadores definidos en el catálogo.
+                        Puedes evaluarlas manualmente con el nivel de abajo, o solicitar que se añadan indicadores en la API externa.
+                    </div>` : ''}
                     ${manualLevelHtml}
                 </div>
             </div>`;
