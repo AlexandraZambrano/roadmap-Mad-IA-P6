@@ -38,13 +38,13 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i
-                                        class="bi bi-person me-2"></i>My Profile</a></li>
+                                        class="bi bi-person me-2"></i>Perfil</a></li>
                             <li id="admin-panel-divider" class="d-none"><hr class="dropdown-divider"></li>
                             <li id="admin-panel-item" class="d-none"><a class="dropdown-item" href="admin.html"><i
                                         class="bi bi-shield-lock me-2"></i>Panel de Admin</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="logout()"><i
-                                        class="bi bi-box-arrow-right me-2"></i><span data-i18n="logout">Logout</span></a></li>
+                                        class="bi bi-box-arrow-right me-2"></i><span data-i18n="logout">Cerrar Sesión</span></a></li>
                         </ul>
                     </li>
                 </ul>
@@ -88,16 +88,16 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-warning bg-opacity-10 border-warning">
-                    <h5 class="modal-title">My Profile</h5>
+                    <h5 class="modal-title">Perfil</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-content" type="button" role="tab">Profile Information</button>
+                            <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-content" type="button" role="tab">Información general</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password-content" type="button" role="tab">Change Password</button>
+                            <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password-content" type="button" role="tab">Cambiar contraseña</button>
                         </li>
                     </ul>
 
@@ -105,11 +105,11 @@
                     <div class="tab-content" id="profileTabContent">
                         <div class="tab-pane fade show active" id="profile-content" role="tabpanel">
                             <div class="mb-3">
-                                <label for="profile-name" class="form-label">First Name</label>
+                                <label for="profile-name" class="form-label">Nombre</label>
                                 <input type="text" class="form-control" id="profile-name">
                             </div>
                             <div class="mb-3">
-                                <label for="profile-lastName" class="form-label">Last Name</label>
+                                <label for="profile-lastName" class="form-label">Apellido</label>
                                 <input type="text" class="form-control" id="profile-lastName">
                             </div>
                             <div class="mb-3">
@@ -176,49 +176,49 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="promotion-modal-title">New Promotion</h5>
+                    <h5 class="modal-title" id="promotion-modal-title">Nueva promoción</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="promotion-form">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="promotion-template" class="form-label">Bootcamp Template (Optional)</label>
+                            <label for="promotion-template" class="form-label">Plantilla de bootcamp (Opcional)</label>
                             <select class="form-select" id="promotion-template" onchange="applyTemplate()">
-                                <option value="">-- Select a template to start --</option>
+                                <!-- <option value="">-- Selecciona una plantilla para empezar --</option>
                                 <option value="ia-bootcamp">IA School Bootcamp (39 weeks)</option>
                                 <option value="fullstack-bootcamp">Full Stack Bootcamp (24 weeks)</option>
                                 <option value="cybersecurity-bootcamp">Cyber Security Bootcamp (20 weeks)</option>
                                 <option value="datascience-bootcamp">Data Science Bootcamp (30 weeks)</option>
                                 <option value="frontend-bootcamp">Frontend Bootcamp (16 weeks)</option>
-                                <option value="backend-bootcamp">Backend Bootcamp (20 weeks)</option>
+                                <option value="backend-bootcamp">Backend Bootcamp (20 weeks)</option> -->
                             </select>
-                            <small class="form-text text-muted">Selecting a template will auto-fill the weeks. You can still customize it.</small>
+                            <small class="form-text text-muted">Seleccionar una plantilla te ayudará a acelerar el proceso, pero aún puedo modificar lo que consideres necesario.</small>
                         </div>
                         <hr>
                         <div class="mb-3">
-                            <label for="promotion-name" class="form-label">Promotion Name</label>
+                            <label for="promotion-name" class="form-label">Nombre de la promoción</label>
                             <input type="text" class="form-control" id="promotion-name" required />
                         </div>
                         <div class="mb-3">
-                            <label for="promotion-desc" class="form-label">Description</label>
+                            <label for="promotion-desc" class="form-label">Descripción</label>
                             <textarea class="form-control" id="promotion-desc" rows="3"></textarea>
                         </div>
                         <div class="mb-3">
-                            <label for="promotion-weeks" class="form-label">Number of Weeks</label>
+                            <label for="promotion-weeks" class="form-label">Número de semanas</label>
                             <input type="number" class="form-control" id="promotion-weeks" min="1" required />
                         </div>
                         <div class="mb-3">
-                            <label for="promotion-start" class="form-label">Start Date</label>
+                            <label for="promotion-start" class="form-label">Fecha de inicio</label>
                             <input type="date" class="form-control" id="promotion-start" />
                         </div>
                         <div class="mb-3">
-                            <label for="promotion-end" class="form-label">End Date</label>
+                            <label for="promotion-end" class="form-label">Fecha de fin</label>
                             <input type="date" class="form-control" id="promotion-end" />
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Create Promotion</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Crear Promoción</button>
                     </div>
                 </form>
             </div>
