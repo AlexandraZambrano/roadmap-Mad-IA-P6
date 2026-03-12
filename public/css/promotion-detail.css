@@ -45,6 +45,10 @@ body {
     margin-bottom: 0;
 }
 
+.detail-card{
+    display: flex;
+}
+
 /* Navbar styling for promotion-detail */
 .navbar {
     position: sticky;
