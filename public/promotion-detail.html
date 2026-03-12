@@ -194,7 +194,7 @@
                     <div class="d-flex justify-content-between align-items-center my-4">
                         <h2>Estudiantes</h2>
                         <div class="d-flex flex-wrap gap-2">
-                            <button class="btn btn-outline-secondary" onclick="exportStudentsCsv()">
+                            <button class="btn btn-outline-secondary" onclick="exportStudentsCsv()" id="export-all-students-btn">
                                 <i class="bi bi-download me-2"></i>Descarga CSV
                             </button>
                             <button class="btn btn-outline-success" onclick="exportSelectedStudentsCsv()"
@@ -252,14 +252,14 @@
 
                             <input type="file" id="students-excel-input" accept=".xlsx,.xls" class="d-none"
                                 onchange="importStudentsFromExcel(this)">
-                            <button class="btn btn-outline-success"
+                            <button class="btn btn-outline-success" id="import-students-excel-btn"
                                 onclick="document.getElementById('students-excel-input').click()">
                                 <i class="bi bi-file-earmark-spreadsheet me-2"></i>Import Excel
                             </button>
-                            <button class="btn btn-outline-secondary" onclick="downloadStudentsExcelTemplate()" title="Descargar plantilla Excel">
+                            <button class="btn btn-outline-secondary" onclick="downloadStudentsExcelTemplate()" title="Descargar plantilla Excel" id="download-students-template-btn">
                                 <i class="bi bi-download me-1"></i>Plantilla Excel
                             </button>
-                            <button class="btn btn-primary" onclick="openStudentModal()">
+                            <button class="btn btn-primary" onclick="openStudentModal()" id="create-student-btn">
                                 <i class="bi bi-person-plus me-2"></i>Crea nuevo Estudiante
                             </button>
                         </div>

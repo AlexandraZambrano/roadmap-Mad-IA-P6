@@ -4682,6 +4682,10 @@ function updateSelectionState() {
     const selectionControls = document.getElementById('selection-controls');
     const exportSelectedBtn = document.getElementById('export-selected-btn');
     const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+    const exportAllBtn = document.getElementById('export-all-students-btn');
+    const importExcelBtn = document.getElementById('import-students-excel-btn');
+    const templateExcelBtn = document.getElementById('download-students-template-btn');
+    const createStudentBtn = document.getElementById('create-student-btn');
 
     const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
     const selectedCount = selectedCheckboxes.length;
@@ -4727,6 +4731,13 @@ function updateSelectionState() {
     if (bulkReportsDropdown) {
         bulkReportsDropdown.style.display = selectedCount > 0 ? 'inline-block' : 'none';
     }
+
+    // Toggle base action buttons (no selection vs with selection)
+    const baseDisplay = selectedCount > 0 ? 'none' : '';
+    if (exportAllBtn) exportAllBtn.style.display = baseDisplay;
+    if (importExcelBtn) importExcelBtn.style.display = baseDisplay;
+    if (templateExcelBtn) templateExcelBtn.style.display = baseDisplay;
+    if (createStudentBtn) createStudentBtn.style.display = baseDisplay;
 }
 
 function toggleAllStudents(source) {
