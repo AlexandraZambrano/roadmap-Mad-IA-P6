@@ -1480,8 +1480,8 @@ function _resourceCardHtml(r, alreadyAdded) {
     const commentShort = (r.comments || '').split('|')[0].trim();
 
     const btnHtml = alreadyAdded
-        ? `<button class="btn btn-sm btn-success w-100" disabled>
-               <i class="bi bi-check2-circle me-1"></i>Ya agregado
+        ? `<button class="btn btn-sm btn-outline-danger w-100" onclick="removeResourceFromCatalog(${r.id})">
+               <i class="bi bi-dash-circle me-1"></i>Quitar
            </button>`
         : `<button class="btn btn-sm btn-primary w-100" onclick="addResourceFromCatalog(${r.id})">
                <i class="bi bi-plus-circle me-1"></i>Agregar
@@ -1534,13 +1534,33 @@ function addResourceFromCatalog(resourceId) {
     extendedInfoData.resources.push(entry);
     displayResources();
 
-    // Update the card button to "Ya agregado" without re-rendering the whole grid
+    // Update the card button to "Quitar" without re-rendering the whole grid
     const card = document.getElementById(`resource-card-${resourceId}`);
     if (card) {
         const footer = card.querySelector('.card-footer');
         if (footer) {
-            footer.innerHTML = `<button class="btn btn-sm btn-success w-100" disabled>
-                <i class="bi bi-check2-circle me-1"></i>Ya agregado
+            footer.innerHTML = `<button class="btn btn-sm btn-outline-danger w-100" onclick="removeResourceFromCatalog(${resourceId})">
+                <i class="bi bi-dash-circle me-1"></i>Quitar
+            </button>`;
+        }
+    }
+}
+
+/** Called when user clicks "Quitar" on a catalog card */
+function removeResourceFromCatalog(resourceId) {
+    const rIndex = extendedInfoData.resources.findIndex(res => res.externalId === resourceId);
+    if (rIndex === -1) return;
+
+    extendedInfoData.resources.splice(rIndex, 1);
+    displayResources();
+
+    // Update the card button back to "Agregar"
+    const card = document.getElementById(`resource-card-${resourceId}`);
+    if (card) {
+        const footer = card.querySelector('.card-footer');
+        if (footer) {
+            footer.innerHTML = `<button class="btn btn-sm btn-primary w-100" onclick="addResourceFromCatalog(${resourceId})">
+                <i class="bi bi-plus-circle me-1"></i>Agregar
             </button>`;
         }
     }
