@@ -3598,6 +3598,7 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
     }
 
     const vc = ext.virtualClassroom;
+    console.log('[DEBUG] Active Virtual Classroom project:', vc);
     const projectType = vc.projectType || 'individual';
 
     if (projectType === 'individual') {
@@ -3619,6 +3620,7 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
     let evalEntry = ext.projectEvaluations.find(
       e => e.moduleId === moduleId && e.projectName === projectName
     );
+    console.log('[DEBUG] Found evalEntry:', !!evalEntry, { moduleId, projectName });
     if (!evalEntry) {
       evalEntry = {
         moduleId,
@@ -3662,6 +3664,15 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
     targetEval.submissionStatus = 'Entregado';
     targetEval.submittedAt = new Date().toISOString();
 
+    console.log('[DEBUG] Saved submission:', {
+      moduleId,
+      projectName,
+      targetId,
+      submissionLink: targetEval.submissionLink,
+      status: targetEval.submissionStatus
+    });
+
+    ext.markModified('projectEvaluations');
     await ext.save();
 
     res.json({ message: 'Entrega registrada correctamente', submissionLink: fullUrl });

@@ -6261,6 +6261,7 @@ async function loadEvaluation() {
 
         const promo = promoRes.ok ? await promoRes.json() : {};
         const ext = extRes.ok ? await extRes.json() : {};
+        console.log('[DEBUG] Full ext data:', ext);
         const studentsData = studentsRes.ok ? await studentsRes.json() : [];
         const catalogRaw = catalogRes.ok ? await catalogRes.json() : [];
 
@@ -6326,6 +6327,7 @@ async function loadEvaluation() {
         window._evalState.catalog = catalog;  // full catalog for competence picker
         window._evalState.students = studentsData.filter(s => !s.isWithdrawn);
         window._evalState.savedEvaluations = ext.projectEvaluations || [];
+        console.log('[DEBUG] Loaded evaluations:', window._evalState.savedEvaluations);
         window._evalState.projectCompetences = ext.projectCompetences || []; // per-project competence definitions
         window._evalState.virtualClassroom = ext.virtualClassroom || null;
 
@@ -6589,7 +6591,8 @@ function renderEvaluationTab() {
         const modKey = `eval-mod-${mIdx}`;
         const projectCount = mod.projects.length;
         const savedForModule = savedEvaluations.filter(e => e.moduleId === (mod.id || String(mIdx)));
-        const evaluatedCount = savedForModule.filter(e => e.evaluations && e.evaluations.length > 0).length;
+        // A project is considered 'evaluated' if it has at least one entry with evaluatedAt
+        const evaluatedCount = savedForModule.filter(e => (e.evaluations || []).some(ev => ev.evaluatedAt)).length;
 
         html += `
         <div class="accordion-item mb-3 border rounded shadow-sm">
@@ -6613,12 +6616,20 @@ function renderEvaluationTab() {
             const saved = savedEvaluations.find(e => e.moduleId === (mod.id || String(mIdx)) && e.projectName === proj.name);
             const projType = saved ? saved.type : 'individual';
             const compCount = (proj.competenceIds || []).length;
-            const evalCount = saved ? (saved.evaluations || []).length : 0;
+            const evals = saved ? (saved.evaluations || []) : [];
+            const evalCount = evals.filter(e => e.evaluatedAt).length; // Only counts those with a date (graded)
+            const submissionCount = evals.filter(e => e.submissionLink).length; // Counts those with a link
+            console.log(`[DEBUG] Project "${proj.name}": evalCount=${evalCount}, submissionCount=${submissionCount}`, evals);
             const hasEval = evalCount > 0;
+            const hasSubmission = submissionCount > 0;
             const groupCount = (saved && saved.groups) ? saved.groups.length : 0;
             const totalTargets = projType === 'grupal'
-                ? (saved && saved.groups ? saved.groups.length : 0)
+                ? groupCount
                 : window._evalState.students.length;
+            
+            const submissionBadge = hasSubmission
+                ? `<span class="badge bg-info text-dark me-1" title="Proyectos entregados"><i class="bi bi-cloud-arrow-up-fill me-1"></i>${submissionCount}/${totalTargets}</span>`
+                : '';
             const evalBadge = hasEval
                 ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>${evalCount}/${totalTargets} evaluado${evalCount !== 1 ? 's' : ''}</span>`
                 : `<span class="badge bg-light text-muted border">Sin evaluar</span>`;
@@ -6637,7 +6648,10 @@ function renderEvaluationTab() {
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex align-items-start justify-content-between mb-2">
                             <h6 class="card-title mb-0 fw-semibold">${escapeHtml(proj.name || 'Proyecto')}</h6>
-                            ${evalBadge}
+                            <div class="d-flex align-items-center">
+                                ${submissionBadge}
+                                ${evalBadge}
+                            </div>
                         </div>
                         ${proj.url ? `<a href="${escapeHtml(proj.url)}" target="_blank" class="text-muted small mb-2 text-truncate d-block"><i class="bi bi-link-45deg me-1"></i>${escapeHtml(proj.url)}</a>` : ''}
                         <div class="d-flex gap-2 flex-wrap mb-2">
@@ -7841,17 +7855,29 @@ function _renderEvalTargetsList(saved, students) {
     }
 
     listEl.innerHTML = targets.map(t => {
-        const done = doneEvals.some(e => String(e.targetId) === String(t.id));
+        const evalEntry = doneEvals.find(e => String(e.targetId) === String(t.id));
+        const isEvaluated = !!(evalEntry && evalEntry.evaluatedAt);
+        const isSubmitted = !!(evalEntry && evalEntry.submissionLink);
         const initials = t.label.split(' ').map(w => w[0] || '').slice(0,2).join('').toUpperCase() || '?';
-        const icon     = t.isGroup ? 'bi-people-fill' : '';
-        return `<li class="eval-target-item ${done ? 'evaluated' : ''}" data-target-id="${escapeHtml(String(t.id))}"
+        
+        let statusIcons = '';
+        if (isSubmitted) {
+            statusIcons += `<i class="bi bi-cloud-arrow-up-fill text-info" title="Entregado" style="font-size: 0.9rem;"></i>`;
+        }
+        if (isEvaluated) {
+            statusIcons += `<i class="bi bi-check-circle-fill eval-target-check" title="Evaluado" style="font-size: 0.9rem; margin-top: 2px;"></i>`;
+        }
+
+        return `<li class="eval-target-item ${isEvaluated ? 'evaluated' : ''}" data-target-id="${escapeHtml(String(t.id))}"
                     onclick="selectEvalTarget('${escapeHtml(String(t.id))}')">
             <div class="eval-target-avatar">${t.isGroup ? `<i class="bi bi-people-fill" style="font-size:.85rem;"></i>` : escapeHtml(initials)}</div>
             <div class="eval-target-info">
                 <div class="eval-target-name">${escapeHtml(t.label)}</div>
                 <div class="eval-target-meta">${escapeHtml(t.sub)}</div>
             </div>
-            ${done ? `<i class="bi bi-check-circle-fill eval-target-check" title="Evaluado"></i>` : ''}
+            <div class="eval-target-status d-flex flex-column align-items-center justify-content-center px-2">
+                ${statusIcons}
+            </div>
         </li>`;
     }).join('');
 }
@@ -7891,6 +7917,7 @@ function selectEvalTarget(targetId) {
 
     const isGrupal  = saved.type === 'grupal';
     const savedEval = (saved.evaluations || []).find(e => String(e.targetId) === String(targetId));
+    console.log('[DEBUG] selectEvalTarget:', { targetId, isGrupal, savedEval });
 
     // Resolve display name
     let displayName = String(targetId);
@@ -7910,6 +7937,8 @@ function selectEvalTarget(targetId) {
 
     const isDone = !!(savedEval && savedEval.evaluatedAt);
     const savedFeedback = savedEval ? (savedEval.feedback || '') : '';
+    const hasLink = !!(savedEval && savedEval.submissionLink);
+    console.log('[DEBUG] selectEvalTarget state:', { isDone, hasLink, savedEval });
 
     // Build competences HTML using existing buildCompetencesHtml logic
     const projCompetences = window._evalCurrentProjectCompetences || [];
@@ -7926,16 +7955,20 @@ function selectEvalTarget(targetId) {
 
     if (headerEl) {
         const submissionStatus = savedEval
-            ? (savedEval.submissionStatus || (savedEval.submissionLink ? 'Entregado' : 'Pendiente'))
+            ? (savedEval.submissionStatus || (hasLink ? 'Entregado' : 'Pendiente'))
             : 'Pendiente';
-        const hasLink = !!(savedEval && savedEval.submissionLink);
         const statusBadge = `<span class="badge ${submissionStatus === 'Entregado' ? 'bg-success' : 'bg-light text-muted border'} mt-1">
                 <i class="bi bi-cloud-arrow-up${submissionStatus === 'Entregado' ? '-fill' : ''} me-1"></i>${submissionStatus}
             </span>`;
-        const linkHtml = hasLink ? `<div class="small mt-1">
-                <a href="${escapeHtml(savedEval.submissionLink)}" target="_blank" class="text-decoration-none">
-                    <i class="bi bi-git me-1"></i>Repositorio entregado
-                </a>
+        const linkHtml = hasLink ? `
+            <div class="alert alert-info py-2 px-3 mt-2 mb-0 d-flex align-items-center border-info" style="font-size: 0.85rem;">
+                <i class="bi bi-git me-2 fs-5"></i>
+                <div class="flex-grow-1">
+                    <div class="fw-bold">Proyecto entregado</div>
+                    <a href="${escapeHtml(savedEval.submissionLink)}" target="_blank" class="text-decoration-none">
+                        ${escapeHtml(savedEval.submissionLink)} <i class="bi bi-box-arrow-up-right small ms-1"></i>
+                    </a>
+                </div>
             </div>` : '';
 
         headerEl.innerHTML = `

@@ -1038,6 +1038,7 @@ async function submitVirtualClassroomDelivery() {
 
     const targetVal = select.value;
     const repoName = suffixEl.value.trim();
+    console.log('[DEBUG] submitVirtualClassroomDelivery:', { targetVal, repoName });
 
     if (!targetVal) {
         feedbackEl.textContent = 'Selecciona tu nombre o equipo antes de enviar.';
@@ -1076,6 +1077,8 @@ async function submitVirtualClassroomDelivery() {
             body: JSON.stringify(body)
         });
         const data = await res.json().catch(() => ({}));
+        console.log('[DEBUG] Submission response:', { status: res.status, data });
+        
         if (!res.ok) {
             console.error('Error submitting virtual classroom delivery:', data);
             feedbackEl.textContent = data.error || 'Error al registrar la entrega.';
