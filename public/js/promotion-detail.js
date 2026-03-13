@@ -3274,13 +3274,13 @@ function displayTeacherArea(promotion) {
         },
         {
             id: 'dashboard-action',
-            icon: 'bi-speedometer2',
-            label: 'Dashboard Vista Previa',
+            icon: 'bi-eye',
+            label: 'Preview Roadmap',
             color: '#6f42c1',
             url: '#',
-            title: 'Abrir dashboard de vista previa',
+            title: 'Vista previa del roadmap',
             isButton: true,
-            onclick: 'switchTab("overview")'
+            onclick: 'previewPromotion()'
         },
         {
             id: 'acta-action',
