@@ -799,6 +799,57 @@ app.delete('/api/promotions/:promotionId/teaching-content', verifyToken, async (
   }
 });
 
+// ==================== ASANA WORKSPACE ACCESS ====================
+// Configuration for Asana workspace link (follows same pattern as Teaching Content)
+
+// Get Asana workspace URL for this promotion
+app.get('/api/promotions/:promotionId/asana-workspace', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    res.json({ asanaWorkspaceUrl: promotion.asanaWorkspaceUrl || null });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Set Asana workspace URL (teacher only)
+app.post('/api/promotions/:promotionId/asana-workspace', verifyToken, async (req, res) => {
+  try {
+    const { asanaWorkspaceUrl } = req.body;
+    if (!asanaWorkspaceUrl) return res.status(400).json({ error: 'Asana workspace URL is required' });
+
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    promotion.asanaWorkspaceUrl = asanaWorkspaceUrl;
+    await promotion.save();
+
+    res.json({ message: 'Asana workspace URL updated', asanaWorkspaceUrl });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Remove Asana workspace URL (teacher only)
+app.delete('/api/promotions/:promotionId/asana-workspace', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    promotion.asanaWorkspaceUrl = undefined;
+    await promotion.save();
+
+    res.json({ message: 'Asana workspace URL removed' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ==================== BOOTCAMP TEMPLATES ====================
 
 // Initialize default templates if they don't exist

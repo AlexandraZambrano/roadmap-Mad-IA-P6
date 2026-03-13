@@ -3247,31 +3247,63 @@ function displayQuickActions(quickLinks) {
             color: '#5865F2',
             url: discordLink?.url,
             title: 'Abrir canal de Discord'
+        },
+        {
+            id: 'attendance-action',
+            icon: 'bi-clipboard-check',
+            label: 'Pasar asistencia',
+            color: '#28A745',
+            url: null,
+            title: 'Pasar asistencia',
+            isButton: true,
+            onclick: 'openAttendancePanel()'
         }
     ];
 
     container.innerHTML = '';
 
     actions.forEach(action => {
-        const isDisabled = !action.url;
-        const cardHTML = `
-            <div class="quick-action-card ${isDisabled ? 'disabled' : ''}" id="${action.id}">
-                <a href="${action.url || '#'}" 
-                   target="_blank" 
-                   rel="noopener noreferrer"
-                   title="${action.title}"
-                   onclick="${isDisabled ? 'return false;' : 'event.preventDefault(); window.open(this.href, \"_blank\");'}"
-                   class="quick-action-link"
-                   style="${isDisabled ? 'pointer-events: none; opacity: 0.5;' : ''}">
-                    <div class="quick-action-icon" style="color: ${action.color}; ${isDisabled ? 'opacity: 0.5;' : ''}">
-                        <i class="bi ${action.icon}"></i>
-                    </div>
-                    <div class="quick-action-label">${action.label}</div>
-                    ${isDisabled ? '<div class="quick-action-status">No configurado</div>' : '<i class="bi bi-box-arrow-up-right quick-action-arrow"></i>'}
-                </a>
-            </div>
-        `;
-        container.insertAdjacentHTML('beforeend', cardHTML);
+        const isDisabled = !action.url && !action.isButton;
+        
+        // Renderizar botón para acciones sin URL (como asistencia)
+        if (action.isButton) {
+            const buttonHTML = `
+                <div class="quick-action-card" id="${action.id}">
+                    <button type="button"
+                            class="quick-action-link"
+                            style="background: none; border: none; cursor: pointer; width: 100%; height: 100%; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;"
+                            onclick="${action.onclick}"
+                            title="${action.title}">
+                        <div class="quick-action-icon" style="color: ${action.color};">
+                            <i class="bi ${action.icon}"></i>
+                        </div>
+                        <div class="quick-action-label">${action.label}</div>
+                    </button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', buttonHTML);
+        } 
+        // Renderizar enlace para acciones con URL
+        else {
+            const cardHTML = `
+                <div class="quick-action-card ${isDisabled ? 'disabled' : ''}" id="${action.id}">
+                    <a href="${action.url || '#'}" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       title="${action.title}"
+                       onclick="${isDisabled ? 'return false;' : 'event.preventDefault(); window.open(this.href, \"_blank\");'}"
+                       class="quick-action-link"
+                       style="${isDisabled ? 'pointer-events: none; opacity: 0.5;' : ''}">
+                        <div class="quick-action-icon" style="color: ${action.color}; ${isDisabled ? 'opacity: 0.5;' : ''}">
+                            <i class="bi ${action.icon}"></i>
+                        </div>
+                        <div class="quick-action-label">${action.label}</div>
+                        ${isDisabled ? '<div class="quick-action-status">No configurado</div>' : '<i class="bi bi-box-arrow-up-right quick-action-arrow"></i>'}
+                    </a>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', cardHTML);
+        }
     });
 }
 
@@ -3279,6 +3311,10 @@ function refreshQuickActions() {
     if (typeof promotionId !== 'undefined') {
         loadQuickActions();
     }
+}
+
+function openAttendancePanel() {
+    switchTab('attendance');
 }
 
 async function loadSections() {
@@ -5177,6 +5213,9 @@ async function loadAccessPassword() {
 
     // Load teaching content
     loadTeachingContent();
+    
+    // Load Asana workspace configuration
+    loadAsanaWorkspace();
 }
 
 async function updateAccessPassword() {
@@ -5449,6 +5488,173 @@ async function removeTeachingContent() {
     } catch (error) {
         console.error('Error removing teaching content:', error);
         alert('Connection error. Please try again.');
+    }
+}
+
+// ==================== ASANA WORKSPACE ACCESS ====================
+// Configuration for Asana workspace URL - follows the same pattern as Teaching Content
+// Allows instructors to store and access their Asana workspace link
+
+async function loadAsanaWorkspace() {
+    if (!isTeacherOrAdmin()) return;
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/asana-workspace`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            console.error('[loadAsanaWorkspace] API error:', response.status, await response.text().catch(() => ''));
+            return;
+        }
+
+        if (response.ok) {
+            const data = await response.json();
+            const urlInput = document.getElementById('asana-workspace-url');
+            const previewBtn = document.getElementById('asana-workspace-preview-btn');
+            const noAsanaMsg = document.getElementById('no-asana-message');
+            const removeBtn = document.getElementById('remove-asana-btn');
+
+            if (data.asanaWorkspaceUrl) {
+                if (urlInput) {
+                    urlInput.value = data.asanaWorkspaceUrl;
+                }
+                if (previewBtn) {
+                    previewBtn.href = data.asanaWorkspaceUrl;
+                    previewBtn.classList.remove('hidden');
+                }
+                if (noAsanaMsg) {
+                    noAsanaMsg.style.display = 'none';
+                }
+                if (removeBtn) {
+                    removeBtn.style.display = 'inline-block';
+                }
+            } else {
+                if (previewBtn) {
+                    previewBtn.classList.add('hidden');
+                }
+                if (noAsanaMsg) {
+                    noAsanaMsg.style.display = 'block';
+                }
+                if (removeBtn) {
+                    removeBtn.style.display = 'none';
+                }
+                if (urlInput) {
+                    urlInput.value = '';
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading Asana workspace:', error);
+    }
+}
+
+// Save or update the Asana workspace URL
+async function updateAsanaWorkspace() {
+    if (!isTeacherOrAdmin()) return;
+
+    const token = localStorage.getItem('token');
+    const urlInput = document.getElementById('asana-workspace-url');
+    const alertEl = document.getElementById('asana-workspace-alert');
+    const url = urlInput ? urlInput.value.trim() : '';
+
+    if (!url) {
+        if (alertEl) {
+            alertEl.className = 'alert alert-warning';
+            alertEl.textContent = 'Por favor, ingresa una URL para el espacio de trabajo de Asana';
+            alertEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    // Basic URL validation
+    if (!url.includes('asana.com') && !url.includes('app.asana')) {
+        if (alertEl) {
+            alertEl.className = 'alert alert-warning';
+            alertEl.textContent = 'La URL debe ser un enlace válido de Asana (asana.com)';
+            alertEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/asana-workspace`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ asanaWorkspaceUrl: url })
+        });
+
+        if (response.ok) {
+            if (alertEl) {
+                alertEl.className = 'alert alert-success';
+                alertEl.textContent = '¡Enlace de Asana guardado exitosamente! Los estudiantes podrán acceder al espacio de trabajo.';
+                alertEl.classList.remove('hidden');
+
+                setTimeout(() => {
+                    alertEl.classList.add('hidden');
+                }, 5000);
+            }
+
+            // Update the preview button and UI
+            loadAsanaWorkspace();
+        } else {
+            const data = await response.json();
+            if (alertEl) {
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = data.error || 'Error al guardar el enlace de Asana';
+                alertEl.classList.remove('hidden');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating Asana workspace:', error);
+        if (alertEl) {
+            alertEl.className = 'alert alert-danger';
+            alertEl.textContent = 'Error de conexión. Por favor, intenta de nuevo.';
+            alertEl.classList.remove('hidden');
+        }
+    }
+}
+
+// Remove the Asana workspace URL configuration
+async function removeAsanaWorkspace() {
+    if (!isTeacherOrAdmin()) return;
+
+    if (!confirm('¿Estás seguro de que deseas eliminar el enlace de Asana?')) {
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/asana-workspace`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const alertEl = document.getElementById('asana-workspace-alert');
+            if (alertEl) {
+                alertEl.className = 'alert alert-success';
+                alertEl.textContent = '¡Enlace de Asana eliminado exitosamente!';
+                alertEl.classList.remove('hidden');
+
+                setTimeout(() => {
+                    alertEl.classList.add('hidden');
+                }, 5000);
+            }
+
+            // Update the UI
+            loadAsanaWorkspace();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Error al eliminar el enlace de Asana');
+        }
+    } catch (error) {
+        console.error('Error removing Asana workspace:', error);
+        alert('Error de conexión. Por favor, intenta de nuevo.');
     }
 }
 
