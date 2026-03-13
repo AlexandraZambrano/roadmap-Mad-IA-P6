@@ -12,6 +12,50 @@ function studentFullName(student) {
 }
 
 
+// ==================== GREETING & WELCOME MESSAGES ====================
+
+/**
+ * Renderiza el saludo dinámico en la sección Overview
+ * Saluda al docente deseándole un buen día, sin mencionar la promo
+ */
+function renderGreeting() {
+    const greetingContainer = document.getElementById('greeting-container');
+    if (!greetingContainer) return;
+
+    // Array de saludos amigables para el docente
+    const greetings = [
+        { text: '¡Que tengas un excelente día!', icon: '👋' },
+        { text: '¡Hola! Que tengas una buena jornada', icon: '🚀' },
+        { text: '¡Bienvenido! Espero que sea un gran día', icon: '☀️' },
+        { text: '¡Hola equipo! ¡A por un buen día!', icon: '💪' }
+    ];
+
+    // Seleccionar un saludo aleatorio
+    const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+
+    // Construir el HTML del saludo
+    const greetingHTML = `
+        <div class="greeting-icon">${greeting.icon}</div>
+        <div class="greeting-text">
+            ${greeting.text}
+        </div>
+    `;
+
+    greetingContainer.innerHTML = greetingHTML;
+}
+
+/**
+ * Renderiza el subtítulo "Hoy estás en la promo"
+ * @param {string} promotionName - Nombre de la promoción
+ */
+function renderPromoSubtitle(promotionName) {
+    const subtitleEl = document.getElementById('promo-subtitle');
+    if (!subtitleEl) return;
+
+    subtitleEl.textContent = `Hoy estás en la promo`;
+}
+
+
 // ==================== PROFILE MANAGEMENT ====================
 
 let profileModal;
@@ -2839,6 +2883,12 @@ async function loadPromotion() {
             _setTC('promotion-title', promotion.name);
             _setTC('promotion-desc', promotion.description || '');
             _setTC('modules-count', (promotion.modules || []).length);
+
+            // Render dynamic greeting (generic, without mentioning promo)
+            renderGreeting();
+            
+            // Render promo subtitle "Hoy estás en la promo"
+            renderPromoSubtitle(promotion.name);
 
             // Load teaching content button
             if (promotion.teachingContentUrl) {
