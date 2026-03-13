@@ -1917,3 +1917,110 @@ progress-bar progress-bar-striped {
         gap: 10px;
     }
 }
+
+/* ==================== AVISOS Y AGENDA ==================== */
+
+/* Avisos Section - Compact and clean design */
+.aviso-item {
+    padding: 12px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: background-color 0.2s ease;
+}
+
+.aviso-item:hover {
+    background-color: rgba(255, 107, 53, 0.05);
+}
+
+.aviso-item:last-child {
+    border-bottom: none;
+}
+
+.aviso-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 107, 53, 0.1);
+    border-radius: 6px;
+    color: var(--principal-1);
+    font-size: 1.1rem;
+}
+
+.aviso-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.aviso-content h6 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.3px;
+}
+
+.aviso-text {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: #666;
+}
+
+.aviso-text p {
+    margin-bottom: 0;
+}
+
+.aviso-text small {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Agenda Section */
+.agenda-container {
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f8f9fa;
+    padding: 12px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.agenda-container .ratio {
+    --bs-aspect-ratio: 60%;
+    flex: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .aviso-item {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+
+    .aviso-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    .aviso-content h6 {
+        font-size: 0.9rem;
+    }
+
+    .aviso-text {
+        font-size: 0.8rem;
+    }
+
+    .agenda-container {
+        padding: 8px;
+        max-height: 240px;
+    }
+
+    .agenda-container .ratio {
+        --bs-aspect-ratio: 50%;
+    }
+}

@@ -3393,11 +3393,21 @@ function displayQuickActionsFiltered(quickLinks) {
             id: 'attendance-action',
             icon: 'bi-clipboard-check',
             label: 'Pasar asistencia',
-            color: '#28A745',
+            color: '#FF4700',
             url: null,
             title: 'Pasar asistencia',
             isButton: true,
             onclick: 'openAttendancePanel()'
+        },
+        {
+            id: 'preview-roadmap-action',
+            icon: 'bi-eye',
+            label: 'Preview Roadmap',
+            color: '#FF4700',
+            url: null,
+            title: 'Vista previa del roadmap',
+            isButton: true,
+            onclick: 'previewPromotion()'
         }
     ];
 

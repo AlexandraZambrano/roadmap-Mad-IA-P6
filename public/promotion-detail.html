@@ -153,54 +153,62 @@
                     
                     <!-- Overview Dashboard Section -->
                     <div class="row g-3">
-                        <!-- Left Column: Alerts -->
-                        <div class="col-lg-8">
+                        <!-- Left Column: Agenda -->
+                        <div class="col-lg-7">
                             <div class="card border-0 shadow-sm h-100">
                                 <div class="card-header border-0 bg-light d-flex align-items-center gap-2">
-                                    <i class="bi bi-lightning text-warning"></i>
-                                    <h6 class="mb-0">Avisos</h6>
+                                    <i class="bi bi-calendar3 text-primary"></i>
+                                    <h6 class="mb-0">Agenda del Día</h6>
                                 </div>
-                                <div class="card-body p-4">
-                                    <!-- Próxima Píldora -->
-                                    <div class="mb-4 pb-3 border-bottom">
-                                        <div class="card-header border-0 bg-light d-flex align-items-center gap-2">
-                                            <i class="bi bi-lightbulb text-warning "></i>
-                                            <h6 class="mb-0 text-warning">Próxima Píldora</h6>
-                                        </div>
-                                        <div id="next-pildora-content" class="ps-3">
-                                            <p class="text-muted small mb-0">
-                                                <i class="bi bi-hourglass-split me-2"></i>Cargando...
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <!-- Recuento de Asistencias -->
-                                    <div>
-                                        <div class="card-header border-0 bg-light d-flex align-items-center gap-2">
-                                            <i class="bi bi-graph-up text-warning"></i>
-                                            <h6 class="mb-0 text-warning ">Asistencia </h6>
-                                        </div>
-                                        <div id="attendance-alert-content" class="ps-3">
-                                            <p class="text-muted small mb-0">
-                                                <i class="bi bi-hourglass-split me-2"></i>Cargando...
-                                            </p>
+                                <div class="card-body p-0 d-flex flex-column">
+                                    <div class="agenda-container flex-grow-1">
+                                        <div class="ratio ratio-16x9">
+                                            <iframe id="calendar-preview-iframe" src="" style="border:0;" loading="lazy"></iframe>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Right Column: Agenda -->
-                        <div class="col-lg-4">
+                        <!-- Right Column: Alerts -->
+                        <div class="col-lg-5">
                             <div class="card border-0 shadow-sm h-100">
                                 <div class="card-header border-0 bg-light d-flex align-items-center gap-2">
-                                    <i class="bi bi-calendar3 text-primary"></i>
-                                    <h6 class="mb-0">La Agenda</h6>
+                                    <i class="bi bi-lightning text-warning"></i>
+                                    <h6 class="mb-0">Avisos</h6>
                                 </div>
-                                <div class="card-body p-2">
-                                    <div class="border rounded overflow-hidden" style="max-height: 320px;">
-                                        <div class="ratio ratio-16x9">
-                                            <iframe id="calendar-preview-iframe" src="" style="border:0;" loading="lazy"></iframe>
+                                <div class="card-body p-0 d-flex flex-column">
+                                    <!-- Próxima Píldora -->
+                                    <div class="aviso-item border-bottom">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="aviso-icon">
+                                                <i class="bi bi-lightbulb"></i>
+                                            </div>
+                                            <div class="aviso-content">
+                                                <h6 class="mb-1 text-warning">Próxima Píldora</h6>
+                                                <div id="next-pildora-content" class="aviso-text">
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="bi bi-hourglass-split me-1"></i>Cargando...
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recuento de Asistencias -->
+                                    <div class="aviso-item">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="aviso-icon">
+                                                <i class="bi bi-check-circle"></i>
+                                            </div>
+                                            <div class="aviso-content">
+                                                <h6 class="mb-1 text-info">Asistencia</h6>
+                                                <div id="attendance-alert-content" class="aviso-text">
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="bi bi-hourglass-split me-1"></i>Cargando...
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
