@@ -40,7 +40,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/bootcamp-manager';
 
@@ -79,8 +79,8 @@ const upload = multer({
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3001',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
   'https://alexandrazambrano.github.io',
@@ -237,12 +237,12 @@ app.get('/api/competences', verifyToken, async (req, res) => {
 
     // Build lookup maps
     const indicatorMap = Object.fromEntries(indicators.map(i => [i.id, i]));
-    const toolMap     = Object.fromEntries(tools.map(t => [t.id, t]));
-    const areaMap     = Object.fromEntries(areas.map(a => [a.id, a]));
-    const levelMap    = Object.fromEntries(levels.map(l => [l.id, l]));
+    const toolMap = Object.fromEntries(tools.map(t => [t.id, t]));
+    const areaMap = Object.fromEntries(areas.map(a => [a.id, a]));
+    const levelMap = Object.fromEntries(levels.map(l => [l.id, l]));
 
     // Group relations by id_competence (DB field names use snake_case)
-    const indsByComp  = {};
+    const indsByComp = {};
     compIndicators.forEach(ci => {
       if (!indsByComp[ci.id_competence]) indsByComp[ci.id_competence] = [];
       indsByComp[ci.id_competence].push(ci.id_indicator);
@@ -833,16 +833,20 @@ app.put('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => 
     }
 
     const { name, description, weeks, hours, hoursPerWeek, modules, evaluation, schedule,
-            resources, employability, competences, school, projectType, totalHours, modality,
-            materials, internships, funders, funderDeadlines, okrKpis, funderKpis,
-            projectMeetings, teamMeetings, trainerDayOff, cotrainerDayOff } = req.body;
+      resources, employability, competences, school, projectType, totalHours, modality,
+      materials, internships, funders, funderDeadlines, okrKpis, funderKpis,
+      projectMeetings, teamMeetings, trainerDayOff, cotrainerDayOff } = req.body;
 
     const updated = await BootcampTemplate.findOneAndUpdate(
       { id: req.params.templateId },
-      { $set: { name, description, weeks, hours, hoursPerWeek, modules, evaluation, schedule,
-                resources, employability, competences, school, projectType, totalHours, modality,
-                materials, internships, funders, funderDeadlines, okrKpis, funderKpis,
-                projectMeetings, teamMeetings, trainerDayOff, cotrainerDayOff } },
+      {
+        $set: {
+          name, description, weeks, hours, hoursPerWeek, modules, evaluation, schedule,
+          resources, employability, competences, school, projectType, totalHours, modality,
+          materials, internships, funders, funderDeadlines, okrKpis, funderKpis,
+          projectMeetings, teamMeetings, trainerDayOff, cotrainerDayOff
+        }
+      },
       { returnDocument: 'after' }
     );
 
@@ -1176,7 +1180,7 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
 
     const startDate = promotion.startDate;
     const endDate = promotion.endDate;
-    
+
     if (!startDate || !endDate) {
       return res.status(400).json({ error: 'La promoción debe tener fechas de inicio y fin válidas' });
     }
@@ -1185,7 +1189,7 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
 
     // Get all students for this promotion
     const students = await Student.find({ promotionId: req.params.promotionId }).sort({ name: 1, lastname: 1 });
-    
+
     if (students.length === 0) {
       return res.status(400).json({ error: 'No se encontraron estudiantes en esta promoción' });
     }
@@ -1205,7 +1209,7 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
     const allDates = [];
     const currentDate = new Date(startDate);
     const endDateTime = new Date(endDate);
-    
+
     while (currentDate <= endDateTime) {
       // Only include weekdays (Monday to Friday)
       const dayOfWeek = currentDate.getDay();
@@ -1233,18 +1237,18 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
     // Create a worksheet for each month
     Object.keys(datesByMonth).sort().forEach(monthKey => {
       const monthDates = datesByMonth[monthKey];
-      const monthName = new Date(monthKey + '-01').toLocaleDateString('es-ES', { 
-        year: 'numeric', 
-        month: 'long' 
+      const monthName = new Date(monthKey + '-01').toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long'
       });
-      const shortMonthName = new Date(monthKey + '-01').toLocaleDateString('es-ES', { 
-        year: '2-digit', 
-        month: 'short' 
+      const shortMonthName = new Date(monthKey + '-01').toLocaleDateString('es-ES', {
+        year: '2-digit',
+        month: 'short'
       }).replace('.', '');
 
       // Create worksheet data for this month
       const worksheetData = [];
-      
+
       // Header row with dates
       const headerRow = ['Estudiante', ...monthDates.map(date => {
         const d = new Date(date);
@@ -1256,12 +1260,12 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
       students.forEach(student => {
         const studentName = `${student.name || ''} ${student.lastname || ''}`.trim();
         const row = [studentName];
-        
+
         monthDates.forEach(date => {
-          const attendanceRecord = attendance.find(a => 
+          const attendanceRecord = attendance.find(a =>
             a.studentId === student.id && a.date === date
           );
-          
+
           let status = '';
           if (attendanceRecord) {
             switch (attendanceRecord.status) {
@@ -1275,13 +1279,13 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
           }
           row.push(status);
         });
-        
+
         worksheetData.push(row);
       });
 
       // Add empty row before legend
       worksheetData.push([]);
-      
+
       // Add legend at the bottom of each month
       worksheetData.push(['Leyenda:']);
       worksheetData.push(['P = Presente']);
@@ -1292,7 +1296,7 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
 
       // Create worksheet
       const worksheet = xlsx.utils.aoa_to_sheet(worksheetData);
-      
+
       // Set column widths
       const colWidths = [{ width: 25 }]; // Student name column
       monthDates.forEach(() => colWidths.push({ width: 6 })); // Date columns (smaller for day numbers)
@@ -1312,7 +1316,7 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
         [`Hasta: ${endDate}`],
         [`Estudiantes: ${students.length}`]
       ];
-      
+
       const summarySheet = xlsx.utils.aoa_to_sheet(summaryData);
       xlsx.utils.book_append_sheet(workbook, summarySheet, 'Resumen');
     }
@@ -1327,7 +1331,7 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
     // Set response headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    
+
     console.log(`Sending Excel file: ${filename}`);
     res.send(excelBuffer);
   } catch (error) {
@@ -1456,8 +1460,8 @@ app.post('/api/promotions/:promotionId/students/upload-excel', verifyToken, uplo
     };
 
     const ADMIN_SITUATIONS = ['nacional', 'solicitante_asilo', 'ciudadano_europeo', 'permiso_trabajo', 'no_permiso_trabajo', 'otro'];
-    const GENDER_VALUES    = ['mujer', 'hombre', 'no_binario', 'no_especifica'];
-    const ENGLISH_LEVELS   = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    const GENDER_VALUES = ['mujer', 'hombre', 'no_binario', 'no_especifica'];
+    const ENGLISH_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
     const EDUCATION_LEVELS = ['sin_estudios', 'eso', 'bachillerato', 'fp_medio', 'fp_superior', 'grado', 'postgrado', 'doctorado'];
 
     const created = [], skipped = [], errors = [];
@@ -1466,19 +1470,19 @@ app.post('/api/promotions/:promotionId/students/upload-excel', verifyToken, uplo
       const row = data[i];
       const rowNum = i + 2; // 1-based + header row
 
-      const name     = col(row, 'Nombre');
+      const name = col(row, 'Nombre');
       const lastname = col(row, 'Apellidos');
-      const email    = col(row, 'Email');
-      const phone    = col(row, 'Teléfono', 'Telefono');
-      const ageRaw   = col(row, 'Edad');
+      const email = col(row, 'Email');
+      const phone = col(row, 'Teléfono', 'Telefono');
+      const ageRaw = col(row, 'Edad');
       const adminSit = col(row, 'Situación Administrativa', 'Situacion Administrativa');
-      const nationality         = col(row, 'Nacionalidad');
+      const nationality = col(row, 'Nacionalidad');
       const identificationDocument = col(row, 'Documento', 'DNI/NIE/Pasaporte');
-      const gender              = col(row, 'Sexo');
-      const englishLevel        = col(row, 'Nivel Inglés', 'Nivel Ingles');
-      const educationLevel      = col(row, 'Nivel Educativo');
-      const profession          = col(row, 'Profesión', 'Profesion');
-      const community           = col(row, 'Comunidad');
+      const gender = col(row, 'Sexo');
+      const englishLevel = col(row, 'Nivel Inglés', 'Nivel Ingles');
+      const educationLevel = col(row, 'Nivel Educativo');
+      const profession = col(row, 'Profesión', 'Profesion');
+      const community = col(row, 'Comunidad');
 
       // Required field validation
       if (!name || !lastname || !email) {
@@ -1512,7 +1516,7 @@ app.post('/api/promotions/:promotionId/students/upload-excel', verifyToken, uplo
           administrativeSituation: normalise(adminSit, ADMIN_SITUATIONS),
           nationality,
           identificationDocument,
-          gender:       normalise(gender, GENDER_VALUES),
+          gender: normalise(gender, GENDER_VALUES),
           englishLevel: ENGLISH_LEVELS.includes(englishLevel) ? englishLevel : (englishLevel || ''),
           educationLevel: normalise(educationLevel, EDUCATION_LEVELS),
           profession,
@@ -1530,7 +1534,7 @@ app.post('/api/promotions/:promotionId/students/upload-excel', verifyToken, uplo
     const parts = [];
     if (created.length) parts.push(`${created.length} estudiante(s) importado(s)`);
     if (skipped.length) parts.push(`${skipped.length} omitido(s) (ya existían)`);
-    if (errors.length)  parts.push(`${errors.length} error(es)`);
+    if (errors.length) parts.push(`${errors.length} error(es)`);
 
     res.json({
       message: parts.join(', '),
@@ -1566,8 +1570,8 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
     }
 
     const { name, lastname, email, phone, age, administrativeSituation,
-            nationality, identificationDocument, gender, englishLevel, educationLevel,
-            profession, community } = req.body;
+      nationality, identificationDocument, gender, englishLevel, educationLevel,
+      profession, community } = req.body;
     console.log('Updating student with data:', { name, lastname, email, phone, age, administrativeSituation, nationality, profession });
 
     if (!email || !name || !lastname) return res.status(400).json({ error: 'Email, name, and lastname are required' });
@@ -2397,7 +2401,7 @@ app.get('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
 async function findStudentByIdOrObjectId(studentId, promotionId) {
   let student = await Student.findOne({ id: studentId, promotionId });
   if (!student) {
-    try { student = await Student.findOne({ _id: studentId, promotionId }); } catch (_) {}
+    try { student = await Student.findOne({ _id: studentId, promotionId }); } catch (_) { }
   }
   return student;
 }
@@ -2436,21 +2440,23 @@ app.put('/api/promotions/:promotionId/students/:studentId/ficha/personal', verif
 
     const updated = await Student.findByIdAndUpdate(
       student._id,
-      { $set: {
-        name, lastname, email,
-        phone: phone || '',
-        age: (age && !isNaN(Number(age))) ? Number(age) : null,
-        administrativeSituation: administrativeSituation || '',
-        nationality: nationality || '',
-        identificationDocument: identificationDocument || '',
-        gender: gender || '',
-        englishLevel: englishLevel || '',
-        educationLevel: educationLevel || '',
-        profession: profession || '',
-        community: community || '',
-        ...(isWithdrawn !== undefined ? { isWithdrawn: !!isWithdrawn } : {}),
-        ...(withdrawal !== undefined ? { withdrawal } : {})
-      }},
+      {
+        $set: {
+          name, lastname, email,
+          phone: phone || '',
+          age: (age && !isNaN(Number(age))) ? Number(age) : null,
+          administrativeSituation: administrativeSituation || '',
+          nationality: nationality || '',
+          identificationDocument: identificationDocument || '',
+          gender: gender || '',
+          englishLevel: englishLevel || '',
+          educationLevel: educationLevel || '',
+          profession: profession || '',
+          community: community || '',
+          ...(isWithdrawn !== undefined ? { isWithdrawn: !!isWithdrawn } : {}),
+          ...(withdrawal !== undefined ? { withdrawal } : {})
+        }
+      },
       { new: true, runValidators: false }
     );
 
@@ -3085,10 +3091,10 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
     }
 
     const { schedule, team, resources, evaluation, pildoras, modulesPildoras, pildorasAssignmentOpen, competences,
-            school, projectType, positiveExitStart, positiveExitEnd, totalHours,
-            modality, presentialDays, materials, internships, funders, funderDeadlines,
-            okrKpis, funderKpis, trainerDayOff, cotrainerDayOff, projectMeetings, teamMeetings,
-            approvalName, approvalRole, projectEvaluations } = req.body;
+      school, projectType, positiveExitStart, positiveExitEnd, totalHours,
+      modality, presentialDays, materials, internships, funders, funderDeadlines,
+      okrKpis, funderKpis, trainerDayOff, cotrainerDayOff, projectMeetings, teamMeetings,
+      approvalName, approvalRole, projectEvaluations } = req.body;
     const normalizedPildoras = Array.isArray(pildoras) ? pildoras : [];
     const normalizedModulesPildoras = Array.isArray(modulesPildoras) ? modulesPildoras : [];
     const normalizedCompetences = Array.isArray(competences) ? competences : [];
