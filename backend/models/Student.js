@@ -34,6 +34,13 @@ const StudentSchema = new mongoose.Schema({
         assignedAt: { type: Date, default: Date.now }
     }],
     isManuallyAdded: { type: Boolean, default: true }, // Changed default to true since we removed auto-tracking
+    isWithdrawn: { type: Boolean, default: false },
+    withdrawal: {
+        date: { type: String, default: null },
+        reason: { type: String, default: '' },
+        representative: { type: String, default: '' },
+        processedAt: { type: String, default: null }
+    },
     accessLog: [{
         accessedAt: { type: Date, default: Date.now },
         ipAddress: { type: String },
@@ -56,12 +63,19 @@ const StudentSchema = new mongoose.Schema({
             moduleId: String,
             assignedDate: String,
             teacherNote: String,
+            studentComment: String,
             members: [{ id: String, name: String }],
             competences: [{
                 competenceId: mongoose.Schema.Types.Mixed,
                 competenceName: String,
                 level: Number,
-                toolsUsed: [String]
+                toolsUsed: [String],
+                achievedIndicators: [{
+                    toolName: String,
+                    indicatorName: String,
+                    indicatorId: String,
+                    levelId: Number
+                }]
             }]
         }],
         competences: [{
@@ -69,6 +83,12 @@ const StudentSchema = new mongoose.Schema({
             competenceName: String,
             level: Number,
             toolsUsed: [String],
+            achievedIndicators: [{
+                toolName: String,
+                indicatorName: String,
+                indicatorId: String,
+                levelId: Number
+            }],
             evaluatedDate: String,
             notes: String
         }],

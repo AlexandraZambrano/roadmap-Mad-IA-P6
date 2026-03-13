@@ -36,10 +36,10 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i
-                                        class="bi bi-person me-2"></i>My Profile</a></li>
+                                        class="bi bi-person me-2"></i>Perfil</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="logout()"><i
-                                        class="bi bi-box-arrow-right me-2"></i><span data-i18n="logout">Logout</span></a></li>
+                                        class="bi bi-box-arrow-right me-2"></i><span data-i18n="logout">Cerrar Sesión</span></a></li>
                         </ul>
                     </li>
                 </ul>
@@ -59,7 +59,7 @@
                                     <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" height="40" class="navbar-f5-logo mt-5" />
                         <li class="nav-item">
                             <a class="nav-link nav-link-promotions mt-4" href="dashboard.html">
-                                <i class="bi bi-arrow-left me-2"></i>Promotions
+                                <i class="bi bi-arrow-left me-2"></i>Promociones
                             </a>
                         </li>
                         <li class="nav-item">
@@ -227,18 +227,18 @@
                 <!-- Students Tab -->
                 <div id="students-tab" class="section-content hidden">
                     <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Students</h2>
+                        <h2>Estudiantes</h2>
                         <div class="d-flex flex-wrap gap-2">
-                            <button class="btn btn-outline-secondary" onclick="exportStudentsCsv()">
-                                <i class="bi bi-download me-2"></i>Download All CSV
+                            <button class="btn btn-outline-secondary" onclick="exportStudentsCsv()" id="export-all-students-btn">
+                                <i class="bi bi-download me-2"></i>Descarga CSV
                             </button>
                             <button class="btn btn-outline-success" onclick="exportSelectedStudentsCsv()"
                                 id="export-selected-btn" style="display:none;">
-                                <i class="bi bi-download me-2"></i>Download Selected CSV
+                                <i class="bi bi-download me-2"></i>Descarga Seleccionados CSV
                             </button>
                             <button class="btn btn-outline-danger" onclick="deleteSelectedStudents()"
                                 id="delete-selected-btn" style="display:none;">
-                                <i class="bi bi-trash me-2"></i>Delete Selected
+                                <i class="bi bi-trash me-2"></i>Borrar Estudiante(s)
                             </button>
 
                             <!-- ── Bulk PDF Reports ── -->
@@ -287,15 +287,33 @@
 
                             <input type="file" id="students-excel-input" accept=".xlsx,.xls" class="d-none"
                                 onchange="importStudentsFromExcel(this)">
-                            <button class="btn btn-outline-success"
+                            <button class="btn btn-outline-success" id="import-students-excel-btn"
                                 onclick="document.getElementById('students-excel-input').click()">
                                 <i class="bi bi-file-earmark-spreadsheet me-2"></i>Import Excel
                             </button>
-                            <button class="btn btn-outline-secondary" onclick="downloadStudentsExcelTemplate()" title="Descargar plantilla Excel">
+                            <button class="btn btn-outline-secondary" onclick="downloadStudentsExcelTemplate()" title="Descargar plantilla Excel" id="download-students-template-btn">
                                 <i class="bi bi-download me-1"></i>Plantilla Excel
                             </button>
-                            <button class="btn btn-primary" onclick="openStudentModal()">
-                                <i class="bi bi-person-plus me-2"></i>Add Student
+                            <button class="btn btn-primary" onclick="openStudentModal()" id="create-student-btn">
+                                <i class="bi bi-person-plus me-2"></i>Crea nuevo Estudiante
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search bar -->
+                    <div class="mb-3">
+                        <div class="input-group" style="max-width: 420px;">
+                            <span class="input-group-text bg-white border-end-0">
+                                <i class="bi bi-search text-muted"></i>
+                            </span>
+                            <input type="text" id="student-search-input"
+                                class="form-control border-start-0"
+                                placeholder="Buscar por nombre, email, nacionalidad…"
+                                oninput="filterStudentsTable(this.value)">
+                            <button class="btn btn-outline-secondary" type="button"
+                                onclick="document.getElementById('student-search-input').value=''; filterStudentsTable('');"
+                                title="Limpiar búsqueda">
+                                <i class="bi bi-x-lg"></i>
                             </button>
                         </div>
                     </div>
@@ -306,9 +324,9 @@
                             <label class="form-check">
                                 <input type="checkbox" class="form-check-input" id="select-all-students"
                                     onchange="toggleAllStudents()">
-                                <span class="form-check-label">Select All</span>
+                                <span class="form-check-label">Selecciona Todos</span>
                             </label>
-                            <span class="text-muted" id="selected-count">0 selected</span>
+                            <span class="text-muted" id="selected-count">0 Seleccionados</span>
                         </div>
                     </div>
 
@@ -320,11 +338,11 @@
                                         <input type="checkbox" class="form-check-input" id="select-all-students-header"
                                             onchange="toggleAllStudents(this)">
                                     </th>
-                                    <th>Name</th>
+                                    <th>Nombre</th>
                                     <th>Email</th>
-                                    <th>Nationality</th>
-                                    <th>Profession</th>
-                                    <th class="text-end">Actions</th>
+                                    <th>Nacionalidad</th>
+                                    <th>Profesión</th>
+                                    <th class="text-end">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="students-list">
@@ -340,7 +358,7 @@
                         <h2 class="mb-0"> Control de Asistencia</h2>
                         <div class="d-flex align-items-center gap-3 flex-wrap w-100 justify-content-end">
                             <button class="btn" onclick="exportAttendanceToExcel()" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 500;">
-                                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel
+                                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar en Excel
                             </button>
                             <div class="d-flex align-items-center gap-2" id="month-selector">
                                 <button class="btn" onclick="prevAttendanceMonth()" style="color: var(--principal-1); border: 1px solid var(--principal-1);">
@@ -399,7 +417,7 @@
                         <div class="col-auto d-flex">
                             <div class="card" style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--grey-light-f5);">
                                 <div class="card-body text-center py-2">
-                                    <h6 class="mb-0">Attendance Avg.</h6>
+                                    <h6 class="mb-0">Media de Asistencia.</h6>
                                     <h3 class="mb-0" id="stat-attendance-avg">0%</h3>
                                 </div>
                             </div>
@@ -417,7 +435,7 @@
                                         </tr>
                                         <tr id="attendance-header-row">
                                             <th class="sticky-column" style="min-width: 250px; z-index: 10; background-color: var(--complementario-1-extra-light); color: var(--principal-1); font-weight: 600;">
-                                                Student</th>
+                                                Estudiante</th>
                                             <!-- Dates will be loaded here -->
                                         </tr>
                                     </thead>
@@ -439,8 +457,7 @@
                                         class="attendance-dot border bg-white me-2" style="border-color: var(--complementario-1) !important;"></span> No marcado</div>
                                 <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color:#e5e5e5;"></span> Fin de semana</div>
                                 <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color:#f0e8ff;"></span> <i class="bi bi-balloon me-1" style="color:#7c3aed;"></i> Festivo</div>
-                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i> <strong>Click</strong> to
-                                    cycle | <strong>Clic derecho celda</strong> para comentario | <strong>Clic derecho nº día</strong> para festivo | <strong>Nombre</strong> para resumen
+                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i> <strong>Click</strong> para activar el ciclo | <strong>Clic derecho celda</strong> para comentario | <strong>Clic derecho nº día</strong> para festivo | <strong>Nombre</strong> para resumen
                                 </div>
                             </div>
                         </div>
@@ -451,7 +468,7 @@
                 <!-- Access Settings Tab -->
                 <div id="access-settings-tab" class="section-content hidden">
                     <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Access Settings</h2>
+                        <h2>Configuración de los Accesos</h2>
                     </div>
 
                     <div class="row g-4">
@@ -459,11 +476,11 @@
                         <div class="col-lg-6">
                             <div class="card h-100 border-0 shadow-sm">
                                 <div class="card-header bg-gradient" style="background: linear-gradient(135deg, var(--principal-1) 0%, var(--complementario-2) 100%);">
-                                    <h6 class="mb-0 text-dark"><i class="bi bi-key me-2"></i>Student Access</h6>
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-key me-2"></i>Acceso del estudiante</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label for="access-password-input" class="form-label small fw-bold">Password</label>
+                                        <label for="access-password-input" class="form-label small fw-bold">Contraseña</label>
                                         <div class="password-input-group">
                                             <input type="password" class="form-control form-control-sm" id="access-password-input"
                                                 placeholder="Enter password">
@@ -474,14 +491,14 @@
                                         </div>
                                     </div>
                                     <button class="btn btn-sm w-100" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;" onclick="updateAccessPassword()">
-                                        <i class="bi bi-save me-1"></i>Update
+                                        <i class="bi bi-save me-1"></i>Actualizar
                                     </button>
 
                                     <div id="password-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style="font-size: 0.85rem;">
                                     </div>
                                 </div>
                                 <div class="card-footer bg-light border-top p-2">
-                                    <small class="text-muted d-block mb-2">Share link:</small>
+                                    <small class="text-muted d-block mb-2">Link generado:</small>
                                     <div class="input-group input-group-sm">
                                         <input type="text" class="form-control form-control-sm" id="student-access-link" readonly>
                                         <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyAccessLink()">
@@ -496,16 +513,16 @@
                         <div class="col-lg-6">
                             <div class="card h-100 border-0 shadow-sm">
                                 <div class="card-header bg-gradient" style="background: linear-gradient(135deg, var(--blue-light-f5) 0%, var(--green-f5) 100%);">
-                                    <h6 class="mb-0 text-dark"><i class="bi bi-book me-2"></i>Teaching Content</h6>
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-book me-2"></i>Planificador / Refactor</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label for="teaching-content-url" class="form-label small fw-bold">Content URL</label>
+                                        <label for="teaching-content-url" class="form-label small fw-bold">URL del contenido</label>
                                         <input type="url" class="form-control form-control-sm" id="teaching-content-url"
                                             placeholder="https://example.com" />
                                     </div>
                                     <button class="btn btn-sm w-100" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;" onclick="updateTeachingContent()">
-                                        <i class="bi bi-save me-1"></i>Save
+                                        <i class="bi bi-save me-1"></i>Guardar
                                     </button>
 
                                     <div id="teaching-content-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style="font-size: 0.85rem;">
@@ -515,12 +532,12 @@
                                     <small class="text-muted d-block mb-2">Preview:</small>
                                     <div class="d-flex gap-1">
                                         <a id="teaching-content-preview-btn" href="#" class="btn btn-sm btn-outline-primary hidden" target="_blank">
-                                            <i class="bi bi-book me-1"></i>View
+                                            <i class="bi bi-book me-1"></i>Vista
                                         </a>
                                         <button class="btn btn-sm btn-outline-danger" onclick="removeTeachingContent()" id="remove-teaching-btn" style="display:none;">
                                             <i class="bi bi-trash"></i>
                                         </button>
-                                        <small class="text-muted align-self-center ms-1" id="no-content-message">No content</small>
+                                        <small class="text-muted align-self-center ms-1" id="no-content-message">No hay contenido</small>
                                     </div>
                                 </div>
                             </div>
@@ -533,13 +550,13 @@
                     <div class="d-flex justify-content-between align-items-center my-4">
                         <h2>Program Collaborators</h2>
                         <button class="btn btn-primary" onclick="openCollaboratorModal()">
-                            <i class="bi bi-person-plus me-2"></i>Add Collaborator
+                            <i class="bi bi-person-plus me-2"></i>Agregar colaborador
                         </button>
                     </div>
 
                     <div class="card">
                         <div class="card-body">
-                            <p class="text-muted mb-3">Teachers who have access to manage this program:</p>
+                            <p class="text-muted mb-3">Personas del equipo con acceso para modificar este programa:</p>
                             <div id="collaborators-list" class="list-group">
                                 <!-- Collaborators will be loaded here -->
                             </div>
@@ -551,11 +568,11 @@
                 <div id="info-tab" class="section-content hidden">
                     <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
                         <div>
-                            <h2 class="mb-0">Program Details</h2>
+                            <h2 class="mb-0">Detalles del Programa</h2>
                         </div>
                         <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()" 
                             title="Save all changes to Program Details">
-                            <i class="bi bi-save me-2"></i>Save All Changes
+                            <i class="bi bi-save me-2"></i>Guardar Todos los Cambios
                         </button>
                     </div>
 
@@ -575,11 +592,11 @@
                         </button>
                         <button class="nav-link" id="program-details-team-tab" type="button" role="tab" aria-selected="false"
                             onclick="switchProgramDetailsTab('team')">
-                            <i class="bi bi-people me-2"></i>Team
+                            <i class="bi bi-people me-2"></i>Equipo
                         </button>
                         <button class="nav-link" id="program-details-resources-tab" type="button" role="tab" aria-selected="false"
                             onclick="switchProgramDetailsTab('resources')">
-                            <i class="bi bi-tools me-2"></i>Resources
+                            <i class="bi bi-tools me-2"></i>Recursos
                         </button>
                         <button class="nav-link" id="program-details-pildoras-tab" type="button" role="tab" aria-selected="false"
                             onclick="switchProgramDetailsTab('pildoras')">
@@ -587,7 +604,11 @@
                         </button>
                         <button class="nav-link" id="program-details-evaluation-tab" type="button" role="tab" aria-selected="false"
                             onclick="switchProgramDetailsTab('evaluation')">
-                            <i class="bi bi-clipboard-check me-2"></i>Evaluation
+                            <i class="bi bi-clipboard-check me-2"></i>Evaluación
+                        </button>
+                        <button class="nav-link" id="program-details-virtual-classroom-tab" type="button" role="tab" aria-selected="false"
+                            onclick="switchProgramDetailsTab('virtual-classroom')">
+                            <i class="bi bi-laptop me-2"></i>Aula Virtual
                         </button>
                         <button class="nav-link" id="program-details-quicklinks-tab" type="button" role="tab" aria-selected="false"
                             onclick="switchProgramDetailsTab('quicklinks')">
@@ -599,7 +620,7 @@
                         </button>
                         <button class="nav-link" id="program-details-sections-tab" type="button" role="tab" aria-selected="false"
                             onclick="switchProgramDetailsTab('sections')">
-                            <i class="bi bi-file-text me-2"></i>Sections
+                            <i class="bi bi-file-text me-2"></i>Secciones
                         </button>
                     </nav>
 
@@ -607,14 +628,14 @@
                     <div class="tab-content" id="program-details-content">
                         <!-- Roadmap Tab -->
                         <div class="tab-pane fade show active" id="program-details-roadmap" role="tabpanel" aria-labelledby="program-details-roadmap-tab">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h5 class="mb-0">Roadmap & Modules</h5>
+                            <div class="justify-content-between align-items-center mb-4 detail-card">
+                                <h5 class="mb-0">Roadmap & Módulos</h5>
                                 <div class="d-flex gap-2">
                                     <button class="btn btn-outline-warning btn-sm" onclick="openEmployabilityModal()">
                                         <i class="bi bi-briefcase me-2"></i>Sesiones Empleabilidad
                                     </button>
                                     <button class="btn btn-primary btn-sm" onclick="openModuleModal()">
-                                        <i class="bi bi-plus-circle me-2"></i>Add Module
+                                        <i class="bi bi-plus-circle me-2"></i>Agregar Módulo
                                     </button>
                                 </div>
                             </div>
@@ -622,7 +643,7 @@
                                 <!-- Modules will be loaded here -->
                             </div>
                             <div class="mt-4">
-                                <h6 class="mb-3">Gantt Chart</h6>
+                                <h6 class="mb-3">Diagrama Gantt</h6>
                                 <div class="table-responsive">
                                     <table id="gantt-table" class="table">
                                         <!-- Gantt will be generated here -->
@@ -635,20 +656,20 @@
                         <div class="tab-pane fade" id="program-details-calendar" role="tabpanel" aria-labelledby="program-details-calendar-tab">
                             <div class="card">
                                 <div class="card-body">
-                                    <h5 class="card-title">Calendar Configuration</h5>
+                                    <h5 class="card-title">Configuración del Calendario</h5>
                                     <form id="calendar-form">
                                         <div class="mb-3">
                                             <label for="google-calendar-id" class="form-label">Google Calendar ID</label>
                                             <input type="text" class="form-control" id="google-calendar-id"
                                                 placeholder="your-calendar@group.calendar.google.com" />
-                                            <small class="text-muted">Get your calendar ID from Google Calendar settings</small>
+                                            <small class="text-muted">Encuentra el Googke calendar ID en las configuraciones de Google Calendar</small>
                                         </div>
-                                        <button type="submit" class="btn btn-primary">Save Calendar</button>
+                                        <button type="submit" class="btn btn-primary">Guardar calendario</button>
                                     </form>
                                 </div>
                             </div>
                             <div id="calendar-preview" class="mt-4 hidden">
-                                <h5>Calendar Preview</h5>
+                                <h5>Previsualización del calendario</h5>
                                 <div class="ratio ratio-16x9">
                                     <iframe id="calendar-iframe"></iframe>
                                 </div>
@@ -663,11 +684,11 @@
                                         <div class="col-md-6 border-end pb-md-0 pb-4">
                                             <h6 class="text-primary fw-bold mb-3"><i class="bi bi-laptop me-2"></i>Online</h6>
                                             <div class="mb-3">
-                                                <label class="form-label form-label-sm">Entry Hour</label>
+                                                <label class="form-label form-label-sm">Hora de entrada</label>
                                                 <input type="time" class="form-control form-control-sm" id="sched-online-entry">
                                             </div>
                                             <div class="mb-3">
-                                                <label class="form-label form-label-sm">Start Píldoras</label>
+                                                <label class="form-label form-label-sm">Inicio Píldoras</label>
                                                 <input type="time" class="form-control form-control-sm" id="sched-online-start">
                                             </div>
                                             <div class="mb-3">
@@ -675,22 +696,22 @@
                                                 <input type="time" class="form-control form-control-sm" id="sched-online-break">
                                             </div>
                                             <div class="mb-3">
-                                                <label class="form-label form-label-sm">Lunch (if any)</label>
+                                                <label class="form-label form-label-sm">Comida (si se toma)</label>
                                                 <input type="text" class="form-control form-control-sm" id="sched-online-lunch" placeholder="Use text if needed">
                                             </div>
                                             <div class="mb-0">
-                                                <label class="form-label form-label-sm">Finish Hour</label>
+                                                <label class="form-label form-label-sm">Hora de salida</label>
                                                 <input type="time" class="form-control form-control-sm" id="sched-online-finish">
                                             </div>
                                         </div>
                                         <div class="col-md-6 ps-md-4">
                                             <h6 class=" fw-bold mb-3"><i class="bi bi-people me-2"></i>Presencial</h6>
                                             <div class="mb-3">
-                                                <label class="form-label form-label-sm">Entry Hour</label>
+                                                <label class="form-label form-label-sm">Hora de entrada</label>
                                                 <input type="time" class="form-control form-control-sm" id="sched-presential-entry">
                                             </div>
                                             <div class="mb-3">
-                                                <label class="form-label form-label-sm">Start Píldoras</label>
+                                                <label class="form-label form-label-sm">Hora de Entrada</label>
                                                 <input type="time" class="form-control form-control-sm" id="sched-presential-start">
                                             </div>
                                             <div class="mb-3">
@@ -698,17 +719,17 @@
                                                 <input type="time" class="form-control form-control-sm" id="sched-presential-break">
                                             </div>
                                             <div class="mb-3">
-                                                <label class="form-label form-label-sm">Lunch</label>
+                                                <label class="form-label form-label-sm">Comida</label>
                                                 <input type="time" class="form-control form-control-sm" id="sched-presential-lunch">
                                             </div>
                                             <div class="mb-0">
-                                                <label class="form-label form-label-sm">Finish Hour</label>
+                                                <label class="form-label form-label-sm">Hora de salida</label>
                                                 <input type="time" class="form-control form-control-sm" id="sched-presential-finish">
                                             </div>
                                         </div>
                                     </div>
                                     <div class="mt-4 pt-3 border-top">
-                                        <label class="form-label form-label-sm">Additional Schedule Notes</label>
+                                        <label class="form-label form-label-sm">Notas adicionales sobre el horario</label>
                                         <textarea class="form-control form-control-sm" id="sched-notes" rows="2"></textarea>
                                     </div>
                                 </div>
@@ -719,9 +740,9 @@
                         <div class="tab-pane fade" id="program-details-team" role="tabpanel" aria-labelledby="program-details-team-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0"><i class="bi bi-people me-2"></i>Team Members</h6>
+                                    <h6 class="mb-0"><i class="bi bi-people me-2"></i>Miembros del equipo</h6>
                                     <button class="btn btn-sm btn-outline-primary" onclick="openTeamModal()">
-                                        <i class="bi bi-plus"></i> Add Member
+                                        <i class="bi bi-plus"></i> Agregar miembro
                                     </button>
                                 </div>
                                 <div class="card-body p-0">
@@ -729,12 +750,12 @@
                                         <table class="table table-hover mb-0">
                                             <thead>
                                                 <tr>
-                                                    <th>Name</th>
+                                                    <th>Nombre</th>
                                                     <th>Role</th>
                                                     <th>Email</th>
-                                                    <th>Module</th>
+                                                    <th>Módulo</th>
                                                     <th>LinkedIn</th>
-                                                    <th>Action</th>
+                                                    <th>Acción</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="team-list-body">
@@ -750,9 +771,9 @@
                         <div class="tab-pane fade" id="program-details-resources" role="tabpanel" aria-labelledby="program-details-resources-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0"><i class="bi bi-tools me-2"></i>Resources</h6>
+                                    <h6 class="mb-0"><i class="bi bi-tools me-2"></i>Recursos</h6>
                                     <button class="btn btn-sm btn-outline-primary" onclick="openResourceModal()">
-                                        <i class="bi bi-plus"></i> Add Resource
+                                        <i class="bi bi-plus"></i> Agrega Recurso
                                     </button>
                                 </div>
                                 <div class="card-body p-0">
@@ -760,10 +781,10 @@
                                         <table class="table table-hover mb-0">
                                             <thead>
                                                 <tr>
-                                                    <th>Title</th>
-                                                    <th>Category (Type)</th>
+                                                    <th>Título</th>
+                                                    <th>Categoría (tipo)</th>
                                                     <th>URL</th>
-                                                    <th>Action</th>
+                                                    <th>Acción</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="resources-list-body">
@@ -813,7 +834,7 @@
                                     <div class="d-flex flex-wrap gap-2">
                                         <button class="btn btn-sm btn-outline-primary" type="button"
                                             onclick="addPildoraRow()">
-                                            <i class="bi bi-plus"></i> Add Píldora
+                                            <i class="bi bi-plus"></i> Agregar Píldora
                                         </button>
                                         <button class="btn btn-sm btn-outline-secondary" type="button"
                                             id="pildoras-excel-template-btn"
@@ -837,7 +858,7 @@
                                                     <th>Presentación</th>
                                                     <th>Fecha</th>
                                                     <th>Píldora</th>
-                                                    <th>Student</th>
+                                                    <th>Estudiante</th>
                                                     <th>Estado</th>
                                                     <th>Acciones</th>
                                                 </tr>
@@ -854,7 +875,7 @@
                         <div class="tab-pane fade" id="program-details-evaluation" role="tabpanel" aria-labelledby="program-details-evaluation-tab">
                             <div class="card">
                                 <div class="card-header bg-light">
-                                    <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Evaluation Criteria</h6>
+                                    <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Criterio de Evaluación</h6>
                                 </div>
                                 <div class="card-body">
                                     <textarea class="form-control" id="evaluation-text" rows="6"
@@ -864,12 +885,92 @@
                         </div>
 
                         <!-- Quick Links Tab -->
+                        <div class="tab-pane fade" id="program-details-virtual-classroom" role="tabpanel" aria-labelledby="program-details-virtual-classroom-tab">
+                            <!-- Aula Virtual panel (moved from Evaluation tab) -->
+                            <div class="card mb-3" id="virtual-classroom-panel">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                        <div>
+                                            <h5 class="mb-1">
+                                                <i class="bi bi-laptop me-2 text-primary"></i>Aula Virtual
+                                            </h5>
+                                            <p class="text-muted small mb-0">
+                                                Activa un proyecto para que el estudiantado entregue su repositorio desde la vista pública.
+                                            </p>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-secondary" id="vc-status-badge">Sin proyecto activo</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 align-items-end">
+                                        <div class="col-md-5">
+                                            <label for="vc-project-select" class="form-label small fw-semibold text-muted">
+                                                Proyecto vinculado
+                                            </label>
+                                            <select id="vc-project-select" class="form-select form-select-sm" onchange="onVirtualClassroomProjectChange()">
+                                                <option value="">Selecciona módulo y proyecto…</option>
+                                            </select>
+                                            <div class="form-text small" id="vc-project-help">
+                                                Los proyectos se configuran en la sección Evaluación.
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="vc-repo-base" class="form-label small fw-semibold text-muted">
+                                                URL base del repositorio
+                                            </label>
+                                            <input type="text" id="vc-repo-base" class="form-control form-control-sm"
+                                                placeholder="https://github.com/proyectof5/">
+                                            <div class="form-text small">
+                                                Se mostrará como prefijo fijo en el input del estudiantado.
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="vc-briefing-url" class="form-label small fw-semibold text-muted">
+                                                Link al briefing del proyecto
+                                            </label>
+                                            <input type="text" id="vc-briefing-url" class="form-control form-control-sm"
+                                                placeholder="https://github.com/organizacion/briefing-proyecto">
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 mt-3">
+                                        <div class="col-md-8">
+                                            <div class="border rounded p-2 bg-light">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="small fw-semibold text-muted">
+                                                        Competencias a evaluar (definidas en Evaluación)
+                                                    </span>
+                                                    <span class="badge bg-light text-dark border small" id="vc-competences-count">
+                                                        0 competencias
+                                                    </span>
+                                                </div>
+                                                <div id="vc-competences-list" class="small text-muted">
+                                                    <span class="fst-italic">Selecciona un proyecto para ver sus competencias.</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 d-flex justify-content-md-end align-items-start gap-2 mt-2 mt-md-0">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                id="vc-deactivate-btn" onclick="deactivateVirtualClassroom()" disabled>
+                                                <i class="bi bi-x-circle me-1"></i>Desactivar
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-primary"
+                                                id="vc-activate-btn" onclick="saveVirtualClassroom(true)">
+                                                <i class="bi bi-play-circle me-1"></i>Activar Aula Virtual
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel" aria-labelledby="program-details-quicklinks-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h6>
                                     <button class="btn btn-sm btn-primary" onclick="openQuickLinkModal()">
-                                        <i class="bi bi-plus-circle me-2"></i>Add Link
+                                        <i class="bi bi-plus-circle me-2"></i>Agregar Link
                                     </button>
                                 </div>
                                 <div class="card-body">
@@ -884,9 +985,9 @@
                         <div class="tab-pane fade" id="program-details-sections" role="tabpanel" aria-labelledby="program-details-sections-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Sections</h6>
+                                    <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Secciones</h6>
                                     <button class="btn btn-sm btn-primary" onclick="openSectionModal()">
-                                        <i class="bi bi-plus-circle me-2"></i>Add Section
+                                        <i class="bi bi-plus-circle me-2"></i>Agregar sección
                                     </button>
                                 </div>
                                 <div class="card-body">
@@ -904,30 +1005,26 @@
                                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                                         <div class="d-flex align-items-center gap-2">
                                             <h6 class="mb-0"><i class="bi bi-award me-2"></i>Competencias del Programa</h6>
-                                            <span class="badge bg-warning text-dark d-none" id="competences-unsaved-badge">
-                                                <i class="bi bi-exclamation-circle me-1"></i>Sin guardar
-                                            </span>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
                                             <select class="form-select form-select-sm w-auto" id="competences-area-filter"
                                                 onchange="window.ProgramCompetences?.filterByArea()">
                                                 <option value="">Todas las áreas</option>
                                             </select>
-                                            <button class="btn btn-sm btn-outline-primary"
-                                                onclick="window.ProgramCompetences?.openAddCompetenceModal()">
-                                                <i class="bi bi-plus me-1"></i>Añadir Competencia
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="card-body">
-                                    <p class="text-muted small mb-3">
-                                        <i class="bi bi-info-circle me-1"></i>
-                                        Selecciona las competencias que se evaluarán en este programa. Se mostrarán en la página pública del bootcamp.
-                                        Recuerda guardar con el botón <strong>"Save All Changes"</strong> para persistir los cambios.
-                                    </p>
+                                    <div class="alert alert-info d-flex align-items-start gap-2 py-2 mb-3">
+                                        <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
+                                        <div class="small">
+                                            Las competencias se definen por proyecto en la sección <strong>Evaluación</strong>.
+                                            Haz clic en el badge de competencias de cada tarjeta de proyecto para seleccionar qué competencias y herramientas se evaluarán.
+                                            Esta vista se actualiza automáticamente y se muestra en la <strong>página pública</strong> del bootcamp.
+                                        </div>
+                                    </div>
                                     <div id="competences-list-container">
-                                        <!-- Rendered by program-competences.js -->
+                                        <!-- Rendered by program-competences.js in view-only mode -->
                                     </div>
                                 </div>
                             </div>
@@ -938,9 +1035,9 @@
                 <!-- Collaborators Tab -->
                 <div id="collaborators-tab" class="section-content hidden">
                     <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Program Collaborators</h2>
+                        <h2>Colaboradores del Programa</h2>
                         <button class="btn btn-primary" onclick="openCollaboratorModal()" id="add-collaborator-btn">
-                            <i class="bi bi-person-plus me-2"></i>Add Collaborator
+                            <i class="bi bi-person-plus me-2"></i>Agregar Colaborador
                         </button>
                     </div>
 
@@ -950,11 +1047,11 @@
                                 <table class="table table-hover">
                                     <thead>
                                         <tr>
-                                            <th>Name</th>
-                                            <th>Role</th>
+                                            <th>Nombre</th>
+                                            <th>Rol</th>
                                             <th>Email</th>
                                             <th>Módulos</th>
-                                            <th>Actions</th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="collaborators-list-body">
@@ -967,16 +1064,117 @@
                 </div>
                 <!-- Evaluación Tab -->
                 <div id="evaluation-tab" class="section-content hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4">
-                        <div>
-                            <h2><i class="bi bi-clipboard-check me-2 text-primary"></i>Evaluación de Proyectos</h2>
-                            <p class="text-muted small mb-0">Evalúa a los estudiantes por proyecto y módulo. Los resultados se sincronizan con la ficha de seguimiento de cada estudiante.</p>
+                    <div id="evaluation-tab-view">
+                        <div class="d-flex justify-content-between align-items-center my-4">
+                            <div>
+                                <h2><i class="bi bi-clipboard-check me-2 text-primary"></i>Evaluación de Proyectos</h2>
+                                <p class="text-muted small mb-0">Evalúa a los estudiantes por proyecto y módulo. Los resultados se sincronizan con la ficha de seguimiento de cada estudiante.</p>
+                            </div>
+                        </div>
+                        <div id="evaluation-content">
+                            <div class="text-center text-muted py-5">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2">Cargando proyectos...</p>
+                            </div>
                         </div>
                     </div>
-                    <div id="evaluation-content">
-                        <div class="text-center text-muted py-5">
-                            <div class="spinner-border text-primary" role="status"></div>
-                            <p class="mt-2">Cargando proyectos...</p>
+
+                    <!-- ── Inline team-history panel ── -->
+                    <div id="team-history-panel" class="hidden">
+                        <div class="d-flex align-items-center gap-3 my-4">
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="closeTeamHistoryView()">
+                                <i class="bi bi-arrow-left me-1"></i>Volver a Evaluación
+                            </button>
+                            <h4 class="mb-0 fw-bold">
+                                <i class="bi bi-people-fill me-2 text-primary"></i>Histórico de equipos
+                            </h4>
+                        </div>
+                        <div id="team-history-panel-body" class="pb-4"></div>
+                    </div>
+
+                    <!-- ── Google Classroom–style evaluation split view ── -->
+                    <div id="eval-project-view" class="hidden">
+                        <!-- Top bar -->
+                        <div class="eval-view-topbar d-flex align-items-center gap-3 py-3 mb-0">
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="closeEvaluationView()">
+                                <i class="bi bi-arrow-left me-1"></i>Volver
+                            </button>
+                            <div class="flex-grow-1 min-w-0">
+                                <h5 class="mb-0 fw-bold text-truncate" id="eval-view-title">Evaluación</h5>
+                                <p class="mb-0 text-muted small" id="eval-view-subtitle"></p>
+                            </div>
+                            <div class="d-flex gap-2 align-items-center flex-shrink-0">
+                                <button type="button" class="btn btn-sm btn-outline-info d-none" id="eval-view-groups-btn"
+                                    onclick="openGroupsModalFromView()">
+                                    <i class="bi bi-diagram-3 me-1"></i>Editar grupos
+                                </button>
+                                <button type="button" class="btn btn-sm btn-primary" id="save-eval-panel-btn"
+                                    onclick="saveIndividualStudentEval()"
+                                    style="background:#E85D26;border-color:#E85D26;min-width:150px;">
+                                    <i class="bi bi-save me-1"></i>Guardar evaluación
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Split layout -->
+                        <div class="eval-split-layout">
+                            <!-- LEFT: targets list -->
+                            <aside class="eval-targets-sidebar">
+                                <div class="eval-targets-header">
+                                    <span id="eval-targets-label" class="fw-semibold small text-secondary text-uppercase" style="letter-spacing:.05em;">Estudiantes</span>
+                                    <span class="badge bg-secondary ms-2" id="eval-targets-count"></span>
+                                </div>
+                                <ul class="eval-targets-list list-unstyled mb-0" id="eval-targets-list">
+                                    <!-- populated by JS -->
+                                </ul>
+                            </aside>
+
+                            <!-- RIGHT: competences + feedback -->
+                            <main class="eval-right-panel" id="eval-right-panel">
+                                <div class="eval-right-empty d-flex flex-column align-items-center justify-content-center text-center text-muted" id="eval-right-empty">
+                                    <i class="bi bi-person-check display-4 mb-3 text-muted opacity-50"></i>
+                                    <p class="mb-1 fw-semibold">Selecciona un estudiante</p>
+                                    <p class="small">Haz clic en un estudiante de la lista para comenzar su evaluación.</p>
+                                </div>
+                                <div class="d-none" id="eval-right-content">
+                                    <div class="eval-right-sticky-header" id="eval-right-header">
+                                        <!-- student name + status badge -->
+                                    </div>
+                                    <div class="eval-right-body p-3" id="eval-right-body">
+                                        <!-- competences + feedback injected here -->
+                                    </div>
+                                </div>
+                            </main>
+                        </div>
+                    </div>
+
+                    <!-- ── Legacy inline student-eval panel (kept for backward compat) ── -->
+                    <div id="student-eval-panel" class="hidden">
+                        <div class="d-flex align-items-center gap-3 my-4">
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="cancelStudentEvalPanel()">
+                                <i class="bi bi-arrow-left me-1"></i>Volver
+                            </button>
+                            <h4 class="mb-0 fw-bold" id="student-eval-panel-title">
+                                <i class="bi bi-person-check me-2 text-warning"></i>Evaluación individual
+                            </h4>
+                        </div>
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header py-3 px-4 d-flex align-items-center justify-content-between"
+                                style="background:linear-gradient(135deg,#E85D26,#f97316);color:#fff;border-radius:.5rem .5rem 0 0;">
+                                <span class="fw-semibold fs-6" id="student-eval-panel-subtitle">
+                                    <i class="bi bi-clipboard-check me-2"></i>
+                                </span>
+                            </div>
+                            <div class="card-body p-4" id="student-eval-panel-body"></div>
+                            <div class="card-footer d-flex justify-content-end gap-2 p-3">
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="cancelStudentEvalPanel()">
+                                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1043,7 +1241,7 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="moduleModalTitle">Add Module</h5>
+                    <h5 class="modal-title" id="moduleModalTitle">Agregar Módulo</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="module-form">
@@ -1051,13 +1249,13 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="module-name" class="form-label">Module Name</label>
+                                    <label for="module-name" class="form-label">Agregar Módulo</label>
                                     <input type="text" class="form-control" id="module-name" required />
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="module-duration" class="form-label">Duration (weeks)</label>
+                                    <label for="module-duration" class="form-label">Duración (semanas)</label>
                                     <input type="number" class="form-control" id="module-duration" min="1" required />
                                 </div>
                             </div>
@@ -1066,9 +1264,9 @@
                         <!-- Courses Section -->
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0"><i class="bi bi-book me-2"></i>Courses</h6>
+                                <h6 class="mb-0"><i class="bi bi-book me-2"></i>Cursos</h6>
                                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCoursField()">
-                                    <i class="bi bi-plus"></i> Add Course
+                                    <i class="bi bi-plus"></i> Agregar curso
                                 </button>
                             </div>
                             <div id="courses-container" class="border rounded p-3 bg-light">
@@ -1079,10 +1277,10 @@
                         <!-- Projects Section -->
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0"><i class="bi bi-laptop me-2"></i>Projects</h6>
+                                <h6 class="mb-0"><i class="bi bi-laptop me-2"></i>Proyectos</h6>
                                 <button type="button" class="btn btn-sm btn-outline-primary"
                                     onclick="addProjectField()">
-                                    <i class="bi bi-plus"></i> Add Project
+                                    <i class="bi bi-plus"></i> Agregar proyecto
                                 </button>
                             </div>
                             <div id="projects-container" class="border rounded p-3 bg-light">
@@ -1105,8 +1303,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Module</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Módulo</button>
                     </div>
                 </form>
             </div>
@@ -1118,24 +1316,24 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Quick Link</h5>
+                    <h5 class="modal-title">Agregar Quick Link</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="quick-link-form">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="link-platform" class="form-label">Platform</label>
+                            <label for="link-platform" class="form-label">Plataforma</label>
                             <select class="form-control" id="link-platform" onchange="updateLinkName()">
-                                <option value="">Select a platform or custom</option>
+                                <option value="">Selecciona una plataforma o customizala</option>
                                 <option value="zoom">Zoom</option>
                                 <option value="discord">Discord</option>
                                 <option value="classroom">Google Classroom</option>
                                 <option value="github">GitHub</option>
-                                <option value="custom">Custom Link</option>
+                                <option value="custom">Link customizado</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="link-name" class="form-label">Link Name</label>
+                            <label for="link-name" class="form-label">Nombre del Link</label>
                             <input type="text" class="form-control" id="link-name" placeholder="e.g., Zoom Class" />
                         </div>
                         <div class="mb-3">
@@ -1144,8 +1342,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Link</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Agregar Link</button>
                     </div>
                 </form>
             </div>
@@ -1157,23 +1355,23 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Section</h5>
+                    <h5 class="modal-title">Agregar Sección</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="section-form">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="section-title" class="form-label">Section Title</label>
+                            <label for="section-title" class="form-label">Título</label>
                             <input type="text" class="form-control" id="section-title" required />
                         </div>
                         <div class="mb-3">
-                            <label for="section-content" class="form-label">Content</label>
+                            <label for="section-content" class="form-label">Contenido</label>
                             <textarea class="form-control" id="section-content" rows="8" required></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add Section</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Agregar Sección</button>
                     </div>
                 </form>
             </div>
@@ -1293,7 +1491,7 @@
                                     <option>Andalucía</option><option>Aragón</option><option>Asturias</option>
                                     <option>Baleares</option><option>Canarias</option><option>Cantabria</option>
                                     <option>Castilla-La Mancha</option><option>Castilla y León</option>
-                                    <option>Cataluña</option><option>Ceuta</option><option>Comunidad de Madrid</option>
+                                    <option>Cataluña</option><option>Ceuta</option><option>Madrid</option>
                                     <option>Comunidad Valenciana</option><option>Extremadura</option>
                                     <option>Galicia</option><option>La Rioja</option><option>Melilla</option>
                                     <option>Murcia</option><option>Navarra</option><option>País Vasco</option>
@@ -1315,7 +1513,7 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="progressModalTitle">Student Progress Tracking</h5>
+                    <h5 class="modal-title" id="progressModalTitle">Progreso del estudiantes</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -1324,31 +1522,30 @@
                         <div class="col-md-4">
                             <div class="card mb-3">
                                 <div class="card-header">
-                                    <h6 class="card-title mb-0">Student Information</h6>
+                                    <h6 class="card-title mb-0">Información del estudiante</h6>
                                 </div>
                                 <div class="card-body">
-                                    <p><strong>Name:</strong> <span id="progress-student-name">-</span></p>
-                                    <p><strong>Last Name:</strong> <span id="progress-student-lastname">-</span></p>
+                                    <p><strong>Nombre:</strong> <span id="progress-student-name">-</span></p>
+                                    <p><strong>Apellido:</strong> <span id="progress-student-lastname">-</span></p>
                                     <p><strong>Email:</strong> <span id="progress-student-email">-</span></p>
-                                    <p><strong>Last Accessed:</strong> <span id="progress-last-accessed">-</span></p>
+                                    <p><strong>último acceso:</strong> <span id="progress-last-accessed">-</span></p>
                                 </div>
                             </div>
 
                             <!-- Quick Progress Update -->
                             <div class="card">
                                 <div class="card-header">
-                                    <h6 class="card-title mb-0">Update Progress</h6>
+                                    <h6 class="card-title mb-0">Actualizar progreso</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label for="update-modules-completed" class="form-label">Modules
-                                            Completed</label>
+                                        <label for="update-modules-completed" class="form-label">Módulos completados</label>
                                         <input type="number" class="form-control" id="update-modules-completed" min="0"
                                             max="20" />
                                     </div>
                                     <button type="button" class="btn btn-success btn-sm"
                                         onclick="updateStudentProgress()">
-                                        <i class="bi bi-check-circle"></i> Update Progress
+                                        <i class="bi bi-check-circle"></i> Actualizar progreso
                                     </button>
                                 </div>
                             </div>
@@ -1361,22 +1558,22 @@
                                 <div class="col-md-12 mb-3">
                                     <div class="card">
                                         <div class="card-header">
-                                            <h6 class="card-title mb-0">Progress Summary</h6>
+                                            <h6 class="card-title mb-0">Resumen del progreso</h6>
                                         </div>
                                         <div class="card-body">
                                             <div class="row text-center">
                                                 <div class="col-md-4">
                                                     <h3 class="text-primary" id="progress-modules-completed">0</h3>
-                                                    <p class="mb-0">Modules Completed</p>
+                                                    <p class="mb-0">Módulos completados</p>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <h3 class="text-info" id="progress-modules-viewed-count">0</h3>
-                                                    <p class="mb-0">Modules Viewed</p>
+                                                    <p class="mb-0">Módulos vistos</p>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <h3 class="text-success" id="progress-sections-completed-count">0
                                                     </h3>
-                                                    <p class="mb-0">Sections Completed</p>
+                                                    <p class="mb-0">Secciones completadas</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -1387,11 +1584,11 @@
                                 <div class="col-md-6 mb-3">
                                     <div class="card h-100">
                                         <div class="card-header">
-                                            <h6 class="card-title mb-0">Modules Viewed</h6>
+                                            <h6 class="card-title mb-0">Módulos vistos</h6>
                                         </div>
                                         <div class="card-body">
                                             <div id="progress-modules-viewed">
-                                                <p class="text-muted mb-0">Loading...</p>
+                                                <p class="text-muted mb-0">Cargando...</p>
                                             </div>
                                         </div>
                                     </div>
@@ -1401,11 +1598,11 @@
                                 <div class="col-md-6 mb-3">
                                     <div class="card h-100">
                                         <div class="card-header">
-                                            <h6 class="card-title mb-0">Sections Completed</h6>
+                                            <h6 class="card-title mb-0">Secciones completadas</h6>
                                         </div>
                                         <div class="card-body">
                                             <div id="progress-sections-completed">
-                                                <p class="text-muted mb-0">Loading...</p>
+                                                <p class="text-muted mb-0">Cargando...</p>
                                             </div>
                                         </div>
                                     </div>
@@ -1415,10 +1612,10 @@
                                 <div class="col-md-12">
                                     <div class="card">
                                         <div class="card-header d-flex justify-content-between align-items-center">
-                                            <h6 class="card-title mb-0">Teacher Notes</h6>
+                                            <h6 class="card-title mb-0">Notas del Formador</h6>
                                             <button type="button" class="btn btn-primary btn-sm"
                                                 onclick="saveStudentNotes()">
-                                                <i class="bi bi-save"></i> Save Notes
+                                                <i class="bi bi-save"></i> Guardar notas
                                             </button>
                                         </div>
                                         <div class="card-body">
@@ -1432,15 +1629,15 @@
                                 <div class="col-md-12 mt-3">
                                     <div class="card">
                                         <div class="card-header d-flex justify-content-between align-items-center">
-                                            <h6 class="card-title mb-0">Projects</h6>
+                                            <h6 class="card-title mb-0">Proyectos</h6>
                                             <button type="button" class="btn btn-outline-primary btn-sm"
                                                 onclick="openAssignProjectModal()">
-                                                <i class="bi bi-plus"></i> Assign Project
+                                                <i class="bi bi-plus"></i> Asignar Proyecto
                                             </button>
                                         </div>
                                         <div class="card-body">
                                             <div id="progress-student-projects">
-                                                <p class="text-muted mb-0">No project assignments yet</p>
+                                                <p class="text-muted mb-0">No hay proyectos asignados aún</p>
                                             </div>
                                         </div>
                                     </div>
@@ -1450,7 +1647,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 </div>
             </div>
         </div>
@@ -1461,42 +1658,42 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Assign Project</h5>
+                    <h5 class="modal-title">Asignar Proyecto</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="assign-project-form">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Module</label>
+                            <label class="form-label">Módulo</label>
                             <select class="form-select" id="assign-module-select" required></select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Project</label>
+                            <label class="form-label">Proyecto</label>
                             <select class="form-select" id="assign-project-select" required></select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Group Name (optional)</label>
+                            <label class="form-label">Nombre del Equipo (opcional)</label>
                             <input type="text" class="form-control" id="assign-group-name"
                                 placeholder="e.g., Team Alpha" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Teammates (optional)</label>
+                            <label class="form-label">Compañeros (opcional)</label>
                             <div id="assign-teammates-list" class="border rounded p-2"
                                 style="max-height: 200px; overflow-y: auto;">
                                 <!-- Populated dynamically with checkboxes -->
                             </div>
-                            <small class="text-muted d-block">Current student is included automatically</small>
+                            <small class="text-muted d-block">El estudiante actual se agrega automáticamente</small>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="assign-mark-done">
                             <label class="form-check-label" for="assign-mark-done">
-                                Mark as done
+                                Marcar como Hecho
                             </label>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Assign</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Asignar</button>
                     </div>
                 </form>
             </div>
@@ -1508,36 +1705,36 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Project Assignment Detail</h5>
+                    <h5 class="modal-title">Dealle del proyecto asignado:</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-2">
-                        <strong>Project:</strong>
+                        <strong>Proyecto:</strong>
                         <div id="projectAssignment-detail-name"></div>
                     </div>
                     <div class="mb-2">
-                        <strong>Module:</strong>
+                        <strong>Módulo:</strong>
                         <div id="projectAssignment-detail-module"></div>
                     </div>
                     <div class="mb-3">
-                        <label for="projectAssignment-detail-group" class="form-label">Group name</label>
+                        <label for="projectAssignment-detail-group" class="form-label">Nombre del Equipo</label>
                         <input type="text" class="form-control" id="projectAssignment-detail-group" />
                     </div>
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="projectAssignment-detail-done">
                         <label class="form-check-label" for="projectAssignment-detail-done">
-                            Mark as done
+                            Marcar como Hecho
                         </label>
                     </div>
                     <div class="mb-2">
-                        <strong>Teammates:</strong>
+                        <strong>Inegrantes del equipo:</strong>
                         <ul id="projectAssignment-detail-teammates" class="mb-0"></ul>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" onclick="saveProjectAssignmentDetail()">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveProjectAssignmentDetail()">Guardar</button>
                 </div>
             </div>
         </div>
@@ -1548,23 +1745,21 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Teacher Collaborator</h5>
+                    <h5 class="modal-title">Agregar colaborador</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="collaborator-form">
                         <div class="mb-3">
-                            <label for="collaborator-email" class="form-label">Teacher Email</label>
+                            <label for="collaborator-email" class="form-label">Email</label>
                             <input type="email" class="form-control" id="collaborator-email" required />
-                            <small class="text-muted">Enter the email of an existing teacher to add them as a
-                                collaborator</small>
+                            <small class="text-muted">Ingresa el email existente de un compañero para definirlo como colaborador</small>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="addCollaboratorByEmail()">Add
-                        Collaborator</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="addCollaboratorByEmail()">Agregar colaborador</button>
                 </div>
             </div>
         </div>
@@ -1575,17 +1770,17 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Team Member</h5>
+                    <h5 class="modal-title">Agregar miembro del Equipo</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="team-form">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Select Collaborator</label>
+                            <label class="form-label fw-semibold">Seleccionar colaborador</label>
                             <select class="form-select" id="team-from-collaborator" onchange="fillTeamFromCollaborator()" required>
-                                <option value="">— Select a collaborator —</option>
+                                <option value="">— Selecciona un colaborador —</option>
                             </select>
-                            <div class="form-text">Only collaborators assigned to this promotion can be added.</div>
+                            <div class="form-text">Solo colaboradores asignados a este programa pueden ser agregados</div>
                         </div>
                         <!-- Collaborator info preview -->
                         <div id="team-collab-preview" class="d-none mb-3">
@@ -1601,58 +1796,80 @@
                         <div class="mb-3">
                             <label class="form-label">Module</label>
                             <select class="form-select" id="team-module">
-                                <option value="">— No specific module —</option>
+                                <option value="">— No módulo específico —</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">LinkedIn URL <span class="text-muted small">(optional)</span></label>
+                            <label class="form-label">LinkedIn <span class="text-muted small">(opcional)</span></label>
                             <input type="url" class="form-control" id="team-linkedin" placeholder="https://linkedin.com/in/...">
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="addTeamMember()">Add Member</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="addTeamMember()">Agregar Miembro</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Resource Modal -->
+    <!-- Resource Modal — Search & Select from evaluation.coderf5.es/v1/resources -->
     <div class="modal fade" id="resourceModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add Resource</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-search me-2"></i>Buscar y agregar recurso
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <form id="resource-form">
-                        <div class="mb-3">
-                            <label class="form-label">Title</label>
-                            <input type="text" class="form-control" id="resource-title" required>
+                <div class="modal-body p-0">
+                    <!-- Search bar + filters -->
+                    <div class="p-3 border-bottom bg-light">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold mb-1">Buscar recurso</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" id="resource-search-input" class="form-control border-start-0"
+                                        placeholder="Nombre, tecnología, proveedor…"
+                                        oninput="filterResourceCatalog()">
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        onclick="document.getElementById('resource-search-input').value='';filterResourceCatalog()">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Área</label>
+                                <select id="resource-area-filter" class="form-select" onchange="filterResourceCatalog()">
+                                    <option value="">Todas las áreas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Tipo</label>
+                                <select id="resource-type-filter" class="form-select" onchange="filterResourceCatalog()">
+                                    <option value="">Todos los tipos</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Category</label>
-                            <select class="form-select" id="resource-category">
-                                <option value="Technical">Technical</option>
-                                <option value="Youtube">Youtube Channel</option>
-                                <option value="Book">Book</option>
-                                <option value="Podcast">Podcast</option>
-                                <option value="Tool">Tool</option>
-                                <option value="Math">Mathematics</option>
-                                <option value="Other">Other</option>
-                            </select>
+                        <div class="mt-2 d-flex align-items-center gap-2">
+                            <span id="resource-catalog-count" class="badge bg-secondary">0 recursos</span>
+                            <span id="resource-catalog-loading" class="text-muted small d-none">
+                                <span class="spinner-border spinner-border-sm me-1"></span>Cargando catálogo…
+                            </span>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">URL</label>
-                            <input type="url" class="form-control" id="resource-url" required>
-                        </div>
-                    </form>
+                    </div>
+
+                    <!-- Resource grid -->
+                    <div id="resource-catalog-grid" class="p-3" style="min-height:300px;"></div>
+                    <div class="text-center text-muted py-5 d-none" id="resource-catalog-empty">
+                        <i class="bi bi-inbox display-5 mb-2 opacity-50 d-block"></i>
+                        No se encontraron recursos con estos filtros
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="addResource()">Add Resource</button>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 </div>
             </div>
         </div>
@@ -1662,16 +1879,16 @@
     <div class="modal fade" id="collaboratorModal" tabindex="-1">        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Add Collaborator</h5>
+                    <h5 class="modal-title">Agregar Colaborador</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="collaborator-select" class="form-label">Select User</label>
+                        <label for="collaborator-select" class="form-label">Seleccionar usuario</label>
                         <select class="form-select" id="collaborator-select" onchange="onCollaboratorSelected()">
                             <option value="">Loading users...</option>
                         </select>
-                        <div class="form-text">Newly registered users must log in at least once to appear here.</div>
+                        <div class="form-text">Los usuarios registrados recientemente deben almenos haber hecho un login para aparecer aquí.</div>
                     </div>
                     <div id="collaborator-info-preview" class="d-none">
                         <div class="alert alert-light border d-flex align-items-center gap-3 mb-3">
@@ -1684,17 +1901,16 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Module Assignment <span class="text-muted small">(optional)</span></label>
+                        <label class="form-label">Asignación de módulo <span class="text-muted small">(Opcional)</span></label>
                         <div id="collaborator-module-checklist" class="d-flex flex-column gap-2 border rounded p-2" style="max-height:180px; overflow-y:auto;">
-                            <span class="text-muted small">Loading modules...</span>
+                            <span class="text-muted small">Cargando módulos...</span>
                         </div>
                         <div class="form-text">Selecciona los módulos en los que estará presente. Puede ser más de uno o todos.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="addCollaboratorById()">Add
-                        Collaborator</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="addCollaboratorById()">Agregar Colaborador</button>
                 </div>
             </div>
         </div>
@@ -1727,35 +1943,35 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="employabilityModalTitle">Add Employability Session</h5>
+                    <h5 class="modal-title" id="employabilityModalTitle">Agregar sesiones de empleabilidad</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="employability-form">
                         <div class="mb-3">
-                            <label for="employability-name" class="form-label">Session Name</label>
+                            <label for="employability-name" class="form-label">Título de la sesión</label>
                             <input type="text" class="form-control" id="employability-name"
                                 placeholder="e.g., CV Preparation" required />
                         </div>
                         <div class="mb-3">
-                            <label for="employability-url" class="form-label">URL (Optional)</label>
+                            <label for="employability-url" class="form-label">URL (Opcional)</label>
                             <input type="url" class="form-control" id="employability-url" placeholder="https://..." />
                         </div>
                         <div class="mb-3">
-                            <label for="employability-start-month" class="form-label">Start Month</label>
+                            <label for="employability-start-month" class="form-label">Mes de inicio</label>
                             <input type="number" class="form-control" id="employability-start-month" min="1" value="1"
                                 required />
                         </div>
                         <div class="mb-3">
-                            <label for="employability-duration" class="form-label">Duration (Months)</label>
+                            <label for="employability-duration" class="form-label">Duración (Cuántos Meses)</label>
                             <input type="number" class="form-control" id="employability-duration" min="1" value="1"
                                 required />
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="saveEmployabilityItem()">Save Item</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEmployabilityItem()">Guardar sesión</button>
                 </div>
             </div>
         </div>
@@ -1766,16 +1982,16 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Attendance Details</h5>
+                    <h5 class="modal-title">Detalles de la asistencia</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div id="attendance-detail-info" class="mb-3">
-                        <p><strong>Student:</strong> <span id="attendance-modal-student-name">-</span></p>
-                        <p><strong>Date:</strong> <span id="attendance-modal-date">-</span></p>
+                        <p><strong>Estudiante:</strong> <span id="attendance-modal-student-name">-</span></p>
+                        <p><strong>Fecha:</strong> <span id="attendance-modal-date">-</span></p>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Status</label>
+                        <label class="form-label">Estado</label>
                         <select class="form-select" id="attendance-modal-status">
                             <option value="">No marcado</option>
                             <option value="Presente">Presente</option>
@@ -1786,13 +2002,13 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Note / Comment</label>
+                        <label class="form-label">Nota / Comentario</label>
                         <textarea class="form-control" id="attendance-modal-note" rows="3"
                             placeholder="Add a comment..."></textarea>
                     </div>
 
                     <hr>
-                    <h6>Student Statistics (This Month)</h6>
+                    <h6>Estadísticas de asistencia (Mes actual)</h6>
                     <div class="row text-center mt-2">
                         <div class="col-3">
                             <div class="small fw-bold text-success">Pres.</div>
@@ -1814,11 +2030,10 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-info me-auto" id="view-student-summary-btn">
-                        <i class="bi bi-list-check me-1"></i> Full Month Summary
+                        <i class="bi bi-list-check me-1"></i> Resumen del mes
                     </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="saveAttendanceFromModal()">Save
-                        Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAttendanceFromModal()">Guardar Cambios</button>
                 </div>
             </div>
         </div>
@@ -1829,7 +2044,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header" style="background-color: var(--complementario-1-extra-light); border-bottom: 2px solid var(--principal-1);">
-                    <h5 class="modal-title" style="color: var(--principal-1); font-weight: 600;"><i class="bi bi-person me-2"></i>Month Summary: <span
+                    <h5 class="modal-title" style="color: var(--principal-1); font-weight: 600;"><i class="bi bi-person me-2"></i>Resumen del mes: <span
                             id="summary-student-name">-</span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -1840,9 +2055,9 @@
                         <table class="table table-sm table-hover">
                             <thead style="background-color: var(--complementario-1-extra-light);">
                                 <tr>
-                                    <th style="color: var(--principal-1); font-weight: 600;">Date</th>
-                                    <th style="color: var(--principal-1); font-weight: 600;">Status</th>
-                                    <th style="color: var(--principal-1); font-weight: 600;">Comment / Note</th>
+                                    <th style="color: var(--principal-1); font-weight: 600;">Fecha</th>
+                                    <th style="color: var(--principal-1); font-weight: 600;">Estado</th>
+                                    <th style="color: var(--principal-1); font-weight: 600;">Nota / Comentario</th>
                                 </tr>
                             </thead>
                             <tbody id="student-summary-body">

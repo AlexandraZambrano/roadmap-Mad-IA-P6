@@ -18,6 +18,7 @@
     // ─── Estado interno ────────────────────────────────────────────────────────
     let _programCompetences = []; // competencias seleccionadas para este programa (con selectedTools)
     let _catalogLoaded = false;
+    let _viewOnlyMode = false;    // true when competences come from Evaluation tab (read-only display)
 
     // ─── Carga el catálogo desde la API ───────────────────────────────────────
     async function _loadCatalog() {
@@ -82,10 +83,23 @@
 
     // ─── Inicialización ────────────────────────────────────────────────────────
     async function init(savedCompetences) {
+        _viewOnlyMode = false;
         _programCompetences = Array.isArray(savedCompetences) ? savedCompetences : [];
         await _loadCatalog();
         _populateAreaFilter();
         _render();
+    }
+
+    /**
+     * View-only mode: competences are defined per-project in the Evaluation tab.
+     * Renders the same accordion but without add/remove/edit action buttons.
+     */
+    async function initViewOnly(aggregatedCompetences) {
+        _viewOnlyMode = true;
+        _programCompetences = Array.isArray(aggregatedCompetences) ? aggregatedCompetences : [];
+        await _loadCatalog();
+        _populateAreaFilter();
+        _renderViewOnly();
     }
 
     // ─── Rellena el selector de área en promotion-detail con las áreas de la BD
@@ -109,7 +123,7 @@
 
     }
 
-    // ─── Renderiza el panel de competencias como acordeón ────────────────────
+    // ─── Renderiza el panel de competencias como acordeón (modo edición) ─────
     function _render() {
         const container = document.getElementById('competences-list-container');
         if (!container) return;
@@ -141,6 +155,78 @@
 
         container.innerHTML = `<div class="accordion" id="competences-accordion">${items}</div>`;
     }
+
+    // ─── Renderiza en modo sólo-lectura (competencias definidas en Evaluación) ─
+    function _renderViewOnly() {
+        const container = document.getElementById('competences-list-container');
+        if (!container) return;
+
+        const filterArea = document.getElementById('competences-area-filter')?.value || '';
+
+        if (!_programCompetences.length) {
+            container.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-award fs-1 d-block mb-2 opacity-50"></i>
+                    <p class="mb-1">Aún no hay competencias definidas.</p>
+                    <small>Ve a la sección <strong>Evaluación</strong> y haz clic en el badge de competencias de cada proyecto para definirlas.</small>
+                </div>`;
+            return;
+        }
+
+        const filtered = filterArea
+            ? _programCompetences.filter(c => c.area === filterArea)
+            : _programCompetences;
+
+        if (!filtered.length) {
+            container.innerHTML = `<div class="text-center py-3 text-muted"><i class="bi bi-filter-circle me-2"></i>No hay competencias en el área seleccionada.</div>`;
+            return;
+        }
+
+        const items = filtered.map((comp, i) => _renderViewOnlyItem(comp, i)).join('');
+        container.innerHTML = `<div class="accordion" id="competences-accordion">${items}</div>`;
+    }
+
+    function _renderViewOnlyItem(comp, idx) {
+        const areaColor = _areaColor(comp.area);
+        const selectedToolsCount = (comp.selectedTools || []).length;
+        const allToolsCount      = (comp.allTools || []).length;
+        const toolBadges = (comp.selectedTools || []).map(t =>
+            `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1 opacity-50"></i>${_esc(t)}</span>`
+        ).join('');
+        const levelRows = (comp.levels || []).map(l => `
+            <div class="d-flex align-items-start gap-2 mb-2">
+                <span class="badge bg-${_levelColor(l.level)} flex-shrink-0" style="min-width:2rem;text-align:center;">${l.level}</span>
+                <div>
+                    <strong class="small">${_esc(l.description)}</strong>
+                    <ul class="mb-0 ps-3 small text-muted">
+                        ${(l.indicators || []).map(i => `<li>${_esc(i)}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>`).join('');
+
+        const collapseId = `vo-comp-${idx}`;
+        return `
+        <div class="accordion-item mb-2 border rounded">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed py-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false">
+                    <span class="badge bg-${areaColor} me-2" style="font-size:.7rem;">${_esc(comp.area || 'Sin área')}</span>
+                    <span class="fw-semibold me-2">${_esc(comp.name)}</span>
+                    <span class="badge bg-light text-muted border ms-auto me-3" style="font-size:.7rem;">
+                        <i class="bi bi-tools me-1"></i>${selectedToolsCount}/${allToolsCount} herramientas
+                    </span>
+                </button>
+            </h2>
+            <div id="${collapseId}" class="accordion-collapse collapse">
+                <div class="accordion-body pt-2">
+                    ${comp.description ? `<p class="small text-muted mb-2">${_esc(comp.description)}</p>` : ''}
+                    ${toolBadges ? `<div class="mb-3"><strong class="small text-muted d-block mb-1"><i class="bi bi-tools me-1"></i>Herramientas seleccionadas:</strong>${toolBadges}</div>` : ''}
+                    ${levelRows ? `<div><strong class="small text-muted d-block mb-1"><i class="bi bi-bar-chart-steps me-1"></i>Niveles:</strong>${levelRows}</div>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }
+
 
     function _renderAccordionItem(comp, idx) {
         const areaColor = _areaColor(comp.area);
@@ -600,7 +686,8 @@
 
     // ─── Filtro de área en la vista del programa ───────────────────────────────
     function filterByArea() {
-        _render();
+        if (_viewOnlyMode) _renderViewOnly();
+        else _render();
     }
 
     // ─── Notifica al sistema principal que hay cambios sin guardar ────────────
@@ -639,6 +726,7 @@
     // ─── API pública ──────────────────────────────────────────────────────────
     window.ProgramCompetences = {
         init,
+        initViewOnly,
         getCompetences,
         getEvalModulesSyncData,
         openAddCompetenceModal,
