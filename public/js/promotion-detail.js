@@ -3211,18 +3211,158 @@ async function loadQuickActions() {
 
         if (response.ok) {
             const links = await response.json();
-            displayQuickActions(links);
+            displayQuickActionsFiltered(links);
+            loadTeacherArea();
         }
     } catch (error) {
         console.error('Error cargando acciones rápidas:', error);
     }
 }
 
-function displayQuickActions(quickLinks) {
+function refreshQuickActions() {
+    if (typeof promotionId !== 'undefined') {
+        loadQuickActions();
+    }
+}
+
+function openAttendancePanel() {
+    switchTab('attendance');
+}
+
+// ==================== ÁREA DOCENTE ====================
+// Widget para acceso a recursos docentes: Asana, contenido, dashboard, acta
+
+async function loadTeacherArea() {
+    if (!isTeacherOrAdmin()) return;
+    
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const promotion = await response.json();
+            displayTeacherArea(promotion);
+        }
+    } catch (error) {
+        console.error('Error loading teacher area:', error);
+    }
+}
+
+function displayTeacherArea(promotion) {
+    const container = document.getElementById('teacher-area-container');
+    if (!container) return;
+
+    // Define teacher area buttons/links
+    const teacherActions = [
+        {
+            id: 'asana-promo-action',
+            icon: 'bi-kanban',
+            label: 'Asana Promo',
+            color: '#FF6B6B',
+            url: promotion.asanaWorkspaceUrl,
+            title: 'Abrir Asana (Promo)'
+        },
+        {
+            id: 'content-action',
+            icon: 'bi-book',
+            label: 'Contenido Docente',
+            color: '#0d6efd',
+            url: promotion.teachingContentUrl,
+            title: 'Abrir contenido docente'
+        },
+        {
+            id: 'dashboard-action',
+            icon: 'bi-speedometer2',
+            label: 'Dashboard Vista Previa',
+            color: '#6f42c1',
+            url: '#',
+            title: 'Abrir dashboard de vista previa',
+            isButton: true,
+            onclick: 'switchTab("overview")'
+        },
+        {
+            id: 'acta-action',
+            icon: 'bi-file-text',
+            label: 'Acta de Inicio',
+            color: '#198754',
+            url: '#',
+            title: 'Abrir acta de inicio',
+            isButton: true,
+            onclick: 'openActaModal()'
+        }
+    ];
+
+    container.innerHTML = '';
+
+    // Render only teacher area buttons (not shared with Quick Actions)
+    teacherActions.forEach(action => {
+        const isDisabled = !action.url && !action.isButton;
+        
+        if (action.isButton) {
+            // Button actions (dashboard preview, acta)
+            const buttonHTML = `
+                <div class="quick-action-card" id="${action.id}">
+                    <button type="button"
+                            class="quick-action-link"
+                            style="background: none; border: none; cursor: pointer; width: 100%; height: 100%; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;"
+                            onclick="${action.onclick}"
+                            title="${action.title}">
+                        <div class="quick-action-icon" style="color: ${action.color};">
+                            <i class="bi ${action.icon}"></i>
+                        </div>
+                        <div class="quick-action-label">${action.label}</div>
+                    </button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', buttonHTML);
+        } 
+        else {
+            // Link actions (Asana, content)
+            const cardHTML = `
+                <div class="quick-action-card ${isDisabled ? 'disabled' : ''}" id="${action.id}">
+                    <a href="${action.url || '#'}" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       title="${action.title}"
+                       onclick="${isDisabled ? 'return false;' : 'event.preventDefault(); window.open(this.href, \"_blank\");'}"
+                       class="quick-action-link"
+                       style="${isDisabled ? 'pointer-events: none; opacity: 0.5;' : ''}">
+                        <div class="quick-action-icon" style="color: ${action.color}; ${isDisabled ? 'opacity: 0.5;' : ''}">
+                            <i class="bi ${action.icon}"></i>
+                        </div>
+                        <div class="quick-action-label">${action.label}</div>
+                        ${isDisabled ? '<div class="quick-action-status">No configurado</div>' : '<i class="bi bi-box-arrow-up-right quick-action-arrow"></i>'}
+                    </a>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', cardHTML);
+        }
+    });
+}
+
+async function loadQuickActionsFiltered() {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/quick-links`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const links = await response.json();
+            displayQuickActionsFiltered(links);
+        }
+    } catch (error) {
+        console.error('Error loading quick actions:', error);
+    }
+}
+
+function displayQuickActionsFiltered(quickLinks) {
     const container = document.getElementById('quick-actions-container');
     if (!container) return;
 
-    // Buscar links por plataforma o por nombre (para compatibilidad con links antiguos)
+    // Find links by platform (excluding teacher area duplicates)
     const zoomLink = quickLinks.find(link => 
         link.platform === 'zoom' || link.name?.toLowerCase().includes('zoom')
     );
@@ -3230,7 +3370,8 @@ function displayQuickActions(quickLinks) {
         link.platform === 'discord' || link.name?.toLowerCase().includes('discord')
     );
 
-    // Definir acciones
+    // Define quick actions (student-focused only)
+    // Exclude: Asana, Teaching Content, Dashboard, Acta (those go to Área Docente)
     const actions = [
         {
             id: 'zoom-action',
@@ -3265,7 +3406,6 @@ function displayQuickActions(quickLinks) {
     actions.forEach(action => {
         const isDisabled = !action.url && !action.isButton;
         
-        // Renderizar botón para acciones sin URL (como asistencia)
         if (action.isButton) {
             const buttonHTML = `
                 <div class="quick-action-card" id="${action.id}">
@@ -3283,7 +3423,6 @@ function displayQuickActions(quickLinks) {
             `;
             container.insertAdjacentHTML('beforeend', buttonHTML);
         } 
-        // Renderizar enlace para acciones con URL
         else {
             const cardHTML = `
                 <div class="quick-action-card ${isDisabled ? 'disabled' : ''}" id="${action.id}">
@@ -3305,16 +3444,6 @@ function displayQuickActions(quickLinks) {
             container.insertAdjacentHTML('beforeend', cardHTML);
         }
     });
-}
-
-function refreshQuickActions() {
-    if (typeof promotionId !== 'undefined') {
-        loadQuickActions();
-    }
-}
-
-function openAttendancePanel() {
-    switchTab('attendance');
 }
 
 async function loadSections() {

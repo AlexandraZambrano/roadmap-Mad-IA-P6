@@ -1903,3 +1903,17 @@ progress-bar progress-bar-striped {
         font-size: 0.8rem;
     }
 }
+
+/* ==================== ÁREA DOCENTE ==================== */
+#teacher-area-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 576px) {
+    #teacher-area-container {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+    }
+}
