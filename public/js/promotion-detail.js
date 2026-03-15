@@ -2474,10 +2474,16 @@ async function loadTeacherAreaOverview() {
 // ==================== TEACHER AREA SUB-TABS ====================
 // Handle switching between sub-sections in Área del Docente
 function switchTeacherAreaSubTab(tabName) {
+    // To prevent duplicate DOM ID issues (which break JavaScript logic for Evaluation, Attendance, and Students), 
+    // we redirect these sub-tab clicks directly to their fully functional main tabs.
+    if (tabName === 'students' || tabName === 'attendance' || tabName === 'evaluation') {
+        switchTab(tabName);
+        return;
+    }
+
     const tabNameMap = {
-        'students':   { tabId: 'teacher-area-students',   buttonId: 'teacher-area-students-tab',   label: 'Lista de estudiantes' },
-        'attendance': { tabId: 'teacher-area-attendance', buttonId: 'teacher-area-attendance-tab', label: 'Asistencia' },
-        'evaluation': { tabId: 'teacher-area-evaluation', buttonId: 'teacher-area-evaluation-tab', label: 'Evaluación' }
+        'overview': { tabId: 'teacher-area-overview', buttonId: 'teacher-area-overview-tab', label: 'Resumen' }
+        // Add any genuine subtabs here that aren't copies of main tabs
     };
 
     const tab = tabNameMap[tabName];
@@ -2511,15 +2517,6 @@ function switchTeacherAreaSubTab(tabName) {
     if (selectedButton) {
         selectedButton.classList.add('active');
         selectedButton.setAttribute('aria-selected', 'true');
-    }
-
-    // Lazy-load data for each sub-tab
-    if (tabName === 'students') {
-        loadTeacherAreaStudents();
-    } else if (tabName === 'attendance') {
-        loadTeacherAreaAttendance();
-    } else if (tabName === 'evaluation') {
-        loadTeacherAreaEvaluation();
     }
 }
 
