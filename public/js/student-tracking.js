@@ -18,51 +18,20 @@
     let _promotionModules = [];
     let _promotionPildoras = [];
     let _promotionProjects = [];      // [{name, moduleId, moduleName, competenceIds:[]}]
-    let _promotionEmployability = []; // [{name, url}]
     let _modulesPildarasExtended = []; // ExtendedInfo modulesPildoras con status/fecha
     let _catalogCompetences = [];      // [{id, name, description}] from DB competences collection
     let _promotionCompetences = [];    // program-level competences from extendedInfo [{id, name, area, ...}]
     let _hasUnsavedTechnical = false;
-    let _hasUnsavedTransversal = false;
-
-    // ─── Datos temporales en memoria (se persisten al guardar) ────────────────
     let _teacherNotes = [];
     let _teams = [];
     let _competences = [];
     let _completedModules = [];
     let _completedPildoras = [];
-    let _employabilitySessions = [];
-    let _individualSessions = [];
-    let _incidents = [];
 
     // ─── Constantes UI ────────────────────────────────────────────────────────
     const LEVEL_LABELS = { 1: 'Insuficiente', 2: 'Básico', 3: 'Competente', 4: 'Excelente' };
     const LEVEL_COLORS = { 1: 'danger', 2: 'warning', 3: 'primary', 4: 'success' };
 
-    const INCIDENT_TYPES = [
-        'Roces con compañeros/as',
-        'Falta de compromiso',
-        'Activación entorno protector',
-        'Problemas técnicos recurrentes',
-        'Absentismo',
-        'Otro'
-    ];
-
-    const ADMIN_SITUATIONS = [
-        { value: 'nacional', label: 'Nacional' },
-        { value: 'solicitante_asilo', label: 'Solicitante de asilo' },
-        { value: 'ciudadano_europeo', label: 'Ciudadano/a europeo/a' },
-        { value: 'permiso_trabajo', label: 'Con permiso de trabajo' },
-        { value: 'no_permiso_trabajo', label: 'Sin permiso de trabajo' },
-        { value: 'otro', label: 'Otro' }
-    ];
-
-    const COMUNIDADES = [
-        'Andalucía', 'Aragón', 'Asturias', 'Baleares', 'Canarias', 'Cantabria',
-        'Castilla-La Mancha', 'Castilla y León', 'Cataluña', 'Ceuta', 'Comunidad de Madrid',
-        'Comunidad Valenciana', 'Extremadura', 'Galicia', 'La Rioja', 'Melilla',
-        'Murcia', 'Navarra', 'País Vasco'
-    ];
 
     // ─── Inicialización ───────────────────────────────────────────────────────
 
@@ -100,7 +69,6 @@
                         _promotionProjects.push({ name: p.name, url: p.url, moduleId: m.id, moduleName: m.name, competenceIds: p.competenceIds || [] });
                     });
                 });
-                _promotionEmployability = promo.employability || [];
             }
             if (pildarasRes.ok) {
                 const pildarasData = await pildarasRes.json();
@@ -123,7 +91,6 @@
     async function openFicha(studentId) {
         _currentStudentId = studentId;
         _hasUnsavedTechnical = false;
-        _hasUnsavedTransversal = false;
 
         // Mostrar spinner mientras carga
         _showFichaModal();
@@ -166,7 +133,6 @@
 
         // Cargar datos en memoria
         const tt = _currentStudent.technicalTracking || {};
-        const tr = _currentStudent.transversalTracking || {};
         _teacherNotes = (tt.teacherNotes || []).map(n => ({ ...n }));
         _teams = (tt.teams || []).map(t => ({ ...t }));
         _competences = (tt.competences || []).map(c => ({ ...c }));
@@ -176,11 +142,6 @@
         // Overlay: inject evaluations from ExtendedInfo that are not yet in technicalTracking
         _overlayEvaluationsIntoTeams(studentId);
 
-        _employabilitySessions = (tr.employabilitySessions || []).map(s => ({ ...s }));
-        _individualSessions = (tr.individualSessions || []).map(s => ({ ...s }));
-        _incidents = (tr.incidents || []).map(i => ({ ...i }));
-
-        _setFichaLoading(false);
         _renderFicha();
     }
 
@@ -303,229 +264,99 @@
                                         <span class="badge bg-danger ms-1 d-none" id="badge-technical-unsaved">●</span>
                                     </button>
                                 </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="ficha-tab-transversal" data-bs-toggle="tab"
-                                        data-bs-target="#ficha-panel-transversal" type="button" role="tab">
-                                        <i class="bi bi-people me-1"></i> Seguimiento Transversal
-                                        <span class="badge bg-danger ms-1 d-none" id="badge-transversal-unsaved">●</span>
-                                    </button>
-                                </li>
                             </ul>
 
                             <div class="tab-content p-4" id="fichaTabContent">
-
-                                <!-- ══ PESTAÑA DATOS PERSONALES ══ -->
+                                <!-- Datos Personales -->
                                 <div class="tab-pane fade show active" id="ficha-panel-personal" role="tabpanel">
-                                    <form id="ficha-personal-form" novalidate>
+                                    <form id="ficha-personal-form">
                                         <div class="row g-3">
-                                            <div class="col-12"><h6 class="text-primary border-bottom pb-1">Datos Obligatorios</h6></div>
-
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Nombre(s) <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control" id="fp-name" required>
+                                                <label class="form-label fw-bold">Nombre(s)</label>
+                                                <input type="text" class="form-control" id="ficha-student-name" required>
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Apellido(s) <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control" id="fp-lastname" required>
+                                                <label class="form-label fw-bold">Apellido(s)</label>
+                                                <input type="text" class="form-control" id="ficha-student-lastname" required>
                                             </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
-                                                <input type="email" class="form-control" id="fp-email" required>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label fw-semibold">Teléfono <span class="text-danger">*</span></label>
-                                                <input type="tel" class="form-control" id="fp-phone" required>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label fw-semibold">Edad <span class="text-danger">*</span></label>
-                                                <input type="number" class="form-control" id="fp-age" min="16" max="99" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Situación Administrativa <span class="text-danger">*</span></label>
-                                                <select class="form-select" id="fp-admin-situation" required>
-                                                    <option value="">Seleccionar...</option>
-                                                    ${ADMIN_SITUATIONS.map(s => `<option value="${s.value}">${s.label}</option>`).join('')}
-                                                </select>
-                                            </div>
-
-                                            <div class="col-12 mt-2"><h6 class="text-secondary border-bottom pb-1">Datos Opcionales</h6></div>
-
-                                            <div class="col-md-4">
-                                                <label class="form-label">Nacionalidad</label>
-                                                <input type="text" class="form-control" id="fp-nationality" placeholder="Ej: Española, Colombiana...">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label class="form-label">Documento Identificativo</label>
-                                                <input type="text" class="form-control" id="fp-document" placeholder="DNI / NIE / Pasaporte">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label class="form-label">Sexo</label>
-                                                <select class="form-select" id="fp-gender">
-                                                    <option value="">—</option>
-                                                    <option value="mujer">Mujer</option>
-                                                    <option value="hombre">Hombre</option>
-                                                    <option value="no_binario">No binario / Otro</option>
-                                                    <option value="no_especifica">Prefiero no especificar</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label class="form-label">Nivel de inglés</label>
-                                                <select class="form-select" id="fp-english-level">
-                                                    <option value="">—</option>
-                                                    <option value="A1">A1 - Principiante</option>
-                                                    <option value="A2">A2 - Elemental</option>
-                                                    <option value="B1">B1 - Intermedio</option>
-                                                    <option value="B2">B2 - Intermedio alto</option>
-                                                    <option value="C1">C1 - Avanzado</option>
-                                                    <option value="C2">C2 - Maestría</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label class="form-label">Nivel Educativo</label>
-                                                <select class="form-select" id="fp-education-level">
-                                                    <option value="">—</option>
-                                                    <option value="sin_estudios">Sin estudios formales</option>
-                                                    <option value="eso">ESO</option>
-                                                    <option value="bachillerato">Bachillerato / FP Básica</option>
-                                                    <option value="fp_medio">FP Grado Medio</option>
-                                                    <option value="fp_superior">FP Grado Superior</option>
-                                                    <option value="grado">Grado Universitario</option>
-                                                    <option value="postgrado">Postgrado / Máster</option>
-                                                    <option value="doctorado">Doctorado</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label class="form-label">Profesión</label>
-                                                <input type="text" class="form-control" id="fp-profession" placeholder="Ej: Diseñadora, Economista...">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Comunidad de Residencia</label>
-                                                <select class="form-select" id="fp-community">
-                                                    <option value="">—</option>
-                                                    ${COMUNIDADES.map(c => `<option value="${c}">${c}</option>`).join('')}
-                                                </select>
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-bold">Email</label>
+                                                <input type="email" class="form-control" id="ficha-student-email" readonly>
+                                                <div class="form-text">El email no puede ser modificado.</div>
                                             </div>
                                         </div>
-                                        <div class="d-flex justify-content-end mt-4">
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="bi bi-floppy me-1"></i> Guardar Datos Personales
+                                        <div class="mt-4 text-end">
+                                            <button type="submit" class="btn btn-primary px-4">
+                                                <i class="bi bi-save me-1"></i> Guardar Cambios
                                             </button>
                                         </div>
                                     </form>
 
-                                    <!-- ══ SECCIÓN DAR DE BAJA ══ -->
-                                    <div id="ficha-baja-section" class="mt-4 pt-3 border-top">
-                                        <div id="ficha-baja-content"></div>
+                                    <!-- Withdrawal Section -->
+                                    <div id="ficha-baja-content" class="mt-5 pt-4 border-top">
+                                        <!-- Rendered via _renderBajaSection -->
                                     </div>
                                 </div>
 
-                                <!-- ══ PESTAÑA SEGUIMIENTO TÉCNICO ══ -->
+                                <!-- Seguimiento Técnico -->
                                 <div class="tab-pane fade" id="ficha-panel-technical" role="tabpanel">
+                                    <div id="ficha-modules-progress-summary" class="mb-4">
+                                        <!-- Global progress rendered here -->
+                                    </div>
 
-                                    <!-- Notas del profesor -->
-                                    <div class="tracking-section mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-chat-left-text me-1"></i> Notas del Profesor</h6>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openNoteForm()">
-                                                <i class="bi bi-plus-lg me-1"></i>Añadir Nota
-                                            </button>
+                                    <div class="row g-4">
+                                        <!-- Columna Izquierda: Notas del Profesor -->
+                                        <div class="col-lg-4 border-end">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <h6 class="mb-0 fw-bold"><i class="bi bi-journal-text me-1"></i> Notas del Profesor</h6>
+                                                <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openNoteForm()">
+                                                    <i class="bi bi-plus-lg"></i> Nueva
+                                                </button>
+                                            </div>
+                                            <div id="ficha-teacher-notes-list" style="max-height: 500px; overflow-y: auto;">
+                                                <!-- Notas rendered here -->
+                                            </div>
                                         </div>
-                                        <div id="ficha-teacher-notes-list" class="notes-list"></div>
-                                    </div>
 
-                                    <!-- Proyectos realizados -->
-                                    <div class="tracking-section mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-folder2-open me-1"></i> Proyectos realizados</h6>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openTeamForm()">
-                                                <i class="bi bi-plus-lg me-1"></i>Añadir Proyecto
-                                            </button>
+                                        <!-- Columna Derecha: Proyectos y Competencias -->
+                                        <div class="col-lg-8">
+                                            <!-- Proyectos -->
+                                            <div class="mb-4">
+                                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                                    <h6 class="mb-0 fw-bold"><i class="bi bi-kanban me-1"></i> Proyectos Realizados</h6>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openTeamForm()">
+                                                        <i class="bi bi-plus-lg"></i> Añadir Proyecto
+                                                    </button>
+                                                </div>
+                                                <div id="ficha-teams-list">
+                                                    <!-- Proyectos rendered here -->
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Resumen Módulos / Píldoras -->
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3 fw-bold fs-7"><i class="bi bi-box me-1"></i> Módulos Completados</h6>
+                                                    <div id="ficha-modules-list" class="list-group list-group-flush border rounded">
+                                                        <!-- Módulos rendered here -->
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3 fw-bold fs-7"><i class="bi bi-lightning me-1"></i> Píldoras (Presentaciones)</h6>
+                                                    <div id="ficha-pildoras-list" class="list-group list-group-flush border rounded">
+                                                        <!-- Píldoras rendered here -->
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div id="ficha-teams-list"></div>
                                     </div>
-
-                                    <!-- Módulos completados -->
-                                    <div class="tracking-section mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0">
-                                                <i class="bi bi-book-half me-1"></i> Progreso por Módulos
-                                                <span class="badge bg-light text-secondary border ms-2" style="font-size:.65rem; vertical-align:middle;">
-                                                    <i class="bi bi-robot me-1"></i>Automático
-                                                </span>
-                                            </h6>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openModuleForm()">
-                                                <i class="bi bi-plus-lg me-1"></i>Añadir Manual
-                                            </button>
-                                        </div>
-                                        <div id="ficha-modules-progress-summary"></div>
-                                        <div id="ficha-modules-list"></div>
-                                    </div>
-
-                                    <!-- Píldoras completadas -->
-                                    <div class="tracking-section mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-lightning-charge me-1"></i> Píldoras</h6>
-                                            <span class="badge bg-secondary rounded-pill" id="ficha-pildoras-count">Automático</span>
-                                        </div>
-                                        <div id="ficha-pildoras-list"></div>
-                                    </div>
-
-                                    <div class="d-flex justify-content-end gap-2 mt-3">
-                                        <button class="btn btn-outline-secondary btn-sm" onclick="window.Reports?.printTechnical(window.StudentTracking._getCurrentStudentId(), window.StudentTracking._getPromotionId())" title="Descargar PDF">
-                                            <i class="bi bi-file-earmark-bar-graph me-1"></i>PDF Técnico
-                                        </button>
-                                        <button class="btn btn-primary" onclick="window.StudentTracking._saveTechnical()">
-                                            <i class="bi bi-floppy me-1"></i> Guardar Seguimiento Técnico
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- ══ PESTAÑA SEGUIMIENTO TRANSVERSAL ══ -->
-                                <div class="tab-pane fade" id="ficha-panel-transversal" role="tabpanel">
-
-                                    <!-- Sesiones de empleabilidad -->
-                                    <div class="tracking-section mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-briefcase me-1"></i> Sesiones de Empleabilidad</h6>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openEmpSessionForm()">
-                                                <i class="bi bi-plus-lg me-1"></i>Añadir Sesión
-                                            </button>
-                                        </div>
-                                        <div id="ficha-emp-sessions-list"></div>
-                                    </div>
-
-                                    <!-- Sesiones individuales -->
-                                    <div class="tracking-section mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-person-workspace me-1"></i> Sesiones Individuales</h6>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openIndSessionForm()">
-                                                <i class="bi bi-plus-lg me-1"></i>Añadir Sesión
-                                            </button>
-                                        </div>
-                                        <div id="ficha-ind-sessions-list"></div>
-                                    </div>
-
-                                    <!-- Incidencias -->
-                                    <div class="tracking-section mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h6 class="text-primary mb-0"><i class="bi bi-exclamation-triangle me-1"></i> Incidencias</h6>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="window.StudentTracking._openIncidentForm()">
-                                                <i class="bi bi-plus-lg me-1"></i>Registrar Incidencia
-                                            </button>
-                                        </div>
-                                        <div id="ficha-incidents-list"></div>
-                                    </div>
-
-                                    <div class="d-flex justify-content-end gap-2 mt-3">
-                                        <button class="btn btn-outline-secondary btn-sm" onclick="window.Reports?.printTransversal(window.StudentTracking._getCurrentStudentId(), window.StudentTracking._getPromotionId())" title="Descargar PDF">
-                                            <i class="bi bi-file-earmark-person me-1"></i>PDF Transversal
-                                        </button>
-                                        <button class="btn btn-primary" onclick="window.StudentTracking._saveTransversal()">
-                                            <i class="bi bi-floppy me-1"></i> Guardar Seguimiento Transversal
+                                    
+                                    <div class="mt-4 pt-3 border-top text-end">
+                                        <button class="btn btn-success px-4" id="btn-save-technical" onclick="window.StudentTracking.saveTechnical()">
+                                            <i class="bi bi-cloud-arrow-up me-1"></i> Guardar Seguimiento Técnico
                                         </button>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     </div>
@@ -550,30 +381,15 @@
         if (sub) sub.textContent = `${s.name || ''} ${s.lastname || ''} — ${s.email || ''}`;
 
         // ── Datos Personales ──
-        _setVal('fp-name', s.name);
-        _setVal('fp-lastname', s.lastname);
-        _setVal('fp-email', s.email);
-        _setVal('fp-phone', s.phone);
-        _setVal('fp-age', s.age);
-        _setVal('fp-admin-situation', s.administrativeSituation);
-        _setVal('fp-nationality', s.nationality);
-        _setVal('fp-document', s.identificationDocument);
-        _setVal('fp-gender', s.gender);
-        _setVal('fp-english-level', s.englishLevel);
-        _setVal('fp-education-level', s.educationLevel);
-        _setVal('fp-profession', s.profession);
-        _setVal('fp-community', s.community);
+        _setVal('ficha-student-name', s.name);
+        _setVal('ficha-student-lastname', s.lastname);
+        _setVal('ficha-student-email', s.email);
 
         // ── Tracking técnico ──
         _renderTeacherNotes();
         _renderTeams();
         _renderModules();
         _renderPildoras();
-
-        // ── Tracking transversal ──
-        _renderEmpSessions();
-        _renderIndSessions();
-        _renderIncidents();
 
         // ── Formulario personal: submit ──
         const form = document.getElementById('ficha-personal-form');
@@ -583,6 +399,9 @@
 
         // ── Sección de baja ──
         _renderBajaSection();
+
+        // Finalizar carga
+        _setFichaLoading(false);
     }
 
     // ─── Helpers de UI ────────────────────────────────────────────────────────
@@ -593,26 +412,10 @@
         el.value = (value !== null && value !== undefined) ? value : '';
     }
 
-    function _markUnsaved(type) {
-        if (type === 'technical') {
-            _hasUnsavedTechnical = true;
-            const badge = document.getElementById('badge-technical-unsaved');
-            if (badge) badge.classList.remove('d-none');
-        } else {
-            _hasUnsavedTransversal = true;
-            const badge = document.getElementById('badge-transversal-unsaved');
-            if (badge) badge.classList.remove('d-none');
-        }
-    }
-
     function _markSaved(type) {
         if (type === 'technical') {
             _hasUnsavedTechnical = false;
             const badge = document.getElementById('badge-technical-unsaved');
-            if (badge) badge.classList.add('d-none');
-        } else {
-            _hasUnsavedTransversal = false;
-            const badge = document.getElementById('badge-transversal-unsaved');
             if (badge) badge.classList.add('d-none');
         }
     }
@@ -2060,295 +1863,6 @@
 
     // ─── Renderizado: Sesiones de empleabilidad ───────────────────────────────
 
-    function _renderEmpSessions() {
-        const container = document.getElementById('ficha-emp-sessions-list');
-        if (!container) return;
-        if (!_employabilitySessions.length) {
-            container.innerHTML = _emptyState('briefcase', 'Sin sesiones de empleabilidad registradas');
-            return;
-        }
-        container.innerHTML = _employabilitySessions.map((s, i) => `
-            <div class="card mb-2 border-start border-4 border-success">
-                <div class="card-body py-2 px-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold"><i class="bi bi-briefcase-fill text-success me-1"></i>${_esc(s.topic || '—')}</div>
-                            <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${_fmtDate(s.sessionDate)}</small>
-                            ${s.cvLink || s.portfolioLink || s.linkedinLink ? `
-                            <div class="mt-1 d-flex gap-2 flex-wrap">
-                                ${s.cvLink ? `<a href="${_esc(s.cvLink)}" target="_blank" class="badge bg-light text-dark border text-decoration-none"><i class="bi bi-file-person me-1"></i>CV</a>` : ''}
-                                ${s.portfolioLink ? `<a href="${_esc(s.portfolioLink)}" target="_blank" class="badge bg-light text-dark border text-decoration-none"><i class="bi bi-globe me-1"></i>Portfolio</a>` : ''}
-                                ${s.linkedinLink ? `<a href="${_esc(s.linkedinLink)}" target="_blank" class="badge bg-light text-dark border text-decoration-none"><i class="bi bi-linkedin me-1"></i>LinkedIn</a>` : ''}
-                            </div>` : ''}
-                            ${s.notes ? `<p class="mt-1 mb-0 small fst-italic">${_esc(s.notes)}</p>` : ''}
-                        </div>
-                        <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="window.StudentTracking._removeEmpSession(${i})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>`).join('');
-    }
-
-    function _openEmpSessionForm() {
-        const empOptions = _promotionEmployability.length
-            ? _promotionEmployability.map((e, i) => `<option value="${i}">${_esc(e.name)}</option>`).join('')
-            : '';
-        const topicField = _promotionEmployability.length
-            ? `<select class="form-select form-select-sm" id="emp-topic-select">
-                <option value="">Seleccionar sesión del roadmap...</option>
-                ${empOptions}
-              </select>`
-            : `<select class="form-select form-select-sm" id="emp-topic-select">
-                <option value="">Seleccionar tema...</option>
-                <option value="CV">Elaboración de CV</option>
-                <option value="LinkedIn">Perfil de LinkedIn</option>
-                <option value="Portfolio">Portfolio / GitHub</option>
-                <option value="Entrevista Técnica">Entrevista Técnica</option>
-                <option value="Entrevista RRHH">Entrevista RRHH</option>
-                <option value="Marca Personal">Marca Personal</option>
-                <option value="Job Search">Búsqueda de empleo</option>
-                <option value="Otro">Otro</option>
-              </select>`;
-
-        _showInlineForm('ficha-emp-sessions-list', `
-            <div class="card border-success mb-2">
-                <div class="card-body py-2 px-3">
-                    <div class="row g-2">
-                        <div class="col-md-5">
-                            <label class="form-label small fw-semibold">Sesión de empleabilidad</label>
-                            ${topicField}
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-semibold">Fecha</label>
-                            <input type="date" class="form-control form-control-sm" id="emp-date" value="${_todayISO()}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Asistencia</label>
-                            <select class="form-select form-select-sm" id="emp-attended">
-                                <option value="true">Sí asistió</option>
-                                <option value="false">No asistió</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold"><i class="bi bi-file-person me-1"></i>CV (link)</label>
-                            <input type="url" class="form-control form-control-sm" id="emp-cv" placeholder="https://...">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold"><i class="bi bi-globe me-1"></i>Portfolio (link)</label>
-                            <input type="url" class="form-control form-control-sm" id="emp-portfolio" placeholder="https://...">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold"><i class="bi bi-linkedin me-1"></i>LinkedIn (link)</label>
-                            <input type="url" class="form-control form-control-sm" id="emp-linkedin" placeholder="https://linkedin.com/in/...">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small fw-semibold">Notas</label>
-                            <textarea class="form-control form-control-sm" id="emp-notes" rows="2" placeholder="Observaciones..."></textarea>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-end gap-2 mt-2">
-                        <button class="btn btn-sm btn-secondary" onclick="window.StudentTracking._cancelInlineForm('ficha-emp-sessions-list')">Cancelar</button>
-                        <button class="btn btn-sm btn-success" onclick="window.StudentTracking._saveEmpSession()">Añadir</button>
-                    </div>
-                </div>
-            </div>`, true);
-    }
-
-    function _saveEmpSession() {
-        const selectEl = document.getElementById('emp-topic-select');
-        let topic = '';
-        if (selectEl.tagName === 'SELECT') {
-            const val = selectEl.value;
-            if (!val) { _showToast('Selecciona una sesión de empleabilidad', 'warning'); return; }
-            // If using promotion employability, get the name from the array
-            const idx = parseInt(val);
-            topic = !isNaN(idx) && _promotionEmployability[idx] ? _promotionEmployability[idx].name : val;
-        } else {
-            topic = selectEl.value.trim();
-        }
-        if (!topic) { _showToast('El tema de la sesión es obligatorio', 'warning'); return; }
-        const sessionDate = document.getElementById('emp-date')?.value || _todayISO();
-        const attended = document.getElementById('emp-attended')?.value === 'true';
-        const cvLink = document.getElementById('emp-cv')?.value?.trim() || '';
-        const portfolioLink = document.getElementById('emp-portfolio')?.value?.trim() || '';
-        const linkedinLink = document.getElementById('emp-linkedin')?.value?.trim() || '';
-        const notes = document.getElementById('emp-notes')?.value?.trim() || '';
-        _employabilitySessions.push({ topic, sessionDate, attended, cvLink, portfolioLink, linkedinLink, notes });
-        _markUnsaved('transversal');
-        _renderEmpSessions();
-        _cancelInlineForm('ficha-emp-sessions-list');
-    }
-
-    function _removeEmpSession(i) {
-        _employabilitySessions.splice(i, 1);
-        _markUnsaved('transversal');
-        _renderEmpSessions();
-    }
-
-    // ─── Renderizado: Sesiones individuales ───────────────────────────────────
-
-    function _renderIndSessions() {
-        const container = document.getElementById('ficha-ind-sessions-list');
-        if (!container) return;
-        if (!_individualSessions.length) {
-            container.innerHTML = _emptyState('person-workspace', 'Sin sesiones individuales registradas');
-            return;
-        }
-        container.innerHTML = _individualSessions.map((s, i) => `
-            <div class="card mb-2 border-start border-4 border-primary">
-                <div class="card-body py-2 px-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="fw-semibold"><i class="bi bi-person-workspace text-primary me-1"></i>${_esc(s.topic || 'Sesión individual')}</div>
-                            <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${_fmtDate(s.sessionDate)}</small>
-                            ${s.notes ? `<p class="mt-1 mb-0 small fst-italic">${_esc(s.notes)}</p>` : ''}
-                        </div>
-                        <button class="btn btn-sm btn-link text-danger p-0" onclick="window.StudentTracking._removeIndSession(${i})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>`).join('');
-    }
-
-    function _openIndSessionForm() {
-        _showInlineForm('ficha-ind-sessions-list', `
-            <div class="card border-primary mb-2">
-                <div class="card-body py-2 px-3">
-                    <div class="row g-2">
-                        <div class="col-md-5">
-                            <label class="form-label small fw-semibold">Tema / motivo</label>
-                            <input type="text" class="form-control form-control-sm" id="ind-topic" placeholder="Ej: Orientación, dificultades técnicas...">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-semibold">Fecha</label>
-                            <input type="date" class="form-control form-control-sm" id="ind-date" value="${_todayISO()}">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small fw-semibold">Notas</label>
-                            <textarea class="form-control form-control-sm" id="ind-notes" rows="2" placeholder="Notas de la sesión..."></textarea>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-end gap-2 mt-2">
-                        <button class="btn btn-sm btn-secondary" onclick="window.StudentTracking._cancelInlineForm('ficha-ind-sessions-list')">Cancelar</button>
-                        <button class="btn btn-sm btn-primary" onclick="window.StudentTracking._saveIndSession()">Añadir</button>
-                    </div>
-                </div>
-            </div>`, true);
-    }
-
-    function _saveIndSession() {
-        const topic = document.getElementById('ind-topic')?.value?.trim() || '';
-        const sessionDate = document.getElementById('ind-date')?.value || _todayISO();
-        const notes = document.getElementById('ind-notes')?.value?.trim() || '';
-        _individualSessions.push({ topic, sessionDate, notes });
-        _markUnsaved('transversal');
-        _renderIndSessions();
-        _cancelInlineForm('ficha-ind-sessions-list');
-    }
-
-    function _removeIndSession(i) {
-        _individualSessions.splice(i, 1);
-        _markUnsaved('transversal');
-        _renderIndSessions();
-    }
-
-    // ─── Renderizado: Incidencias ─────────────────────────────────────────────
-
-    function _renderIncidents() {
-        const container = document.getElementById('ficha-incidents-list');
-        if (!container) return;
-        if (!_incidents.length) {
-            container.innerHTML = _emptyState('shield-check', 'Sin incidencias registradas');
-            return;
-        }
-        const severityColors = { baja: 'info', media: 'warning', alta: 'danger' };
-        container.innerHTML = _incidents.map((inc, i) => `
-            <div class="card mb-2 border-start border-4 border-${severityColors[inc.severity] || 'secondary'}">
-                <div class="card-body py-2 px-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="fw-semibold"><i class="bi bi-exclamation-triangle-fill text-${severityColors[inc.severity] || 'secondary'} me-1"></i>${_esc(inc.type || '—')}</span>
-                                <span class="badge bg-${inc.resolved ? 'success' : 'warning text-dark'}">${inc.resolved ? 'Resuelta' : 'Pendiente'}</span>
-                            </div>
-                            <p class="mb-1 small text-muted">${_esc(inc.description || '')}</p>
-                            <small class="text-muted">
-                                <i class="bi bi-calendar3 me-1"></i>${_fmtDate(inc.incidentDate)}
-                                ${inc.resolved && inc.resolutionDate ? `&nbsp;→ Resuelta: ${_fmtDate(inc.resolutionDate)}` : ''}
-                            </small>
-                        </div>
-                        <div class="d-flex gap-1 ms-2">
-                            ${!inc.resolved ? `<button class="btn btn-sm btn-outline-success py-0" onclick="window.StudentTracking._resolveIncident(${i})" title="Marcar como resuelta"><i class="bi bi-check-lg"></i></button>` : ''}
-                            <button class="btn btn-sm btn-link text-danger p-0" onclick="window.StudentTracking._removeIncident(${i})"><i class="bi bi-trash"></i></button>
-                        </div>
-                    </div>
-                </div>
-            </div>`).join('');
-    }
-
-    function _openIncidentForm() {
-        const typeOptions = INCIDENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
-        _showInlineForm('ficha-incidents-list', `
-            <div class="card border-danger mb-2">
-                <div class="card-body py-2 px-3">
-                    <div class="row g-2">
-                        <div class="col-md-5">
-                            <label class="form-label small fw-semibold">Tipo de incidencia</label>
-                            <select class="form-select form-select-sm" id="inc-type">
-                                ${typeOptions}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-semibold">Severidad</label>
-                            <select class="form-select form-select-sm" id="inc-severity">
-                                <option value="baja">Baja</option>
-                                <option value="media" selected>Media</option>
-                                <option value="alta">Alta</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Fecha</label>
-                            <input type="date" class="form-control form-control-sm" id="inc-date" value="${_todayISO()}">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small fw-semibold">Descripción</label>
-                            <textarea class="form-control form-control-sm" id="inc-desc" rows="2" placeholder="Describe la incidencia..."></textarea>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-end gap-2 mt-2">
-                        <button class="btn btn-sm btn-secondary" onclick="window.StudentTracking._cancelInlineForm('ficha-incidents-list')">Cancelar</button>
-                        <button class="btn btn-sm btn-danger" onclick="window.StudentTracking._saveIncident()">Registrar</button>
-                    </div>
-                </div>
-            </div>`, true);
-    }
-
-    function _saveIncident() {
-        const type = document.getElementById('inc-type')?.value || '';
-        const severity = document.getElementById('inc-severity')?.value || 'media';
-        const incidentDate = document.getElementById('inc-date')?.value || _todayISO();
-        const description = document.getElementById('inc-desc')?.value?.trim() || '';
-        if (!description) { _showToast('La descripción es obligatoria', 'warning'); return; }
-        _incidents.push({ type, severity, incidentDate, description, resolved: false });
-        _markUnsaved('transversal');
-        _renderIncidents();
-        _cancelInlineForm('ficha-incidents-list');
-    }
-
-    function _resolveIncident(i) {
-        _incidents[i].resolved = true;
-        _incidents[i].resolutionDate = _todayISO();
-        _markUnsaved('transversal');
-        _renderIncidents();
-    }
-
-    function _removeIncident(i) {
-        _incidents.splice(i, 1);
-        _markUnsaved('transversal');
-        _renderIncidents();
-    }
 
     // ─── Formulario inline helper ─────────────────────────────────────────────
 
@@ -2620,27 +2134,6 @@
         }
     }
 
-    async function _saveTransversal() {
-        const token = localStorage.getItem('token');
-        const payload = {
-            employabilitySessions: _employabilitySessions,
-            individualSessions: _individualSessions,
-            incidents: _incidents
-        };
-        try {
-            const res = await fetch(`${API_URL}/api/promotions/${_promotionId}/students/${_currentStudentId}/ficha/transversal`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error((await res.json()).error || 'Error al guardar');
-            _markSaved('transversal');
-            _showToast('Seguimiento transversal guardado ✓');
-        } catch (e) {
-            console.error('[StudentTracking] saveTransversal error:', e);
-            _showToast(e.message || 'Error al guardar seguimiento transversal', 'danger');
-        }
-    }
 
     // Actualiza la fila del estudiante en la tabla de students sin recargar la página
     function _syncStudentInTable(student) {
@@ -2686,11 +2179,8 @@
         _onProjectSelectChange, _onProjectCompetenceChange, _addProjectCompetence, _removePendingCompetence,
         _openCompetenceForm, _saveCompetence, _removeCompetence,
         _openModuleForm, _saveModule, _removeModule, _toggleCourse,
-        _openEmpSessionForm, _saveEmpSession, _removeEmpSession,
-        _openIndSessionForm, _saveIndSession, _removeIndSession,
-        _openIncidentForm, _saveIncident, _resolveIncident, _removeIncident,
         _cancelInlineForm,
-        _saveTechnical, _saveTransversal,
+        _saveTechnical,
         _renderBajaSection, _openBajaForm, _saveWithdrawal, _cancelWithdrawal
     };
 

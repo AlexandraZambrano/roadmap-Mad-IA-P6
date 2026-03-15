@@ -4639,16 +4639,10 @@ function setupForms() {
         const name = document.getElementById('student-name').value;
         const lastname = document.getElementById('student-lastname').value;
         const email = document.getElementById('student-email').value;
-        // const phone = document.getElementById('student-phone').value;
-        // const age = document.getElementById('student-age').value;
-        // const administrativeSituation = document.getElementById('student-admin-situation').value;
-        // const nationality = document.getElementById('student-nationality').value;
-        // const identificationDocument = document.getElementById('student-document').value;
-        // const gender = document.getElementById('student-gender').value;
-        const englishLevel = document.getElementById('student-english-level').value;
-        // const educationLevel = document.getElementById('student-education-level').value;
-        // const profession = document.getElementById('student-profession').value;
-        // const community = document.getElementById('student-community').value;
+        // const englishLevel = document.getElementById('student-english-level')?.value;
+        // const educationLevel = document.getElementById('student-education-level')?.value;
+        // const profession = document.getElementById('student-profession')?.value;
+        // const community = document.getElementById('student-community')?.value;
 
         // Check if we're editing an existing student
         const editingStudentId = document.getElementById('student-form').dataset.editingStudentId;
@@ -4658,17 +4652,7 @@ function setupForms() {
         const studentData = {
             name,
             lastname,
-            email,
-            phone,
-            age: age ? parseInt(age) : null,
-            administrativeSituation,
-            nationality,
-            identificationDocument,
-            gender,
-            englishLevel,
-            educationLevel,
-            profession,
-            community
+            email
         };
 
         console.log('Sending student data:', studentData);
@@ -4940,7 +4924,7 @@ async function loadStudents(retryCount = 0) {
         // Never show a blocking alert during page load — just display inline message
         const studentsContainer = document.getElementById('students-list');
         if (studentsContainer) {
-            studentsContainer.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Error al cargar estudiantes.</td></tr>';
+            studentsContainer.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Error al cargar estudiantes.</td></tr>';
         }
     }
 }
@@ -4954,7 +4938,7 @@ function displayStudents(students) {
     }
 
     if (!students || students.length === 0) {
-        studentsContainer.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No students registered yet.</td></tr>';
+        studentsContainer.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No students registered yet.</td></tr>';
         return;
     }
 
@@ -4972,7 +4956,7 @@ function displayStudents(students) {
     studentsContainer.innerHTML = sorted.map((student, index) => {
         const isStudWithdrawn = !!student.isWithdrawn || (student.withdrawal && student.withdrawal.date);
         const separator = (index === activeCount && withdrawnCount > 0)
-            ? `<tr class="table-danger"><td colspan="6" class="py-1 px-3 small fw-semibold text-danger"><i class="bi bi-person-x me-1"></i>Bajas oficiales (${withdrawnCount})</td></tr>`
+            ? `<tr class="table-danger"><td colspan="4" class="py-1 px-3 small fw-semibold text-danger"><i class="bi bi-person-x me-1"></i>Bajas oficiales (${withdrawnCount})</td></tr>`
             : '';
         const row = `<tr class="${isStudWithdrawn ? 'student-row-withdrawn' : ''}">
             <td>
@@ -4994,8 +4978,6 @@ function displayStudents(students) {
                 </div>
             </td>
             <td>${student.email || 'N/A'}</td>
-            <td>${student.nationality || 'N/A'}</td>
-            <td>${student.profession || 'N/A'}</td>
             <td class="text-end">
                 <div class="btn-group">
                     <button class="btn btn-sm btn-outline-success" onclick="window.StudentTracking?.openFicha('${student.id}')" title="Ficha de Seguimiento">
@@ -5003,9 +4985,6 @@ function displayStudents(students) {
                     </button>
                     <button class="btn btn-sm btn-outline-secondary" onclick="window.Reports?.printTechnical('${student.id}', promotionId)" title="PDF Seguimiento Técnico">
                         <i class="bi bi-file-earmark-bar-graph"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="window.Reports?.printTransversal('${student.id}', promotionId)" title="PDF Seguimiento Transversal">
-                        <i class="bi bi-file-earmark-person"></i>
                     </button>
                     ${!student.isWithdrawn ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}', '${student.email}')" title="Delete">
                         <i class="bi bi-trash"></i>
@@ -5054,16 +5033,6 @@ function editStudent(studentId) {
     document.getElementById('student-name').value = student.name || '';
     document.getElementById('student-lastname').value = student.lastname || '';
     document.getElementById('student-email').value = student.email || '';
-    // document.getElementById('student-phone').value = student.phone || '';
-    // document.getElementById('student-age').value = student.age || '';
-    // document.getElementById('student-admin-situation').value = student.administrativeSituation || '';
-    // document.getElementById('student-nationality').value = student.nationality || '';
-    // document.getElementById('student-document').value = student.identificationDocument || '';
-    // document.getElementById('student-gender').value = student.gender || '';
-    document.getElementById('student-english-level').value = student.englishLevel || '';
-    // document.getElementById('student-education-level').value = student.educationLevel || '';
-    // document.getElementById('student-profession').value = student.profession || '';
-    // document.getElementById('student-community').value = student.community || '';
 
     // Store the student ID for updating
     document.getElementById('student-form').dataset.editingStudentId = studentId;

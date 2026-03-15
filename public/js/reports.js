@@ -3,9 +3,8 @@
  * PDF Report generation via print-window technique
  * 4 report types:
  *   1. Ficha Seguimiento Técnico   (per student)
- *   2. Ficha Seguimiento Transversal (per student)
- *   3. Acta de Inicio               (program-level)
- *   4. Descripción Técnica Formación (full bootcamp)
+ *   2. Acta de Inicio               (program-level)
+ *   3. Descripción Técnica Formación (full bootcamp)
  */
 (function (window) {
     'use strict';
@@ -520,6 +519,13 @@
             // ── Motivo del informe (right after header) ──
             html += _razonBlock(razonInforme);
 
+            // ── Datos personales ──
+            html += `<div class="section-box accent">
+                <div class="kv"><strong>Coder:</strong> ${fullName}</div>
+                <div class="kv"><strong>Promoción:</strong> ${promo.name || '—'}</div>
+                <div class="kv"><strong>Fecha de generación:</strong> ${_today()}</div>
+            </div>`;
+
             // ── Notas del profesor ──
             html += `<h3><span style="color:${PRIMARY}">✦</span> Notas del Profesor</h3>`;
             const notes = tt.teacherNotes || [];
@@ -647,102 +653,6 @@
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // 2. FICHA SEGUIMIENTO TRANSVERSAL
-    // ════════════════════════════════════════════════════════════════════════
-    async function printTransversal(studentId, promotionId) {
-        const token = localStorage.getItem('token');
-        try {
-            const [stuRes, promoRes] = await Promise.all([
-                fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${API_URL}/api/promotions/${promotionId}`,                       { headers: { 'Authorization': `Bearer ${token}` } })
-            ]);
-            if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
-            const s     = await stuRes.json();
-            const promo = promoRes.ok ? await promoRes.json() : {};
-            const tr    = s.transversalTracking || {};
-            const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
-
-            let html = _header(
-                'Ficha de Seguimiento Transversal',
-                fullName,
-                promo.name,
-                _today()
-            );
-
-            // ── Datos personales resumidos ──
-            html += `<div class="section-box accent row2">
-                <div>
-                    <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                    <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
-                    <div class="kv"><strong>Género:</strong> ${_esc(s.gender || '—')}</div>
-                    <div class="kv"><strong>Sit. Administrativa:</strong> ${_esc(s.administrativeSituation || '—')}</div>
-                </div>
-                <div>
-                    <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-                    <div class="kv"><strong>Nivel Educativo:</strong> ${_esc(s.educationLevel || '—')}</div>
-                    <div class="kv"><strong>Comunidad:</strong> ${_esc(s.community || '—')}</div>
-                    <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-                </div>
-            </div>`;
-
-            // ── Sesiones empleabilidad ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Sesiones de Empleabilidad</h3>`;
-            const empSessions = tr.employabilitySessions || [];
-            if (empSessions.length) {
-                html += `<table><thead><tr><th>Fecha</th><th>Tema</th><th>Notas</th></tr></thead><tbody>`;
-                empSessions.forEach(s2 => {
-                    html += `<tr><td>${_fmtDate(s2.date)}</td><td>${_esc(s2.topic || '—')}</td><td>${_esc(s2.notes || '')}</td></tr>`;
-                });
-                html += `</tbody></table>`;
-            } else {
-                html += `<p class="empty-note">Sin sesiones de empleabilidad registradas.</p>`;
-            }
-
-            // ── Sesiones individuales ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Sesiones Individuales</h3>`;
-            const indSessions = tr.individualSessions || [];
-            if (indSessions.length) {
-                html += `<table><thead><tr><th>Fecha</th><th>Tema</th><th>Notas</th></tr></thead><tbody>`;
-                indSessions.forEach(s2 => {
-                    html += `<tr><td>${_fmtDate(s2.date)}</td><td>${_esc(s2.topic || '—')}</td><td>${_esc(s2.notes || '')}</td></tr>`;
-                });
-                html += `</tbody></table>`;
-            } else {
-                html += `<p class="empty-note">Sin sesiones individuales registradas.</p>`;
-            }
-
-            // ── Incidencias ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Incidencias</h3>`;
-            const incidents = tr.incidents || [];
-            if (incidents.length) {
-                html += `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Estado</th></tr></thead><tbody>`;
-                incidents.forEach(inc => {
-                    const estado = inc.resolved
-                        ? `<span class="badge badge-green">Resuelta</span>`
-                        : `<span class="badge badge-red">Pendiente</span>`;
-                    html += `<tr>
-                        <td style="white-space:nowrap;">${_fmtDate(inc.date)}</td>
-                        <td>${_esc(inc.type || '—')}</td>
-                        <td>${_esc(inc.description || '')}</td>
-                        <td>${estado}</td>
-                    </tr>`;
-                });
-                html += `</tbody></table>`;
-            } else {
-                html += `<p class="empty-note">Sin incidencias registradas.</p>`;
-            }
-
-            const filename = `transversal_${(fullName).replace(/\s+/g,'-')}.pdf`;
-            _showSaving('Generando PDF…');
-            await _savePdf(html, filename);
-            _hideSaving();
-        } catch (e) {
-            _hideSaving();
-            console.error('[Reports] printTransversal:', e);
-            alert('Error generando el informe transversal: ' + e.message);
-        }
-    }
 
     // ════════════════════════════════════════════════════════════════════════
     // 3. ACTA DE INICIO
@@ -1653,41 +1563,6 @@ async function printActaInicio(promotionId) {
         }
     }
 
-    // ── 6b. Bulk Transversal ─────────────────────────────────────────────────
-    async function printBulkTransversal(studentIds, promotionId) {
-        if (!studentIds?.length) { alert('Selecciona al menos un estudiante.'); return; }
-        const token = localStorage.getItem('token');
-        try {
-            const promoRes = await fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const promo = promoRes.ok ? await promoRes.json() : {};
-            const students = await Promise.all(studentIds.map(id => _fetchStudent(id, promotionId, token)));
-
-            if (students.length === 1) {
-                const s = students[0];
-                const fullName = `${s.name||''} ${s.lastname||''}`.trim();
-                _showSaving('Generando PDF…');
-                await _savePdf(_transPageHtml(s, promo), `transversal_${fullName.replace(/\s+/g,'-')}.pdf`);
-            } else {
-                // Sequential processing — one iframe at a time
-                const files = [];
-                for (let i = 0; i < students.length; i++) {
-                    const s = students[i];
-                    const fullName = `${s.name||''} ${s.lastname||''}`.trim();
-                    const fname = `transversal_${fullName.replace(/\s+/g,'-')}.pdf`;
-                    _showSaving(`Generando PDF ${i + 1} de ${students.length}: ${fullName}…`);
-                    const blob = await _getPdfBlob(_transPageHtml(s, promo), fname);
-                    files.push({ blob, filename: fname });
-                }
-                _showSaving(`Comprimiendo ${files.length} PDFs…`);
-                await _zipAndDownload(files, `seguimiento-transversal_${(promo.name||'promo').replace(/\s+/g,'-')}.zip`);
-            }
-            _hideSaving();
-        } catch (e) {
-            _hideSaving();
-            console.error('[Reports] printBulkTransversal:', e);
-            alert('Error generando los informes: ' + e.message);
-        }
-    }
 
     // ── 6c. Bulk by Project (all students who participated in a specific project) ──
     // studentIds: array of IDs to process, or null/undefined = all students in the promotion
