@@ -1543,7 +1543,9 @@ app.get('/api/promotions/:promotionId/students', verifyToken, async (req, res) =
       nationality: student.nationality,
       profession: student.profession,
       address: student.address,
-      promotionId: student.promotionId
+      promotionId: student.promotionId,
+      isWithdrawn: !!student.isWithdrawn,
+      withdrawal: student.withdrawal || {}
     }));
 
     res.json(normalizedStudents);
@@ -3582,47 +3584,26 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
     if (body.hasOwnProperty('approvalRole'))           $setFields.approvalRole = approvalRole || '';
     if (Array.isArray(projectEvaluations))             $setFields.projectEvaluations = projectEvaluations;
     if (Array.isArray(projectCompetences))             $setFields.projectCompetences = projectCompetences;
-  if (body.hasOwnProperty('virtualClassroom'))       $setFields.virtualClassroom = virtualClassroom || { isActive: false };
-
+    // Final Update
     const newInfo = await ExtendedInfo.findOneAndUpdate(
       { promotionId: req.params.promotionId },
-      {
-        $set: {
-          schedule: schedule || {},
-          team: team || [],
-          resources: resources || [],
-          evaluation: evaluation || '',
-          pildoras: normalizedPildoras,
-          modulesPildoras: normalizedModulesPildoras,
-          pildorasAssignmentOpen: !!pildorasAssignmentOpen,
-          competences: normalizedCompetences,
-          school: school || '',
-          projectType: projectType || '',
-          positiveExitStart: positiveExitStart || '',
-          positiveExitEnd: positiveExitEnd || '',
-          totalHours: totalHours || '',
-          modality: modality || '',
-          presentialDays: presentialDays || '',
-          materials: materials || '',
-          internships: internships !== undefined ? internships : null,
-          funders: funders || '',
-          funderDeadlines: funderDeadlines || '',
-          okrKpis: okrKpis || '',
-          funderKpis: funderKpis || '',
-          trainerDayOff: trainerDayOff || '',
-          cotrainerDayOff: cotrainerDayOff || '',
-          projectMeetings: projectMeetings || '',
-          teamMeetings: teamMeetings || '',
-          approvalName: approvalName || '',
-          approvalRole: approvalRole || '',
-          overviewTeacherNote: overviewTeacherNote || '',
-          ...(normalizedProjectEvaluations !== undefined ? { projectEvaluations: normalizedProjectEvaluations } : {})
-        }
-      },
+      { $set: $setFields },
       { upsert: true, returnDocument: 'after', strict: false }
     );
+
+    // Mongoose "Mixed" type fields (like projectEvaluations, schedule, etc if defined as such)
+    // sometimes need explicit marking if we are deeply Nesting objects, but findOneAndUpdate $set usually handles it.
+    // However, to be extra safe for future saves:
+    if ($setFields.projectEvaluations) newInfo.markModified('projectEvaluations');
+    if ($setFields.projectCompetences)  newInfo.markModified('projectCompetences');
+    if ($setFields.virtualClassroom)   newInfo.markModified('virtualClassroom');
+    if ($setFields.schedule)           newInfo.markModified('schedule');
+    
+    await newInfo.save();
+
     res.json(newInfo);
   } catch (error) {
+    console.error('Error saving extended info:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -297,25 +297,7 @@ function escapeHtml(text) {
     return text.toString().replace(/[&<>"']/g, function (m) { return map[m]; });
 }
 
-// Utility function to toggle password visibility
-function togglePasswordVisibility(inputId) {
-    const input = document.getElementById(inputId);
-    const button = event.target.closest('.password-toggle');
-    
-    if (input) {
-        if (input.type === 'password') {
-            input.type = 'text';
-            if (button) {
-                button.innerHTML = '<i class="bi bi-eye-slash"></i>';
-            }
-        } else {
-            input.type = 'password';
-            if (button) {
-                button.innerHTML = '<i class="bi bi-eye"></i>';
-            }
-        }
-    }
-}
+// (Immediate CSS injection for student view logic was here)
 
 // Immediate CSS injection for student view (to prevent flicker)
 if (userRole === 'student') {
@@ -2367,6 +2349,16 @@ function switchTab(tabId) {
         section.classList.add('hidden');
     });
 
+    // Redirect these legacy tabs to the unified Teacher Area
+    if (tabId === 'students' || tabId === 'attendance' || tabId === 'evaluation') {
+        const targetTab = tabId;
+        // First switch to teacher-area container
+        switchTab('teacher-area');
+        // Then switch to the specific sub-tab inside it
+        switchTeacherAreaSubTab(targetTab);
+        return;
+    }
+
     const activeTab = document.getElementById(`${tabId}-tab`);
     if (activeTab) {
         activeTab.classList.remove('hidden');
@@ -2385,7 +2377,7 @@ function switchTab(tabId) {
     if (tabId === 'evaluation') loadEvaluation();
     if (tabId === 'teacher-area') {
         // Load teacher area with default overview tab
-        switchTeacherAreaTab('overview');
+        switchTeacherAreaSubTab('overview');
     }
 
     // Update active state in sidebar
@@ -2408,46 +2400,63 @@ function switchTab(tabId) {
             updateProgressInfo(window.currentPromotion, students);
         }
     }
-
-    // Load teacher area when switching to it
-    if (tabId === 'teacher-area') {
-        loadTeacherAreaSection();
-    }
 }
 
 // ==================== TEACHER AREA SECTION ====================
-function loadTeacherAreaSection() {
-    // Load the first tab by default
-    switchTeacherAreaTab('overview');
-}
+// Consolidated handler for switching between sub-sections in Área del Docente
+function switchTeacherAreaSubTab(tabName) {
+    const tabNameMap = {
+        'overview':   { tabId: 'teacher-area-overview',   buttonId: 'teacher-area-overview-tab' },
+        'students':   { tabId: 'teacher-area-students',   buttonId: 'teacher-area-students-tab' },
+        'attendance': { tabId: 'teacher-area-attendance', buttonId: 'teacher-area-attendance-tab' },
+        'evaluation': { tabId: 'teacher-area-evaluation', buttonId: 'teacher-area-evaluation-tab' }
+    };
 
-function switchTeacherAreaTab(tabId) {
-    // Update active tab styling
-    document.querySelectorAll('#teacher-area-tabs .nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
-    document.getElementById(`teacher-area-${tabId}-tab`)?.classList.add('active');
-
-    // Hide all panes
-    document.querySelectorAll('#teacher-area-content .tab-pane').forEach(pane => {
-        pane.classList.remove('show', 'active');
-    });
-
-    // Show active pane
-    const activePane = document.getElementById(`teacher-area-${tabId}`);
-    if (activePane) {
-        activePane.classList.add('show', 'active');
+    const tab = tabNameMap[tabName];
+    if (!tab) {
+        console.error('Invalid teacher area sub-tab:', tabName);
+        return;
     }
 
-    // Load content based on tab
-    if (tabId === 'overview') {
-        loadTeacherAreaOverview();
-    } else if (tabId === 'students') {
-        loadTeacherAreaStudents();
-    } else if (tabId === 'attendance') {
-        loadTeacherAreaAttendance();
-    } else if (tabId === 'evaluation') {
-        loadTeacherAreaEvaluation();
+    // Update active tab styling for main teacher area tabs
+    document.querySelectorAll('#teacher-area-subtabs .nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    document.getElementById(`teacher-area-${tabName}-tab`)?.classList.add('active');
+
+    // Hide all panes
+    document.querySelectorAll('#teacher-area-subtabs-content .tab-pane').forEach(pane => {
+        pane.classList.remove('show', 'active');
+        pane.style.display = 'none'; // Ensure it's hidden
+    });
+
+    // Remove active class from all sub-tab buttons
+    const allButtons = document.querySelectorAll('#teacher-area-subtabs .nav-link');
+    allButtons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+    });
+
+    // Show selected tab and activate its button
+    const selectedTab = document.getElementById(tab.tabId);
+    const selectedButton = document.getElementById(tab.buttonId);
+    
+    if (selectedTab && selectedButton) {
+        selectedTab.style.display = 'block';
+        selectedTab.classList.add('show', 'active');
+        selectedButton.classList.add('active');
+        selectedButton.setAttribute('aria-selected', 'true');
+
+        // Trigger appropriate loader based on tab
+        if (tabName === 'overview') {
+            loadTeacherAreaOverview();
+        } else if (tabName === 'students') {
+            loadStudents(); // Ensure loadStudents is called for the students tab
+        } else if (tabName === 'attendance') {
+            loadAttendance();
+        } else if (tabName === 'evaluation') {
+            loadEvaluation();
+        }
     }
 }
 
@@ -2468,55 +2477,6 @@ async function loadTeacherAreaOverview() {
         }
     } catch (error) {
         console.error('Error loading teacher area overview:', error);
-    }
-}
-
-// ==================== TEACHER AREA SUB-TABS ====================
-// Handle switching between sub-sections in Área del Docente
-function switchTeacherAreaSubTab(tabName) {
-    // To prevent duplicate DOM ID issues (which break JavaScript logic for Evaluation, Attendance, and Students), 
-    // we redirect these sub-tab clicks directly to their fully functional main tabs.
-    if (tabName === 'students' || tabName === 'attendance' || tabName === 'evaluation') {
-        switchTab(tabName);
-        return;
-    }
-
-    const tabNameMap = {
-        'overview': { tabId: 'teacher-area-overview', buttonId: 'teacher-area-overview-tab', label: 'Resumen' }
-        // Add any genuine subtabs here that aren't copies of main tabs
-    };
-
-    const tab = tabNameMap[tabName];
-    if (!tab) return;
-
-    // Hide all sub-tabs
-    const allTabs = document.querySelectorAll('#teacher-area-subtabs-content .tab-pane');
-    allTabs.forEach(t => {
-        t.style.display = 'none';
-        t.classList.remove('show', 'active');
-    });
-
-    // Remove active class from all buttons
-    const allButtons = document.querySelectorAll('#teacher-area-subtabs .nav-link');
-    allButtons.forEach(btn => {
-        btn.classList.remove('active');
-        btn.setAttribute('aria-selected', 'false');
-    });
-
-    // Show selected tab with animation
-    const selectedTab = document.getElementById(tab.tabId);
-    if (selectedTab) {
-        selectedTab.style.display = 'block';
-        // Trigger reflow to enable animation
-        void selectedTab.offsetHeight;
-        selectedTab.classList.add('show', 'active');
-    }
-
-    // Activate selected button
-    const selectedButton = document.getElementById(tab.buttonId);
-    if (selectedButton) {
-        selectedButton.classList.add('active');
-        selectedButton.setAttribute('aria-selected', 'true');
     }
 }
 
@@ -2616,238 +2576,6 @@ function displayTeacherAreaQuickActions(promotion) {
     container.appendChild(gridContainer);
 }
 
-// Load students view in teacher area
-async function loadTeacherAreaStudents() {
-    const container = document.getElementById('teacher-area-students-content');
-    if (!container) return;
-
-    // Show loading state
-    container.innerHTML = '<p class="text-muted text-center py-5"><i class="bi bi-hourglass-split me-2"></i>Cargando estudiantes...</p>';
-
-    // Load students data
-    const token = localStorage.getItem('token');
-    try {
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            const students = await response.json();
-            
-            // Temporarily move teacher-area-students-content IDs to be the same as the main students table
-            // to reuse the rendering logic
-            const tempOriginalId = 'students-list';
-            const tempTeacherId = 'teacher-area-students-list-temp';
-            
-            // Get or create the list container
-            let listContainer = document.getElementById(tempOriginalId);
-            if (!listContainer) {
-                listContainer = document.createElement('tbody');
-                listContainer.id = tempOriginalId;
-                const table = document.querySelector('#students-table tbody') || container;
-                if (table.tagName === 'TBODY') {
-                    table.parentElement.appendChild(listContainer);
-                }
-            }
-
-            // Render students directly in container using the main students rendering logic
-            renderStudentsTableInContainer(container, students);
-        } else {
-            container.innerHTML = '<p class="text-danger text-center py-5">Error cargando estudiantes</p>';
-        }
-    } catch (error) {
-        console.error('Error loading students:', error);
-        container.innerHTML = '<p class="text-danger text-center py-5">Error: ' + error.message + '</p>';
-    }
-}
-
-function renderStudentsTableInContainer(container, students) {
-    if (!students || students.length === 0) {
-        container.innerHTML = '<p class="text-muted text-center py-5">No hay estudiantes</p>';
-        return;
-    }
-
-    // Sort: active students first, withdrawn at the bottom
-    const sorted = [...students].sort((a, b) => {
-        if (!!a.isWithdrawn === !!b.isWithdrawn) return (a.name || '').localeCompare(b.name || '');
-        return a.isWithdrawn ? 1 : -1;
-    });
-
-    const activeCount    = sorted.filter(s => !s.isWithdrawn).length;
-    const withdrawnCount = sorted.length - activeCount;
-
-    // Build the complete structure like the main students tab
-    let html = `
-        <div class="mb-3">
-            <div class="input-group" style="max-width: 420px;">
-                <span class="input-group-text bg-white border-end-0">
-                    <i class="bi bi-search text-muted"></i>
-                </span>
-                <input type="text" class="form-control border-start-0 teacher-student-search"
-                    placeholder="Buscar por nombre, email, nacionalidad…"
-                    oninput="filterTeacherStudentsTable(this.value)">
-                <button class="btn btn-outline-secondary" type="button"
-                    onclick="this.previousElementSibling.value=''; filterTeacherStudentsTable('');"
-                    title="Limpiar búsqueda">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="table-responsive">
-            <table class="table table-hover align-middle teacher-students-table">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 40px;">
-                            <input type="checkbox" class="form-check-input teacher-select-all-students-header"
-                                onchange="toggleAllTeacherStudents(this)">
-                        </th>
-                        <th>Nombre</th>
-                        <th>Email</th>
-                        <th>Nacionalidad</th>
-                        <th>Profesión</th>
-                        <th class="text-end">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody class="teacher-students-list">
-    `;
-
-    sorted.forEach((student, index) => {
-        const separator = (index === activeCount && withdrawnCount > 0)
-            ? `<tr class="table-danger"><td colspan="6" class="py-1 px-3 small fw-semibold text-danger"><i class="bi bi-person-x me-1"></i>Bajas oficiales (${withdrawnCount})</td></tr>`
-            : '';
-        const row = `<tr class="${student.isWithdrawn ? 'student-row-withdrawn' : ''}" data-student-id="${student.id}">
-            <td>
-                <input type="checkbox" class="form-check-input teacher-student-checkbox" 
-                       data-student-id="${student.id}" 
-                       onchange="updateSelectionState()"
-                       ${student.isWithdrawn ? 'disabled' : ''} value="${student.id}">
-            </td>
-            <td>
-                <div class="fw-bold">
-                    ${!student.isWithdrawn
-                        ? `<a href="#" class="student-name-link text-decoration-none text-dark"
-                            onclick="event.preventDefault(); window.StudentTracking?.openFicha('${student.id}')"
-                            title="Ver ficha de ${escapeHtml(studentFullName(student))}"
-                            >${student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A'}</a>`
-                        : (student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A')
-                    }
-                    ${student.isWithdrawn ? `<span class="badge bg-danger ms-2" style="font-size:.65rem;" title="Baja desde ${student.withdrawal?.date ? new Date(student.withdrawal.date).toLocaleDateString('es-ES') : ''}">BAJA</span>` : ''}
-                </div>
-            </td>
-            <td>${student.email || 'N/A'}</td>
-            <td>${student.nationality || 'N/A'}</td>
-            <td>${student.profession || 'N/A'}</td>
-            <td class="text-end">
-                <div class="btn-group">
-                    <button class="btn btn-sm btn-outline-success" onclick="window.StudentTracking?.openFicha('${student.id}')" title="Ficha de Seguimiento">
-                        <i class="bi bi-person-lines-fill"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="window.Reports?.printTechnical('${student.id}', promotionId)" title="PDF Seguimiento Técnico">
-                        <i class="bi bi-file-earmark-bar-graph"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="window.Reports?.printTransversal('${student.id}', promotionId)" title="PDF Seguimiento Transversal">
-                        <i class="bi bi-file-earmark-person"></i>
-                    </button>
-                    ${!student.isWithdrawn ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}', '${student.email}')" title="Delete">
-                        <i class="bi bi-trash"></i>
-                    </button>` : ''}
-                </div>
-            </td>
-        </tr>`;
-        html += separator + row;
-    });
-
-    html += `
-                </tbody>
-            </table>
-        </div>
-    `;
-
-    container.innerHTML = html;
-}
-
-function filterTeacherStudentsTable(searchTerm) {
-    const rows = document.querySelectorAll('.teacher-students-table tbody tr');
-    searchTerm = searchTerm.toLowerCase();
-
-    rows.forEach(row => {
-        // Skip separator rows
-        if (row.classList.contains('table-danger')) {
-            row.style.display = '';
-            return;
-        }
-
-        const cells = row.querySelectorAll('td');
-        if (cells.length < 5) return;
-
-        const name = cells[1]?.textContent || '';
-        const email = cells[2]?.textContent || '';
-        const nationality = cells[3]?.textContent || '';
-        
-        const matches = name.toLowerCase().includes(searchTerm) || 
-                       email.toLowerCase().includes(searchTerm) || 
-                       nationality.toLowerCase().includes(searchTerm);
-        
-        row.style.display = matches ? '' : 'none';
-    });
-}
-
-function toggleAllTeacherStudents(checkbox) {
-    const checkboxes = document.querySelectorAll('.teacher-student-checkbox');
-    checkboxes.forEach(cb => cb.checked = checkbox.checked);
-}
-
-// Load attendance view in teacher area
-async function loadTeacherAreaAttendance() {
-    const container = document.getElementById('teacher-area-attendance-content');
-    if (!container) return;
-
-    // Show loading state
-    container.innerHTML = '<p class="text-muted"><i class="bi bi-hourglass-split me-2"></i>Cargando asistencia...</p>';
-
-    // Call the existing loadAttendance function
-    loadAttendance();
-
-    // Wait a moment for the main tab to render, then copy its HTML
-    setTimeout(() => {
-        const mainAttendanceTab = document.getElementById('attendance-tab');
-        if (mainAttendanceTab) {
-            // Copy the entire content
-            const children = mainAttendanceTab.querySelectorAll(':scope > div');
-            let html = '';
-            children.forEach(child => {
-                html += child.outerHTML;
-            });
-            if (html) {
-                container.innerHTML = html;
-            }
-        }
-    }, 1000);
-}
-
-// Load evaluation view in teacher area
-async function loadTeacherAreaEvaluation() {
-    const container = document.getElementById('teacher-area-evaluation-content');
-    if (!container) return;
-
-    // Show loading state
-    container.innerHTML = `<div class="text-center text-muted py-5">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-2">Cargando proyectos...</p>
-    </div>`;
-
-    // Load the main evaluation content
-    loadEvaluation();
-
-    // Wait for the main evaluation tab to render, then copy its content
-    setTimeout(() => {
-        const mainEvalTab = document.getElementById('evaluation-content');
-        if (mainEvalTab && mainEvalTab.innerHTML) {
-            container.innerHTML = mainEvalTab.innerHTML;
-        }
-    }, 2000);  // Wait 2 seconds for async evaluation data to load
-}
 
 function renderTeacherAreaEvaluation(container, promo, programCompetences, students) {
     if (!promo.projects || promo.projects.length === 0) {
@@ -5227,34 +4955,37 @@ function displayStudents(students) {
 
     // Sort: active students first, withdrawn at the bottom
     const sorted = [...students].sort((a, b) => {
-        if (!!a.isWithdrawn === !!b.isWithdrawn) return (a.name || '').localeCompare(b.name || '');
-        return a.isWithdrawn ? 1 : -1;
+        const aW = !!a.isWithdrawn || (a.withdrawal && a.withdrawal.date);
+        const bW = !!b.isWithdrawn || (b.withdrawal && b.withdrawal.date);
+        if (aW === bW) return (a.name || '').localeCompare(b.name || '');
+        return aW ? 1 : -1;
     });
 
-    const activeCount    = sorted.filter(s => !s.isWithdrawn).length;
+    const activeCount    = sorted.filter(s => !(!!s.isWithdrawn || (s.withdrawal && s.withdrawal.date))).length;
     const withdrawnCount = sorted.length - activeCount;
 
     studentsContainer.innerHTML = sorted.map((student, index) => {
+        const isStudWithdrawn = !!student.isWithdrawn || (student.withdrawal && student.withdrawal.date);
         const separator = (index === activeCount && withdrawnCount > 0)
             ? `<tr class="table-danger"><td colspan="6" class="py-1 px-3 small fw-semibold text-danger"><i class="bi bi-person-x me-1"></i>Bajas oficiales (${withdrawnCount})</td></tr>`
             : '';
-        const row = `<tr class="${student.isWithdrawn ? 'student-row-withdrawn' : ''}">
+        const row = `<tr class="${isStudWithdrawn ? 'student-row-withdrawn' : ''}">
             <td>
                 <input type="checkbox" class="form-check-input student-checkbox" 
                        data-student-id="${student.id}" 
                        onchange="updateSelectionState()"
-                       ${student.isWithdrawn ? 'disabled' : ''}>
+                       ${isStudWithdrawn ? 'disabled' : ''}>
             </td>
             <td>
                 <div class="fw-bold">
-                    ${!student.isWithdrawn
+                    ${!isStudWithdrawn
                         ? `<a href="#" class="student-name-link text-decoration-none text-dark"
                             onclick="event.preventDefault(); window.StudentTracking?.openFicha('${student.id}')"
                             title="Ver ficha de ${escapeHtml(studentFullName(student))}"
                             >${student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A'}</a>`
                         : (student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A')
                     }
-                    ${student.isWithdrawn ? `<span class="badge bg-danger ms-2" style="font-size:.65rem;" title="Baja desde ${student.withdrawal?.date ? new Date(student.withdrawal.date).toLocaleDateString('es-ES') : ''}">BAJA</span>` : ''}
+                    ${isStudWithdrawn ? `<span class="badge bg-danger ms-2" style="font-size:.65rem;" title="Baja desde ${student.withdrawal?.date ? new Date(student.withdrawal.date).toLocaleDateString('es-ES') : ''}">BAJA</span>` : ''}
                 </div>
             </td>
             <td>${student.email || 'N/A'}</td>
@@ -6850,7 +6581,7 @@ function renderAttendanceTable() {
             // Block attendance cells on/after withdrawal date for withdrawn students
             const isWithdrawnDay = student.isWithdrawn &&
                 student.withdrawal?.date &&
-                dateKey >= student.withdrawal.date.split('T')[0];
+                (dateKey >= student.withdrawal.date.split('T')[0]);
 
             const td = document.createElement('td');
 
