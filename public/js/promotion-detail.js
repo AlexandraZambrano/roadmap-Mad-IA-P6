@@ -323,7 +323,7 @@ function initMobileMenu() {
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
-    
+
     if (sidebarToggle && sidebar) {
         sidebarToggle.addEventListener('click', () => {
             sidebar.classList.toggle('show');
@@ -331,7 +331,7 @@ function initMobileMenu() {
                 sidebarOverlay.classList.toggle('show');
             }
         });
-        
+
         // Close sidebar when clicking overlay
         if (sidebarOverlay) {
             sidebarOverlay.addEventListener('click', () => {
@@ -339,7 +339,7 @@ function initMobileMenu() {
                 sidebarOverlay.classList.remove('show');
             });
         }
-        
+
         // Close sidebar when clicking on a nav link
         const navLinks = sidebar.querySelectorAll('.nav-link');
         navLinks.forEach(link => {
@@ -358,6 +358,11 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
     promotionId = new URLSearchParams(window.location.search).get('id');
 
+    // Alias for search bar compatibility
+    window.filterStudents = filterStudentsTable;
+    window.exportStudentsCsv = exportAllStudentsExcel; // Map CSV buttons to Excel as requested
+    window.exportStudentsExcel = exportAllStudentsExcel;
+
     if (!promotionId) {
         window.location.href = 'dashboard.html';
         return;
@@ -371,10 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (calendarPreviewIframe) {
         // The calendar will be loaded when loadCalendar() is called and when the calendar ID is available
         // We'll set this up in a function that gets called after the calendar is loaded
-        window.setupCalendarPreview = function() {
+        window.setupCalendarPreview = function () {
             // Use the global calendar ID variable instead of relying on the HTML field
             const calendarId = currentCalendarId || '';
-            
+
             if (calendarId) {
                 const embedUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Madrid&mode=AGENDA`;
                 calendarPreviewIframe.src = embedUrl;
@@ -525,17 +530,17 @@ async function loadExtendedInfo() {
             const sched = extendedInfoData.schedule || {};
             const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
             if (sched.online) {
-                _set('sched-online-entry',  sched.online.entry);
-                _set('sched-online-start',  sched.online.start);
-                _set('sched-online-break',  sched.online.break);
-                _set('sched-online-lunch',  sched.online.lunch);
+                _set('sched-online-entry', sched.online.entry);
+                _set('sched-online-start', sched.online.start);
+                _set('sched-online-break', sched.online.break);
+                _set('sched-online-lunch', sched.online.lunch);
                 _set('sched-online-finish', sched.online.finish);
             }
             if (sched.presential) {
-                _set('sched-presential-entry',  sched.presential.entry);
-                _set('sched-presential-start',  sched.presential.start);
-                _set('sched-presential-break',  sched.presential.break);
-                _set('sched-presential-lunch',  sched.presential.lunch);
+                _set('sched-presential-entry', sched.presential.entry);
+                _set('sched-presential-start', sched.presential.start);
+                _set('sched-presential-break', sched.presential.break);
+                _set('sched-presential-lunch', sched.presential.lunch);
                 _set('sched-presential-finish', sched.presential.finish);
             }
             _set('sched-notes', sched.notes);
@@ -1378,15 +1383,15 @@ let _resourceCatalogFiltered = [];
 async function openResourceModal() {
     resourceModal.show();
 
-    const grid     = document.getElementById('resource-catalog-grid');
-    const loading  = document.getElementById('resource-catalog-loading');
-    const emptyEl  = document.getElementById('resource-catalog-empty');
-    const countEl  = document.getElementById('resource-catalog-count');
+    const grid = document.getElementById('resource-catalog-grid');
+    const loading = document.getElementById('resource-catalog-loading');
+    const emptyEl = document.getElementById('resource-catalog-empty');
+    const countEl = document.getElementById('resource-catalog-count');
 
     // Reset inputs
     document.getElementById('resource-search-input').value = '';
-    document.getElementById('resource-area-filter').value  = '';
-    document.getElementById('resource-type-filter').value  = '';
+    document.getElementById('resource-area-filter').value = '';
+    document.getElementById('resource-type-filter').value = '';
 
     // If we already have the catalog cached, just re-render
     if (_resourceCatalogAll.length) {
@@ -1449,14 +1454,14 @@ function _buildResourceFilterOptions() {
         .join('');
 
     areaSelect.innerHTML = '<option value="">Todas las áreas</option>' + makeOptions(areasMap);
-    typeSelect.innerHTML = '<option value="">Todos los tipos</option>'  + makeOptions(typesMap);
+    typeSelect.innerHTML = '<option value="">Todos los tipos</option>' + makeOptions(typesMap);
 }
 
 /** Filter the catalog list and re-render */
 function filterResourceCatalog() {
-    const query    = (document.getElementById('resource-search-input').value || '').toLowerCase().trim();
-    const areaId   = document.getElementById('resource-area-filter').value;
-    const typeId   = document.getElementById('resource-type-filter').value;
+    const query = (document.getElementById('resource-search-input').value || '').toLowerCase().trim();
+    const areaId = document.getElementById('resource-area-filter').value;
+    const typeId = document.getElementById('resource-type-filter').value;
 
     _resourceCatalogFiltered = _resourceCatalogAll.filter(r => {
         // Area filter
@@ -1482,7 +1487,7 @@ function filterResourceCatalog() {
 
 /** Render the filtered resource cards inside the grid */
 function _renderResourceCatalog() {
-    const grid    = document.getElementById('resource-catalog-grid');
+    const grid = document.getElementById('resource-catalog-grid');
     const emptyEl = document.getElementById('resource-catalog-empty');
     const countEl = document.getElementById('resource-catalog-count');
 
@@ -1506,12 +1511,12 @@ function _renderResourceCatalog() {
 
 /** Build the HTML for a single resource card */
 function _resourceCardHtml(r, alreadyAdded) {
-    const typeNames  = (r.types  || []).map(t => `<span class="badge bg-primary-subtle text-primary border border-primary-subtle">${escapeHtml(t.name)}</span>`).join(' ');
-    const areaBadges = (r.areas  || []).slice(0, 3).map(a =>
+    const typeNames = (r.types || []).map(t => `<span class="badge bg-primary-subtle text-primary border border-primary-subtle">${escapeHtml(t.name)}</span>`).join(' ');
+    const areaBadges = (r.areas || []).slice(0, 3).map(a =>
         `<span class="badge bg-light text-dark border small">${escapeHtml(a.name)}</span>`).join(' ');
-    const toolBadges = (r.tools  || []).slice(0, 4).map(t =>
+    const toolBadges = (r.tools || []).slice(0, 4).map(t =>
         `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle small">${escapeHtml(t.name)}</span>`).join(' ');
-    const provider   = (r.providers || [])[0];
+    const provider = (r.providers || [])[0];
     const providerHtml = provider
         ? `<span class="text-muted small"><i class="bi bi-building me-1"></i>${escapeHtml(provider.name)}</span>`
         : '';
@@ -1998,14 +2003,14 @@ async function _syncCompetencesToRoadmap() {
 
 // ── Acta de Inicio modal ─────────────────────────────────────────────────────
 
-const WEEKDAYS = ['lunes','martes','miércoles','jueves','viernes'];
+const WEEKDAYS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes'];
 // Map each weekday to its checkbox id suffix (avoids issues with accented chars in substring)
-const WEEKDAY_IDS = { 'lunes':'lun', 'martes':'mar', 'miércoles':'mie', 'jueves':'jue', 'viernes':'vie' };
+const WEEKDAY_IDS = { 'lunes': 'lun', 'martes': 'mar', 'miércoles': 'mie', 'jueves': 'jue', 'viernes': 'vie' };
 
 /** Build a weekday <select> with given id and optional selected value */
 function _actaDaySelect(id, selected) {
     const opts = WEEKDAYS.map(d =>
-        `<option value="${d}"${d === selected ? ' selected' : ''}>${d.charAt(0).toUpperCase()+d.slice(1)}</option>`
+        `<option value="${d}"${d === selected ? ' selected' : ''}>${d.charAt(0).toUpperCase() + d.slice(1)}</option>`
     ).join('');
     return `<select class="form-select form-select-sm" id="${id}" style="min-width:130px;">${opts}</select>`;
 }
@@ -2013,7 +2018,7 @@ function _actaDaySelect(id, selected) {
 /** Re-render the KPI textareas per funder */
 function actaRenderFunderKpis() {
     const container = document.getElementById('acta-funder-kpis-container');
-    const emptyMsg  = document.getElementById('acta-funder-kpis-empty');
+    const emptyMsg = document.getElementById('acta-funder-kpis-empty');
     const tags = document.querySelectorAll('#acta-funders-tags .acta-tag');
     const funders = Array.from(tags).map(t => t.dataset.value);
 
@@ -2047,7 +2052,7 @@ function actaAddFunder(value) {
     // Check uniqueness
     const existing = Array.from(document.querySelectorAll('#acta-funders-tags .acta-tag'))
         .map(t => t.dataset.value);
-    if (existing.includes(val)) { if (!value) { input.value=''; } return; }
+    if (existing.includes(val)) { if (!value) { input.value = ''; } return; }
 
     const tag = document.createElement('span');
     tag.className = 'acta-tag';
@@ -2065,7 +2070,7 @@ function actaAddDayOffRow(type, moduleName, dayValue) {
     const div = document.createElement('div');
     div.className = 'acta-dayoff-row';
     div.innerHTML = `
-        <input type="text" class="form-control form-control-sm" placeholder="Buscar persona..." list="acta-users-datalist" value="${moduleName||''}">
+        <input type="text" class="form-control form-control-sm" placeholder="Buscar persona..." list="acta-users-datalist" value="${moduleName || ''}">
         ${_actaDaySelect(`${rowId}-day`, dayValue || 'lunes')}
         <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()">
             <i class="bi bi-trash"></i>
@@ -2078,7 +2083,7 @@ function _actaReadDayOffRows(type) {
     const rows = document.querySelectorAll(`#acta-${type}-dayoff-rows .acta-dayoff-row`);
     return Array.from(rows).map(row => {
         const name = row.querySelector('input[type=text]')?.value.trim() || '';
-        const day  = row.querySelector('select')?.value || '';
+        const day = row.querySelector('select')?.value || '';
         return name ? `${name} (${day})` : day;
     }).filter(Boolean).join('. ');
 }
@@ -2111,25 +2116,25 @@ function openActaModal() {
     const d = extendedInfoData;
 
     // Simple fields
-    document.getElementById('acta-school').value         = d.school || '';
-    document.getElementById('acta-project-type').value   = d.projectType || 'Bootcamp';
-    document.getElementById('acta-total-hours').value    = d.totalHours || '';
-    document.getElementById('acta-modality').value       = d.modality || '';
-    document.getElementById('acta-materials').value      = d.materials || 'No son necesarios recursos adicionales.';
+    document.getElementById('acta-school').value = d.school || '';
+    document.getElementById('acta-project-type').value = d.projectType || 'Bootcamp';
+    document.getElementById('acta-total-hours').value = d.totalHours || '';
+    document.getElementById('acta-modality').value = d.modality || '';
+    document.getElementById('acta-materials').value = d.materials || 'No son necesarios recursos adicionales.';
     document.getElementById('acta-funder-deadlines').value = d.funderDeadlines || '';
-    document.getElementById('acta-okr-kpis').value       = d.okrKpis ||
+    document.getElementById('acta-okr-kpis').value = d.okrKpis ||
         'PIPO3.R1 Satisfacción 4,2/5 de coders sobre la excelencia del equipo formativo de la formación\nISEC2.R1 Jornadas de selección con un 40% de personas participantes con el proceso 100% finalizado.\nISEC3.R2 Resultado 78% salida positiva.\nISECR2 Finalizar cada programa con un máximo de bajas de 10%.';
     document.getElementById('acta-project-meetings').value = d.projectMeetings || 'Ver el calendario de reuniones en Asana.';
 
     // Date inputs
     const today = _actaToday();
     const startEl = document.getElementById('acta-positive-exit-start');
-    const endEl   = document.getElementById('acta-positive-exit-end');
+    const endEl = document.getElementById('acta-positive-exit-end');
     startEl.min = today;
-    endEl.min   = today;
+    endEl.min = today;
     // stored as YYYY-MM-DD or human string — if it looks like a date input value use it, else keep blank
     startEl.value = /^\d{4}-\d{2}-\d{2}$/.test(d.positiveExitStart) ? d.positiveExitStart : '';
-    endEl.value   = /^\d{4}-\d{2}-\d{2}$/.test(d.positiveExitEnd)   ? d.positiveExitEnd   : '';
+    endEl.value = /^\d{4}-\d{2}-\d{2}$/.test(d.positiveExitEnd) ? d.positiveExitEnd : '';
 
     // Presential days checkboxes
     const storedDays = (d.presentialDays || '').toLowerCase();
@@ -2141,7 +2146,7 @@ function openActaModal() {
     // Presential location — extract from stored string if possible
     const locationSelect = document.getElementById('acta-presential-location');
     const locations = Array.from(locationSelect.options).map(o => o.value).filter(Boolean);
-    const matchedLoc = locations.find(l => (d.presentialDays||'').includes(l));
+    const matchedLoc = locations.find(l => (d.presentialDays || '').includes(l));
     locationSelect.value = matchedLoc || '';
 
     // Internships
@@ -2178,9 +2183,9 @@ function openActaModal() {
     }
 
     // Day-off rows
-    _actaPopulateDayOffRows('trainer',   d.trainerDayOff   || '');
+    _actaPopulateDayOffRows('trainer', d.trainerDayOff || '');
     _actaPopulateDayOffRows('cotrainer', d.cotrainerDayOff || '');
-    if (!document.querySelector('#acta-trainer-dayoff-rows .acta-dayoff-row'))   actaAddDayOffRow('trainer');
+    if (!document.querySelector('#acta-trainer-dayoff-rows .acta-dayoff-row')) actaAddDayOffRow('trainer');
     if (!document.querySelector('#acta-cotrainer-dayoff-rows .acta-dayoff-row')) actaAddDayOffRow('cotrainer');
 
     // Team meeting
@@ -2190,7 +2195,7 @@ function openActaModal() {
         const day = tmParts[1].toLowerCase();
         if (WEEKDAYS.includes(day)) dayEl.value = day;
         document.getElementById('acta-team-meeting-start').value = tmParts[2];
-        document.getElementById('acta-team-meeting-end').value   = tmParts[3];
+        document.getElementById('acta-team-meeting-end').value = tmParts[3];
     }
 
     // Approval fields
@@ -2207,14 +2212,14 @@ async function saveActaData() {
     const token = localStorage.getItem('token');
 
     // Simple fields
-    extendedInfoData.school          = document.getElementById('acta-school').value;
-    extendedInfoData.projectType     = document.getElementById('acta-project-type').value;
-    extendedInfoData.materials       = document.getElementById('acta-materials').value;
+    extendedInfoData.school = document.getElementById('acta-school').value;
+    extendedInfoData.projectType = document.getElementById('acta-project-type').value;
+    extendedInfoData.materials = document.getElementById('acta-materials').value;
     extendedInfoData.funderDeadlines = document.getElementById('acta-funder-deadlines').value;
-    extendedInfoData.okrKpis         = document.getElementById('acta-okr-kpis').value;
+    extendedInfoData.okrKpis = document.getElementById('acta-okr-kpis').value;
     extendedInfoData.projectMeetings = document.getElementById('acta-project-meetings').value;
-    extendedInfoData.totalHours      = document.getElementById('acta-total-hours').value;
-    extendedInfoData.modality        = document.getElementById('acta-modality').value;
+    extendedInfoData.totalHours = document.getElementById('acta-total-hours').value;
+    extendedInfoData.modality = document.getElementById('acta-modality').value;
 
     // Internships
     const inRaw = document.getElementById('acta-internships').value;
@@ -2222,7 +2227,7 @@ async function saveActaData() {
 
     // Dates (stored as YYYY-MM-DD)
     extendedInfoData.positiveExitStart = document.getElementById('acta-positive-exit-start').value;
-    extendedInfoData.positiveExitEnd   = document.getElementById('acta-positive-exit-end').value;
+    extendedInfoData.positiveExitEnd = document.getElementById('acta-positive-exit-end').value;
 
     // Presential days + location
     const checkedDays = WEEKDAYS.filter(day => {
@@ -2232,7 +2237,7 @@ async function saveActaData() {
     const location = document.getElementById('acta-presential-location').value;
     const dayCount = checkedDays.length;
     extendedInfoData.presentialDays = dayCount
-        ? `${dayCount} día${dayCount>1?'s':''}, ${checkedDays.join(' y ')}${location ? ', '+location : ''}`
+        ? `${dayCount} día${dayCount > 1 ? 's' : ''}, ${checkedDays.join(' y ')}${location ? ', ' + location : ''}`
         : (location || '');
 
     // Funders (unique tags → newline-separated)
@@ -2248,13 +2253,13 @@ async function saveActaData() {
     extendedInfoData.funderKpis = kpiBlocks.join('\n---\n');
 
     // Day-off rows
-    extendedInfoData.trainerDayOff   = _actaReadDayOffRows('trainer');
+    extendedInfoData.trainerDayOff = _actaReadDayOffRows('trainer');
     extendedInfoData.cotrainerDayOff = _actaReadDayOffRows('cotrainer');
 
     // Team meetings
-    const tmDay   = document.getElementById('acta-team-meeting-day').value;
+    const tmDay = document.getElementById('acta-team-meeting-day').value;
     const tmStart = document.getElementById('acta-team-meeting-start').value;
-    const tmEnd   = document.getElementById('acta-team-meeting-end').value;
+    const tmEnd = document.getElementById('acta-team-meeting-end').value;
     extendedInfoData.teamMeetings = `Semanal - ${tmDay} (${tmStart}-${tmEnd})`;
 
     // Approval fields
@@ -2265,25 +2270,25 @@ async function saveActaData() {
         // Build a payload with ONLY the acta fields — do NOT send unrelated fields
         // (competences, team, resources, schedule, pildoras, etc.) to avoid wiping them.
         const actaPayload = {
-            school:            extendedInfoData.school,
-            projectType:       extendedInfoData.projectType,
-            materials:         extendedInfoData.materials,
-            funderDeadlines:   extendedInfoData.funderDeadlines,
-            okrKpis:           extendedInfoData.okrKpis,
-            projectMeetings:   extendedInfoData.projectMeetings,
-            totalHours:        extendedInfoData.totalHours,
-            modality:          extendedInfoData.modality,
-            internships:       extendedInfoData.internships,
+            school: extendedInfoData.school,
+            projectType: extendedInfoData.projectType,
+            materials: extendedInfoData.materials,
+            funderDeadlines: extendedInfoData.funderDeadlines,
+            okrKpis: extendedInfoData.okrKpis,
+            projectMeetings: extendedInfoData.projectMeetings,
+            totalHours: extendedInfoData.totalHours,
+            modality: extendedInfoData.modality,
+            internships: extendedInfoData.internships,
             positiveExitStart: extendedInfoData.positiveExitStart,
-            positiveExitEnd:   extendedInfoData.positiveExitEnd,
-            presentialDays:    extendedInfoData.presentialDays,
-            funders:           extendedInfoData.funders,
-            funderKpis:        extendedInfoData.funderKpis,
-            trainerDayOff:     extendedInfoData.trainerDayOff,
-            cotrainerDayOff:   extendedInfoData.cotrainerDayOff,
-            teamMeetings:      extendedInfoData.teamMeetings,
-            approvalName:      extendedInfoData.approvalName,
-            approvalRole:      extendedInfoData.approvalRole,
+            positiveExitEnd: extendedInfoData.positiveExitEnd,
+            presentialDays: extendedInfoData.presentialDays,
+            funders: extendedInfoData.funders,
+            funderKpis: extendedInfoData.funderKpis,
+            trainerDayOff: extendedInfoData.trainerDayOff,
+            cotrainerDayOff: extendedInfoData.cotrainerDayOff,
+            teamMeetings: extendedInfoData.teamMeetings,
+            approvalName: extendedInfoData.approvalName,
+            approvalRole: extendedInfoData.approvalRole,
         };
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
             method: 'POST',
@@ -2393,7 +2398,7 @@ function switchTab(tabId) {
         loadOverviewCalendarId();
         loadOverviewPildoraAlert();
         loadOverviewAttendanceAlert();
-        
+
         // Update progress info with current students
         if (window.currentPromotion) {
             const students = window.currentStudents || [];
@@ -2406,8 +2411,8 @@ function switchTab(tabId) {
 // Consolidated handler for switching between sub-sections in Área del Docente
 function switchTeacherAreaSubTab(tabName) {
     const tabNameMap = {
-        'overview':   { tabId: 'teacher-area-overview',   buttonId: 'teacher-area-overview-tab' },
-        'students':   { tabId: 'teacher-area-students',   buttonId: 'teacher-area-students-tab' },
+        'overview': { tabId: 'teacher-area-overview', buttonId: 'teacher-area-overview-tab' },
+        'students': { tabId: 'teacher-area-students', buttonId: 'teacher-area-students-tab' },
         'attendance': { tabId: 'teacher-area-attendance', buttonId: 'teacher-area-attendance-tab' },
         'evaluation': { tabId: 'teacher-area-evaluation', buttonId: 'teacher-area-evaluation-tab' }
     };
@@ -2440,7 +2445,7 @@ function switchTeacherAreaSubTab(tabName) {
     // Show selected tab and activate its button
     const selectedTab = document.getElementById(tab.tabId);
     const selectedButton = document.getElementById(tab.buttonId);
-    
+
     if (selectedTab && selectedButton) {
         selectedTab.style.display = 'block';
         selectedTab.classList.add('show', 'active');
@@ -2655,7 +2660,7 @@ async function loadPromotion() {
 
             // Render dynamic greeting (generic, without mentioning promo)
             renderGreeting();
-            
+
             // Render promo subtitle "Hoy estás en la promo"
             renderPromoSubtitle(promotion.name);
 
@@ -2670,7 +2675,7 @@ async function loadPromotion() {
 
             // Update course progress bar
             updateCourseProgressBar(promotion);
-            
+
             // Update progress info with students if available
             const students = window.currentStudents || [];
             updateProgressInfo(promotion, students);
@@ -2718,27 +2723,27 @@ async function loadModules() {
 function updateCourseProgressBar(promotion) {
     try {
         if (!promotion.startDate || !promotion.endDate) return;
-        
+
         // Parse dates
         const startDate = new Date(promotion.startDate);
         const endDate = new Date(promotion.endDate);
         const now = new Date();
-        
+
         // Calculate progress percentage
         const totalDuration = endDate - startDate;
         const elapsed = now - startDate;
         let progressPercent = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100);
         progressPercent = Math.round(progressPercent);
-        
+
         // Calculate remaining days
         const remainingMs = endDate - now;
         const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
-        
+
         // Calculate current week
         const totalWeeks = Math.ceil(totalDuration / (1000 * 60 * 60 * 24 * 7));
         const elapsedWeeks = Math.floor(elapsed / (1000 * 60 * 60 * 24 * 7)) + 1;
         const currentWeek = Math.min(elapsedWeeks, totalWeeks);
-        
+
         // Update progress bar
         const progressBar = document.getElementById('progress-bar');
         if (progressBar) {
@@ -2746,7 +2751,7 @@ function updateCourseProgressBar(promotion) {
             progressBar.setAttribute('aria-valuenow', progressPercent);
             progressBar.textContent = progressPercent > 10 ? progressPercent + '%' : '';
         }
-        
+
         // Update progress label with remaining days
         const progressLabel = document.getElementById('progress-label');
         if (progressLabel) {
@@ -2760,7 +2765,7 @@ function updateCourseProgressBar(promotion) {
                 progressLabel.textContent = 'finaliza en ' + remainingDays + ' ' + daysText;
             }
         }
-        
+
         // Update date info (left) - start date
         const startInfo = document.getElementById('progress-start-info');
         if (startInfo) {
@@ -2787,10 +2792,10 @@ function calculateStudentCounts(students) {
     if (!Array.isArray(students)) {
         return { active: 0, withdrawn: 0, total: 0 };
     }
-    
+
     const active = students.filter(s => !s.isWithdrawn).length;
     const withdrawn = students.filter(s => s.isWithdrawn).length;
-    
+
     return {
         active: active,
         withdrawn: withdrawn,
@@ -2806,11 +2811,11 @@ function calculateStudentCounts(students) {
  */
 function formatDateShort(date, locale = 'es-ES') {
     if (!date) return '-';
-    
+
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-    
+
     if (isNaN(dateObj.getTime())) return '-';
-    
+
     return dateObj.toLocaleDateString(locale, {
         day: '2-digit',
         month: 'short',
@@ -2826,17 +2831,17 @@ function formatDateShort(date, locale = 'es-ES') {
 function updateProgressInfo(promotion, students) {
     try {
         if (!promotion) return;
-        
+
         // Calculate student counts
         const counts = calculateStudentCounts(students);
-        
+
         // Update start date info (left side)
         const startInfo = document.getElementById('progress-start-info');
         if (startInfo) {
             const startDate = formatDateShort(promotion.startDate);
             startInfo.textContent = 'Inicio: ' + startDate;
         }
-        
+
         // Update student info (center/left)
         const activeStudentsEl = document.getElementById('active-students-count');
         if (activeStudentsEl) {
@@ -2846,14 +2851,14 @@ function updateProgressInfo(promotion, students) {
                 activeStudentsEl.textContent = '-';
             }
         }
-        
+
         // Update withdrawn students info
         const withdrawnContainer = document.getElementById('withdrawn-students-container');
         const withdrawnCountEl = document.getElementById('withdrawn-students-count');
         if (withdrawnContainer && withdrawnCountEl) {
             withdrawnCountEl.textContent = counts.withdrawn + ' baja' + (counts.withdrawn === 1 ? '' : 's');
         }
-        
+
         // Update end date info (right side)
         const endInfo = document.getElementById('progress-end-info');
         if (endInfo) {
@@ -3006,9 +3011,9 @@ function generateGanttChart(promotion) {
 
     // Compute overall span for the header bar
     const empStarts = employability.map(e => (e.startMonth - 1) * 4);
-    const empEnds   = employability.map(e => (e.startMonth - 1) * 4 + e.duration * 4);
+    const empEnds = employability.map(e => (e.startMonth - 1) * 4 + e.duration * 4);
     const empMin = empStarts.length ? Math.min(...empStarts) : -1;
-    const empMax = empEnds.length   ? Math.min(Math.max(...empEnds), weeks) : -1;
+    const empMax = empEnds.length ? Math.min(Math.max(...empEnds), weeks) : -1;
 
     // Header row (always visible — lives in empTbody)
     const empHeaderRow = document.createElement('tr');
@@ -3026,7 +3031,7 @@ function generateGanttChart(promotion) {
     // Build inline span bar: a thin colored strip showing the overall range
     let spanBarHtml = '';
     if (empMin >= 0 && empMax > empMin) {
-        const leftPct  = ((empMin / weeks) * 100).toFixed(1);
+        const leftPct = ((empMin / weeks) * 100).toFixed(1);
         const widthPct = (((empMax - empMin) / weeks) * 100).toFixed(1);
         spanBarHtml = `
             <div style="position:relative;height:4px;background:#f3e5ab;border-radius:2px;margin-top:2px;overflow:hidden;">
@@ -3105,7 +3110,7 @@ function generateGanttChart(promotion) {
         const moduleCell = document.createElement('td');
         moduleCell.className = 'gantt-label-cell';
 
-        const editBtn   = isTeacher
+        const editBtn = isTeacher
             ? `<button class="btn btn-xs btn-outline-warning py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();editModule('${escapeHtml(module.id)}')"><i class="bi bi-pencil"></i></button>` : '';
         const deleteBtn = isTeacher
             ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteModule('${escapeHtml(module.id)}')"><i class="bi bi-trash"></i></button>` : '';
@@ -3140,9 +3145,9 @@ function generateGanttChart(promotion) {
         // Course rows
         (module.courses || []).forEach((courseObj, courseIndex) => {
             const courseName = typeof courseObj === 'string' ? courseObj : (courseObj.name || 'Unnamed');
-            const courseUrl  = typeof courseObj === 'object' ? (courseObj.url || '') : '';
-            const courseDur  = typeof courseObj === 'object' ? (Number(courseObj.duration) || 1) : 1;
-            const courseOff  = typeof courseObj === 'object' ? (Number(courseObj.startOffset) || 0) : 0;
+            const courseUrl = typeof courseObj === 'object' ? (courseObj.url || '') : '';
+            const courseDur = typeof courseObj === 'object' ? (Number(courseObj.duration) || 1) : 1;
+            const courseOff = typeof courseObj === 'object' ? (Number(courseObj.startOffset) || 0) : 0;
 
             const courseRow = document.createElement('tr');
             const courseCell = document.createElement('td');
@@ -3175,9 +3180,9 @@ function generateGanttChart(promotion) {
         // Project rows
         (module.projects || []).forEach((projectObj, projectIndex) => {
             const projectName = typeof projectObj === 'string' ? projectObj : (projectObj.name || 'Unnamed');
-            const projectUrl  = typeof projectObj === 'object' ? (projectObj.url || '') : '';
-            const projectDur  = typeof projectObj === 'object' ? (Number(projectObj.duration) || 1) : 1;
-            const projectOff  = typeof projectObj === 'object' ? (Number(projectObj.startOffset) || 0) : 0;
+            const projectUrl = typeof projectObj === 'object' ? (projectObj.url || '') : '';
+            const projectDur = typeof projectObj === 'object' ? (Number(projectObj.duration) || 1) : 1;
+            const projectOff = typeof projectObj === 'object' ? (Number(projectObj.startOffset) || 0) : 0;
 
             const projectRow = document.createElement('tr');
             const projectCell = document.createElement('td');
@@ -3534,7 +3539,7 @@ function openAttendancePanel() {
 
 async function loadTeacherArea() {
     if (!isTeacherOrAdmin()) return;
-    
+
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -3599,7 +3604,7 @@ function displayTeacherArea(promotion) {
     // Render only teacher area buttons (not shared with Quick Actions)
     teacherActions.forEach(action => {
         const isDisabled = !action.url && !action.isButton;
-        
+
         if (action.isButton) {
             // Button actions (dashboard preview, acta)
             const buttonHTML = `
@@ -3617,7 +3622,7 @@ function displayTeacherArea(promotion) {
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', buttonHTML);
-        } 
+        }
         else {
             // Link actions (Asana, content)
             const cardHTML = `
@@ -3663,10 +3668,10 @@ function displayQuickActionsFiltered(quickLinks) {
     if (!container) return;
 
     // Find links by platform (excluding teacher area duplicates)
-    const zoomLink = quickLinks.find(link => 
+    const zoomLink = quickLinks.find(link =>
         link.platform === 'zoom' || link.name?.toLowerCase().includes('zoom')
     );
-    const discordLink = quickLinks.find(link => 
+    const discordLink = quickLinks.find(link =>
         link.platform === 'discord' || link.name?.toLowerCase().includes('discord')
     );
 
@@ -3715,7 +3720,7 @@ function displayQuickActionsFiltered(quickLinks) {
 
     actions.forEach(action => {
         const isDisabled = !action.url && !action.isButton;
-        
+
         if (action.isButton) {
             const buttonHTML = `
                 <div class="quick-action-card" id="${action.id}">
@@ -3732,7 +3737,7 @@ function displayQuickActionsFiltered(quickLinks) {
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', buttonHTML);
-        } 
+        }
         else {
             const cardHTML = `
                 <div class="quick-action-card ${isDisabled ? 'disabled' : ''}" id="${action.id}">
@@ -3815,13 +3820,13 @@ function displaySections(sections) {
 async function loadOverviewCalendarId() {
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/calendar`);
-        
+
         if (response.ok) {
             const calendar = await response.json();
             // Store the calendar ID in the global variable
             currentCalendarId = calendar.googleCalendarId || '';
             console.log('[loadOverviewCalendarId] Calendar ID loaded from backend:', currentCalendarId);
-            
+
             // Setup the calendar preview with the new ID
             if (window.setupCalendarPreview) {
                 window.setupCalendarPreview();
@@ -3848,7 +3853,7 @@ async function loadOverviewPildoraAlert() {
 
         // Get all píldoras from extendedInfoData
         const modulesPildoras = extendedInfoData.modulesPildoras || [];
-        
+
         // Flatten all píldoras from all modules
         let allPildoras = [];
         modulesPildoras.forEach(modulePildoras => {
@@ -3879,11 +3884,11 @@ async function loadOverviewPildoraAlert() {
 
         const nextPildora = futurePildoras[0];
         const pildoraDate = new Date(nextPildora.date);
-        const formattedDate = pildoraDate.toLocaleDateString('es-ES', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+        const formattedDate = pildoraDate.toLocaleDateString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
 
         const daysUntil = Math.ceil((pildoraDate - now) / (1000 * 60 * 60 * 24));
@@ -4125,13 +4130,13 @@ async function loadCalendar() {
             // Store in global variable for use across the application
             currentCalendarId = calendar.googleCalendarId || '';
             console.log('[loadCalendar] Calendar ID stored globally:', currentCalendarId);
-            
+
             // Also store in the HTML field if it exists (for the calendar configuration tab)
             const calendarIdInput = document.getElementById('google-calendar-id');
             if (calendarIdInput) {
                 calendarIdInput.value = currentCalendarId;
             }
-            
+
             displayCalendar(currentCalendarId);
             // Also update the calendar preview in Overview
             if (window.setupCalendarPreview) {
@@ -4634,16 +4639,16 @@ function setupForms() {
         const name = document.getElementById('student-name').value;
         const lastname = document.getElementById('student-lastname').value;
         const email = document.getElementById('student-email').value;
-        const phone = document.getElementById('student-phone').value;
-        const age = document.getElementById('student-age').value;
-        const administrativeSituation = document.getElementById('student-admin-situation').value;
-        const nationality = document.getElementById('student-nationality').value;
-        const identificationDocument = document.getElementById('student-document').value;
-        const gender = document.getElementById('student-gender').value;
+        // const phone = document.getElementById('student-phone').value;
+        // const age = document.getElementById('student-age').value;
+        // const administrativeSituation = document.getElementById('student-admin-situation').value;
+        // const nationality = document.getElementById('student-nationality').value;
+        // const identificationDocument = document.getElementById('student-document').value;
+        // const gender = document.getElementById('student-gender').value;
         const englishLevel = document.getElementById('student-english-level').value;
-        const educationLevel = document.getElementById('student-education-level').value;
-        const profession = document.getElementById('student-profession').value;
-        const community = document.getElementById('student-community').value;
+        // const educationLevel = document.getElementById('student-education-level').value;
+        // const profession = document.getElementById('student-profession').value;
+        // const community = document.getElementById('student-community').value;
 
         // Check if we're editing an existing student
         const editingStudentId = document.getElementById('student-form').dataset.editingStudentId;
@@ -4925,7 +4930,7 @@ async function loadStudents(retryCount = 0) {
         const searchInput = document.getElementById('student-search-input');
         if (searchInput) searchInput.value = '';
         displayStudents(window.currentStudents);
-        
+
         // Update progress info with newly loaded students
         if (window.currentPromotion) {
             updateProgressInfo(window.currentPromotion, window.currentStudents);
@@ -4961,7 +4966,7 @@ function displayStudents(students) {
         return aW ? 1 : -1;
     });
 
-    const activeCount    = sorted.filter(s => !(!!s.isWithdrawn || (s.withdrawal && s.withdrawal.date))).length;
+    const activeCount = sorted.filter(s => !(!!s.isWithdrawn || (s.withdrawal && s.withdrawal.date))).length;
     const withdrawnCount = sorted.length - activeCount;
 
     studentsContainer.innerHTML = sorted.map((student, index) => {
@@ -4979,12 +4984,12 @@ function displayStudents(students) {
             <td>
                 <div class="fw-bold">
                     ${!isStudWithdrawn
-                        ? `<a href="#" class="student-name-link text-decoration-none text-dark"
+                ? `<a href="#" class="student-name-link text-decoration-none text-dark"
                             onclick="event.preventDefault(); window.StudentTracking?.openFicha('${student.id}')"
                             title="Ver ficha de ${escapeHtml(studentFullName(student))}"
                             >${student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A'}</a>`
-                        : (student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A')
-                    }
+                : (student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A')
+            }
                     ${isStudWithdrawn ? `<span class="badge bg-danger ms-2" style="font-size:.65rem;" title="Baja desde ${student.withdrawal?.date ? new Date(student.withdrawal.date).toLocaleDateString('es-ES') : ''}">BAJA</span>` : ''}
                 </div>
             </td>
@@ -5049,16 +5054,16 @@ function editStudent(studentId) {
     document.getElementById('student-name').value = student.name || '';
     document.getElementById('student-lastname').value = student.lastname || '';
     document.getElementById('student-email').value = student.email || '';
-    document.getElementById('student-phone').value = student.phone || '';
-    document.getElementById('student-age').value = student.age || '';
-    document.getElementById('student-admin-situation').value = student.administrativeSituation || '';
-    document.getElementById('student-nationality').value = student.nationality || '';
-    document.getElementById('student-document').value = student.identificationDocument || '';
-    document.getElementById('student-gender').value = student.gender || '';
+    // document.getElementById('student-phone').value = student.phone || '';
+    // document.getElementById('student-age').value = student.age || '';
+    // document.getElementById('student-admin-situation').value = student.administrativeSituation || '';
+    // document.getElementById('student-nationality').value = student.nationality || '';
+    // document.getElementById('student-document').value = student.identificationDocument || '';
+    // document.getElementById('student-gender').value = student.gender || '';
     document.getElementById('student-english-level').value = student.englishLevel || '';
-    document.getElementById('student-education-level').value = student.educationLevel || '';
-    document.getElementById('student-profession').value = student.profession || '';
-    document.getElementById('student-community').value = student.community || '';
+    // document.getElementById('student-education-level').value = student.educationLevel || '';
+    // document.getElementById('student-profession').value = student.profession || '';
+    // document.getElementById('student-community').value = student.community || '';
 
     // Store the student ID for updating
     document.getElementById('student-form').dataset.editingStudentId = studentId;
@@ -5072,6 +5077,62 @@ function editStudent(studentId) {
 }
 
 // Export all students as CSV
+// ── Export students to Excel ───────────────────────────────────────────
+// ── Export students to Excel ───────────────────────────────────────────
+async function downloadStudentsExcel(students, filenamePrefix = 'estudiantes') {
+    if (!students || students.length === 0) {
+        alert('No hay estudiantes para exportar.');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('Sesión expirada. Por favor, inicie sesión.');
+        return;
+    }
+
+    try {
+        const studentIds = students.map(s => s.id).join(',');
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/export?ids=${studentIds}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('Error al generar el archivo Excel');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filenamePrefix}-${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (error) {
+        console.error('Error exporting students to Excel:', error);
+        alert('Error al exportar a Excel: ' + error.message);
+    }
+}
+
+async function exportAllStudentsExcel() {
+    const students = window.currentStudents || [];
+    await downloadStudentsExcel(students, 'todos-los-estudiantes');
+}
+
+async function exportSelectedStudentsExcel() {
+    const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+    const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
+
+    if (selectedStudentIds.length === 0) {
+        alert('No hay estudiantes seleccionados para exportar.');
+        return;
+    }
+
+    const selectedStudents = (window.currentStudents || []).filter(s => selectedStudentIds.includes(s.id));
+    await downloadStudentsExcel(selectedStudents, 'estudiantes-seleccionados');
+}
+
+// Keep CSV as fallback or legacy if needed, but the user wants Excel
 function exportStudentsToCSV(students, filename) {
     const rows = [];
     rows.push(['Nombre', 'Apellidos', 'Email', 'Teléfono', 'Edad', 'Situación Administrativa',
@@ -5655,7 +5716,7 @@ async function loadAccessPassword() {
 
     // Load teaching content
     loadTeachingContent();
-    
+
     // Load Asana workspace configuration
     loadAsanaWorkspace();
 }
@@ -6102,6 +6163,24 @@ async function removeAsanaWorkspace() {
 
 // ==================== STUDENT SELECTION FUNCTIONS ====================
 
+// ── Bulk Reports ──────────────────────────────────────────────────────────
+function generateSelectedStudentsPDF() {
+    const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+    const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
+
+    if (selectedStudentIds.length === 0) {
+        alert('Por favor, selecciona al menos un estudiante para generar los informes.');
+        return;
+    }
+
+    if (window.Reports && window.Reports.printBulkTechnical) {
+        window.Reports.printBulkTechnical(selectedStudentIds, promotionId);
+    } else {
+        console.error('Reports library not loaded');
+        alert('La librería de informes no está cargada. Por favor, recarga la página.');
+    }
+}
+
 function filterStudentsTable(query) {
     const q = (query || '').toLowerCase().trim();
     const rows = document.querySelectorAll('#students-list tr');
@@ -6218,24 +6297,7 @@ function toggleAllStudents(source) {
 
 // Export selected students to CSV
 function exportSelectedStudentsCsv() {
-    const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
-    const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
-
-    if (selectedStudentIds.length === 0) {
-        alert('No students selected for export.');
-        return;
-    }
-
-    const selectedStudents = window.currentStudents?.filter(student =>
-        selectedStudentIds.includes(student.id)
-    ) || [];
-
-    if (selectedStudents.length === 0) {
-        alert('Selected students not found.');
-        return;
-    }
-
-    exportStudentsToCSV(selectedStudents, `selected-students-promotion-${promotionId}.csv`);
+    exportSelectedStudentsExcel();
 }
 
 // ── Bulk PDF Report helpers ───────────────────────────────────────────────────
@@ -6335,13 +6397,13 @@ async function _bulkReportByProject() {
                     </div>
                     <div id="_proj-preview" style="min-height:28px;margin-bottom:16px;font-size:12px;color:#4A4A6A;">
                         ${selectedIds.length
-                            ? `<span style="background:#fff8f0;color:#FF6B35;border-radius:6px;padding:4px 10px;display:inline-block;">
+                ? `<span style="background:#fff8f0;color:#FF6B35;border-radius:6px;padding:4px 10px;display:inline-block;">
                                 Se generará un PDF por cada uno de los <strong>${selectedIds.length}</strong> coders seleccionados
                               </span>`
-                            : `<span style="background:#fff3cd;color:#856404;border-radius:6px;padding:4px 10px;display:inline-block;">
+                : `<span style="background:#fff3cd;color:#856404;border-radius:6px;padding:4px 10px;display:inline-block;">
                                 ⚠ No hay coders seleccionados. Se procesarán todos los de la promoción.
                               </span>`
-                        }
+            }
                     </div>
                     <div style="display:flex;gap:10px;justify-content:flex-end;">
                         <button onclick="document.getElementById('_project-picker-modal').remove()"
@@ -6460,7 +6522,7 @@ async function loadAttendance() {
                     const { holidays } = await holRes.json();
                     promotionHolidays = new Set(holidays || []);
                 }
-            } catch (_) {}
+            } catch (_) { }
         }
 
         renderAttendanceTable();
@@ -6663,11 +6725,12 @@ async function toggleHoliday(dateKey) {
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ holidays: [...promotionHolidays] })
         });
-    } catch (_) {}
+    } catch (_) { }
     renderAttendanceTable();
 }
 
-function updateAttendanceStats() {    const totalDays = studentsForAttendance.length * new Date(
+function updateAttendanceStats() {
+    const totalDays = studentsForAttendance.length * new Date(
         ...currentAttendanceMonth.split('-').map(Number), 0
     ).getDate();
 
@@ -6910,21 +6973,21 @@ async function exportStudentAttendancePdf(mode) {
     const student = studentsForAttendance.find(s => s.id === studentId);
     if (!student) return;
 
-    const MONTH_NAMES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                            'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const MONTH_NAMES_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const STATUS_LABELS = {
-        'Presente':    'Presente',
-        'Ausente':     'Ausente',
+        'Presente': 'Presente',
+        'Ausente': 'Ausente',
         'Con retraso': 'Con retraso',
         'Justificado': 'Justificado',
-        'Sale antes':  'Sale antes'
+        'Sale antes': 'Sale antes'
     };
     const STATUS_COLORS = {
-        'Presente':    [154, 246, 194],   // --green-f5
-        'Ausente':     [255, 71, 0],      // --principal-1
+        'Presente': [154, 246, 194],   // --green-f5
+        'Ausente': [255, 71, 0],      // --principal-1
         'Con retraso': [255, 163, 127],   // --complementario-2
         'Justificado': [192, 246, 248],   // --blue-light-f5
-        'Sale antes':  [233, 216, 253]    // purple pastel
+        'Sale antes': [233, 216, 253]    // purple pastel
     };
 
     // ── 1. Recopilar registros ───────────────────────────────────────────────
@@ -6952,11 +7015,11 @@ async function exportStudentAttendancePdf(mode) {
 
             // Build list of YYYY-MM from promotion start to end (or ±12 months fallback)
             const start = promo.startDate ? new Date(promo.startDate) : new Date(new Date().getFullYear(), 0, 1);
-            const end   = promo.endDate   ? new Date(promo.endDate)   : new Date();
+            const end = promo.endDate ? new Date(promo.endDate) : new Date();
             const months = [];
             const cur = new Date(start.getFullYear(), start.getMonth(), 1);
             while (cur <= end) {
-                months.push(`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`);
+                months.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`);
                 cur.setMonth(cur.getMonth() + 1);
             }
             if (!months.length) months.push(currentAttendanceMonth);
@@ -6985,12 +7048,12 @@ async function exportStudentAttendancePdf(mode) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    const ORANGE  = [255, 107, 53];   // #FF6B35
-    const DARK    = [2, 1, 0];
+    const ORANGE = [255, 107, 53];   // #FF6B35
+    const DARK = [2, 1, 0];
     const LIGHT_BG = [245, 242, 242]; // complementario-1-extra-light approx
-    const PAGE_W  = 210;
-    const MARGIN  = 14;
-    const COL_W   = PAGE_W - MARGIN * 2;
+    const PAGE_W = 210;
+    const MARGIN = 14;
+    const COL_W = PAGE_W - MARGIN * 2;
 
     // ── Header ───────────────────────────────────────────────────────────────
     doc.setFillColor(...ORANGE);
@@ -7004,19 +7067,19 @@ async function exportStudentAttendancePdf(mode) {
     doc.text(studentFullName(student), MARGIN, 17);
 
     const scope = mode === 'month'
-        ? (() => { const [y,m] = currentAttendanceMonth.split('-'); return `${MONTH_NAMES_ES[parseInt(m)-1]} ${y}`; })()
+        ? (() => { const [y, m] = currentAttendanceMonth.split('-'); return `${MONTH_NAMES_ES[parseInt(m) - 1]} ${y}`; })()
         : 'Todos los meses';
     doc.text(scope, PAGE_W - MARGIN, 17, { align: 'right' });
 
     // ── Global totals (used in header summary + final summary) ───────────────
     let y = 30;
-    const globalCounts = { 'Presente':0,'Ausente':0,'Con retraso':0,'Justificado':0,'Sale antes':0 };
+    const globalCounts = { 'Presente': 0, 'Ausente': 0, 'Con retraso': 0, 'Justificado': 0, 'Sale antes': 0 };
     records.forEach(r => { if (globalCounts[r.status] !== undefined) globalCounts[r.status]++; });
-    const totalRecords  = records.length;
+    const totalRecords = records.length;
     const totalAttended = globalCounts['Presente'] + globalCounts['Con retraso'] + globalCounts['Justificado'] + globalCounts['Sale antes'];
-    const totalAbsent   = globalCounts['Ausente'];
-    const globalPct     = totalRecords > 0 ? Math.round((totalAttended / totalRecords) * 100) : 0;
-    const absentPct     = totalRecords > 0 ? Math.round((totalAbsent   / totalRecords) * 100) : 0;
+    const totalAbsent = globalCounts['Ausente'];
+    const globalPct = totalRecords > 0 ? Math.round((totalAttended / totalRecords) * 100) : 0;
+    const absentPct = totalRecords > 0 ? Math.round((totalAbsent / totalRecords) * 100) : 0;
 
     // ── Table — group by month ───────────────────────────────────────────────
     const byMonth = {};
@@ -7039,7 +7102,7 @@ async function exportStudentAttendancePdf(mode) {
 
     Object.entries(byMonth).forEach(([mo, recs]) => {
         const [my, mm] = mo.split('-');
-        const monthLabel = `${MONTH_NAMES_ES[parseInt(mm)-1]} ${my}`;
+        const monthLabel = `${MONTH_NAMES_ES[parseInt(mm) - 1]} ${my}`;
 
         ensureSpace(ROW_H + recs.length * ROW_H + 4);
 
@@ -7051,7 +7114,7 @@ async function exportStudentAttendancePdf(mode) {
         doc.setFont('helvetica', 'bold');
         doc.text(monthLabel, MARGIN + 2, y + 5);
         const monthAttended = recs.filter(r => r.status === 'Presente' || r.status === 'Con retraso' || r.status === 'Justificado' || r.status === 'Sale antes').length;
-        const monthAbsent   = recs.filter(r => r.status === 'Ausente').length;
+        const monthAbsent = recs.filter(r => r.status === 'Ausente').length;
         const monthPct = recs.length > 0 ? Math.round((monthAttended / recs.length) * 100) : 0;
         doc.text(`${monthAttended} asistidos · ${monthAbsent} faltas · ${monthPct}%`, PAGE_W - MARGIN - 2, y + 5, { align: 'right' });
         y += ROW_H;
@@ -7070,7 +7133,7 @@ async function exportStudentAttendancePdf(mode) {
         // Data rows
         recs.forEach((r, idx) => {
             ensureSpace(ROW_H);
-            const rowBg = idx % 2 === 0 ? [255,255,255] : [250, 249, 248];
+            const rowBg = idx % 2 === 0 ? [255, 255, 255] : [250, 249, 248];
             doc.setFillColor(...rowBg);
             doc.rect(MARGIN, y, COL_W, ROW_H, 'F');
 
@@ -7173,11 +7236,11 @@ async function exportStudentAttendancePdf(mode) {
 
         // ── Detail row: one cell per status with count + % ───────────────────
         const allStatuses = [
-            { label: 'Presente',     count: globalCounts['Presente'],     color: [40, 140, 80]   },
-            { label: 'Con retraso',  count: globalCounts['Con retraso'],  color: [220, 100, 20]  },
-            { label: 'Justificado',  count: globalCounts['Justificado'],  color: [20, 120, 160]  },
-            { label: 'Sale antes',   count: globalCounts['Sale antes'],   color: [100, 50, 180]  },
-            { label: 'Ausente',      count: globalCounts['Ausente'],      color: [200, 50, 10]   }
+            { label: 'Presente', count: globalCounts['Presente'], color: [40, 140, 80] },
+            { label: 'Con retraso', count: globalCounts['Con retraso'], color: [220, 100, 20] },
+            { label: 'Justificado', count: globalCounts['Justificado'], color: [20, 120, 160] },
+            { label: 'Sale antes', count: globalCounts['Sale antes'], color: [100, 50, 180] },
+            { label: 'Ausente', count: globalCounts['Ausente'], color: [200, 50, 10] }
         ];
         const detailRowH = 13;
         doc.setFillColor(255, 255, 255);
@@ -7287,7 +7350,7 @@ async function exportAttendanceToExcel() {
         // Get promotion data to show user what period will be exported
         const promotionData = window.currentPromotion;
         let confirmMessage = 'Se exportará la asistencia completa del programa';
-        
+
         if (promotionData && promotionData.startDate && promotionData.endDate) {
             confirmMessage = `Se exportará la asistencia desde ${promotionData.startDate} hasta ${promotionData.endDate} (solo días laborables L-V).\n\nEl archivo Excel tendrá una pestaña por cada mes con datos de asistencia.\n\n¿Desea continuar?`;
         } else {
@@ -7324,14 +7387,14 @@ async function exportAttendanceToExcel() {
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        
+
         // Extract filename from response header or use default
         const disposition = response.headers.get('Content-Disposition');
         let filename = 'asistencia-completa.xlsx';
         if (disposition && disposition.includes('filename=')) {
             filename = disposition.split('filename=')[1].replace(/"/g, '');
         }
-        
+
         a.download = filename;
         document.body.appendChild(a);
         a.click();
@@ -7371,17 +7434,17 @@ function updateProgramDetailsSubtitle(sectionName) {
  */
 function switchProgramDetailsTab(tabName) {
     const tabNameMap = {
-        'roadmap':          { tabId: 'program-details-roadmap',          buttonId: 'program-details-roadmap-tab',          label: 'Roadmap' },
-        'calendar':         { tabId: 'program-details-calendar',         buttonId: 'program-details-calendar-tab',         label: 'Calendario' },
-        'schedule':         { tabId: 'program-details-schedule',         buttonId: 'program-details-schedule-tab',         label: 'Horario' },
-        'team':             { tabId: 'program-details-team',             buttonId: 'program-details-team-tab',             label: 'Team' },
-        'resources':        { tabId: 'program-details-resources',        buttonId: 'program-details-resources-tab',        label: 'Resources' },
-        'pildoras':         { tabId: 'program-details-pildoras',         buttonId: 'program-details-pildoras-tab',         label: 'Píldoras' },
-        'evaluation':       { tabId: 'program-details-evaluation',       buttonId: 'program-details-evaluation-tab',       label: 'Evaluation' },
-        'virtual-classroom':{ tabId: 'program-details-virtual-classroom',buttonId: 'program-details-virtual-classroom-tab',label: 'Aula Virtual' },
-        'quicklinks':       { tabId: 'program-details-quicklinks',       buttonId: 'program-details-quicklinks-tab',       label: 'Quick Links' },
-        'sections':         { tabId: 'program-details-sections',         buttonId: 'program-details-sections-tab',         label: 'Sections' },
-        'competences':      { tabId: 'program-details-competences',      buttonId: 'program-details-competences-tab',      label: 'Competencias' }
+        'roadmap': { tabId: 'program-details-roadmap', buttonId: 'program-details-roadmap-tab', label: 'Roadmap' },
+        'calendar': { tabId: 'program-details-calendar', buttonId: 'program-details-calendar-tab', label: 'Calendario' },
+        'schedule': { tabId: 'program-details-schedule', buttonId: 'program-details-schedule-tab', label: 'Horario' },
+        'team': { tabId: 'program-details-team', buttonId: 'program-details-team-tab', label: 'Team' },
+        'resources': { tabId: 'program-details-resources', buttonId: 'program-details-resources-tab', label: 'Resources' },
+        'pildoras': { tabId: 'program-details-pildoras', buttonId: 'program-details-pildoras-tab', label: 'Píldoras' },
+        'evaluation': { tabId: 'program-details-evaluation', buttonId: 'program-details-evaluation-tab', label: 'Evaluation' },
+        'virtual-classroom': { tabId: 'program-details-virtual-classroom', buttonId: 'program-details-virtual-classroom-tab', label: 'Aula Virtual' },
+        'quicklinks': { tabId: 'program-details-quicklinks', buttonId: 'program-details-quicklinks-tab', label: 'Quick Links' },
+        'sections': { tabId: 'program-details-sections', buttonId: 'program-details-sections-tab', label: 'Sections' },
+        'competences': { tabId: 'program-details-competences', buttonId: 'program-details-competences-tab', label: 'Competencias' }
     };
 
     const tab = tabNameMap[tabName];
@@ -7479,10 +7542,10 @@ async function loadEvaluation() {
         // DEBUG: log first catalog entry to verify structure
         if (catalogRaw.length > 0) {
             console.log('[Eval] catalogRaw[0] keys:', Object.keys(catalogRaw[0]));
-            console.log('[Eval] catalogRaw[0].tools sample:', JSON.stringify((catalogRaw[0].tools || []).slice(0,1)));
+            console.log('[Eval] catalogRaw[0].tools sample:', JSON.stringify((catalogRaw[0].tools || []).slice(0, 1)));
             if (catalogRaw[0].tools && catalogRaw[0].tools[0]) {
                 console.log('[Eval] catalogRaw[0].tools[0] keys:', Object.keys(catalogRaw[0].tools[0]));
-                console.log('[Eval] catalogRaw[0].tools[0].indicators:', JSON.stringify((catalogRaw[0].tools[0].indicators || []).slice(0,2)));
+                console.log('[Eval] catalogRaw[0].tools[0].indicators:', JSON.stringify((catalogRaw[0].tools[0].indicators || []).slice(0, 2)));
             }
         }
 
@@ -7513,8 +7576,8 @@ async function loadEvaluation() {
             // General competence indicators grouped by level
             competenceIndicators: {
                 initial: (comp.indicators?.initial || []).map(ind => ({ id: ind.id, name: ind.name || '', description: ind.description || '', levelId: 1 })),
-                medio:   (comp.indicators?.medio   || []).map(ind => ({ id: ind.id, name: ind.name || '', description: ind.description || '', levelId: 2 })),
-                advance: (comp.indicators?.advance  || []).map(ind => ({ id: ind.id, name: ind.name || '', description: ind.description || '', levelId: 3 }))
+                medio: (comp.indicators?.medio || []).map(ind => ({ id: ind.id, name: ind.name || '', description: ind.description || '', levelId: 2 })),
+                advance: (comp.indicators?.advance || []).map(ind => ({ id: ind.id, name: ind.name || '', description: ind.description || '', levelId: 3 }))
             }
         }));
 
@@ -7837,7 +7900,7 @@ function renderEvaluationTab() {
             const totalTargets = projType === 'grupal'
                 ? groupCount
                 : window._evalState.students.length;
-            
+
             const submissionBadge = hasSubmission
                 ? `<span class="badge bg-info text-dark me-1" title="Proyectos entregados"><i class="bi bi-cloud-arrow-up-fill me-1"></i>${submissionCount}/${totalTargets}</span>`
                 : '';
@@ -7924,7 +7987,7 @@ function _evalProjectKey(moduleId, projectName) {
  */
 function openEvalProjectCompetencePicker(mIdx, pIdx) {
     const { modules, catalog } = window._evalState;
-    const mod  = modules[mIdx];
+    const mod = modules[mIdx];
     const proj = mod.projects[pIdx];
     const modId = mod.id || String(mIdx);
 
@@ -8090,7 +8153,7 @@ function _filterEvalProjPicker() {
     const state = window._evalProjPickerState;
     if (!state) return;
     const search = (document.getElementById('epcp-search')?.value || '').toLowerCase();
-    const area   = document.getElementById('epcp-area-filter')?.value || '';
+    const area = document.getElementById('epcp-area-filter')?.value || '';
 
     document.querySelectorAll('#epcp-list .epcp-row').forEach(row => {
         const rowArea = row.dataset.area || '';
@@ -8107,7 +8170,7 @@ function _updateEvalProjPickerCount() {
     if (countEl) countEl.textContent = `${state.selectedIds.size} seleccionada${state.selectedIds.size !== 1 ? 's' : ''}`;
 }
 
-window._evalProjPickerToggleComp = function(checkbox) {
+window._evalProjPickerToggleComp = function (checkbox) {
     const state = window._evalProjPickerState;
     if (!state) return;
     const compId = String(checkbox.value);
@@ -8141,11 +8204,11 @@ window._evalProjPickerToggleComp = function(checkbox) {
     _updateEvalProjPickerCount();
 };
 
-window._evalProjPickerToggleTool = function(checkbox) {
+window._evalProjPickerToggleTool = function (checkbox) {
     const state = window._evalProjPickerState;
     if (!state) return;
     const compId = String(checkbox.dataset.compId);
-    const tool   = checkbox.value;
+    const tool = checkbox.value;
     if (!state.competenceTools[compId]) state.competenceTools[compId] = [];
     if (checkbox.checked) {
         if (!state.competenceTools[compId].includes(tool)) state.competenceTools[compId].push(tool);
@@ -8163,7 +8226,7 @@ window._evalProjPickerToggleTool = function(checkbox) {
     }
 };
 
-window._evalProjPickerSelectAllTools = function(compId) {
+window._evalProjPickerSelectAllTools = function (compId) {
     const state = window._evalProjPickerState;
     if (!state) return;
     const comp = state.catalog.find(c => String(c.id) === compId);
@@ -8332,14 +8395,14 @@ function _getPairCount(pairCount, a, b) {
 
 // ── Open inline history view (replaces modal approach) ───────────────────────
 function openTeamHistoryView() {
-    const evalTabView      = document.getElementById('evaluation-tab-view');
+    const evalTabView = document.getElementById('evaluation-tab-view');
     const studentEvalPanel = document.getElementById('student-eval-panel');
-    const historyPanel     = document.getElementById('team-history-panel');
-    const historyBody      = document.getElementById('team-history-panel-body');
+    const historyPanel = document.getElementById('team-history-panel');
+    const historyBody = document.getElementById('team-history-panel-body');
     if (!historyPanel || !historyBody) return;
 
     // Hide other sub-views
-    if (evalTabView)      evalTabView.classList.add('hidden');
+    if (evalTabView) evalTabView.classList.add('hidden');
     if (studentEvalPanel) studentEvalPanel.classList.add('hidden');
     historyPanel.classList.remove('hidden');
 
@@ -8420,10 +8483,10 @@ function openTeamHistoryView() {
 }
 
 function closeTeamHistoryView() {
-    const evalTabView  = document.getElementById('evaluation-tab-view');
+    const evalTabView = document.getElementById('evaluation-tab-view');
     const historyPanel = document.getElementById('team-history-panel');
     if (historyPanel) historyPanel.classList.add('hidden');
-    if (evalTabView)   evalTabView.classList.remove('hidden');
+    if (evalTabView) evalTabView.classList.remove('hidden');
 }
 
 // Keep backward compat alias used by button onclick
@@ -8509,12 +8572,12 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
             <table class="table table-bordered table-sm text-center align-middle" style="font-size:.78rem;">
                 <thead class="table-light"><tr><th style="min-width:120px;"></th>`;
         sortedStudentIds.forEach(id => {
-            const short = (studentMap.get(id) || id).split(' ').map((w,i) => i === 0 ? w : w[0]+'.').join(' ');
-            html += `<th title="${escapeHtml(studentMap.get(id)||id)}" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(short)}</th>`;
+            const short = (studentMap.get(id) || id).split(' ').map((w, i) => i === 0 ? w : w[0] + '.').join(' ');
+            html += `<th title="${escapeHtml(studentMap.get(id) || id)}" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(short)}</th>`;
         });
         html += `</tr></thead><tbody>`;
         sortedStudentIds.forEach(rowId => {
-            html += `<tr><td class="fw-semibold text-start">${escapeHtml(studentMap.get(rowId)||rowId)}</td>`;
+            html += `<tr><td class="fw-semibold text-start">${escapeHtml(studentMap.get(rowId) || rowId)}</td>`;
             sortedStudentIds.forEach(colId => {
                 if (rowId === colId) { html += `<td style="background:#f8f9fa;">—</td>`; return; }
                 const a = rowId < colId ? rowId : colId, b = rowId < colId ? colId : rowId;
@@ -8664,14 +8727,14 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
     <div class="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
         <div class="flex-grow-1">
             ${unassignedCount > 0
-                ? `<div class="alert alert-warning py-2 mb-0 small">
+            ? `<div class="alert alert-warning py-2 mb-0 small">
                     <i class="bi bi-exclamation-triangle me-1"></i>
                     <strong>${unassignedCount} estudiante${unassignedCount !== 1 ? 's' : ''} sin grupo asignado.</strong>
                    </div>`
-                : `<div class="alert alert-success py-2 mb-0 small">
+            : `<div class="alert alert-success py-2 mb-0 small">
                     <i class="bi bi-check-circle me-1"></i>Todos los estudiantes tienen grupo.
                    </div>`
-            }
+        }
         </div>
         <button class="btn btn-sm btn-outline-primary flex-shrink-0" onclick="_addGroupInline()">
             <i class="bi bi-plus-circle me-1"></i>Añadir grupo
@@ -8735,11 +8798,11 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
                         <span id="grp-label-${gIdx}">${escapeHtml(grp.groupName)}</span>
                         <span class="badge bg-secondary ms-2">${memberIds.length} miembro${memberIds.length !== 1 ? 's' : ''}</span>
                         ${memberNames.length
-                            ? `<span class="text-muted fw-normal fst-italic ms-2 small d-none d-md-inline text-truncate" style="max-width:220px;">
+                    ? `<span class="text-muted fw-normal fst-italic ms-2 small d-none d-md-inline text-truncate" style="max-width:220px;">
                                 ${memberNames.map(n => escapeHtml(n)).join(' · ')}
                                </span>`
-                            : `<span class="text-muted fw-normal fst-italic ms-2 small">Sin miembros</span>`
-                        }
+                    : `<span class="text-muted fw-normal fst-italic ms-2 small">Sin miembros</span>`
+                }
                         <button class="btn btn-sm btn-outline-danger ms-auto me-2" style="font-size:.75rem; padding:1px 7px;"
                             onclick="event.stopPropagation(); _removeGroupInline(${gIdx})"
                             title="Eliminar grupo">
@@ -8762,10 +8825,10 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
                         </label>
                         <ul class="list-group list-group-flush">
                             ${availableStudents.map(st => {
-                                const stId = String(st.id || st._id);
-                                const checked = memberIds.includes(stId);
-                                const inputId = `grp-${gIdx}-st-${stId}`;
-                                return `<li class="list-group-item py-1 px-2">
+                    const stId = String(st.id || st._id);
+                    const checked = memberIds.includes(stId);
+                    const inputId = `grp-${gIdx}-st-${stId}`;
+                    return `<li class="list-group-item py-1 px-2">
                                     <div class="form-check mb-0">
                                         <input class="form-check-input" type="checkbox"
                                             id="${inputId}"
@@ -8776,10 +8839,10 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
                                         </label>
                                     </div>
                                 </li>`;
-                            }).join('')}
+                }).join('')}
                             ${availableStudents.length === 0
-                                ? `<li class="list-group-item py-1 px-2 text-muted small fst-italic">No hay estudiantes disponibles.</li>`
-                                : ''}
+                    ? `<li class="list-group-item py-1 px-2 text-muted small fst-italic">No hay estudiantes disponibles.</li>`
+                    : ''}
                         </ul>
                     </div>
                 </div>
@@ -9006,20 +9069,20 @@ function openEvaluationView(mIdx, pIdx) {
     window._evalCurrentProjectCompetences = projCompetences;
 
     // Show/hide panels
-    const tabView    = document.getElementById('evaluation-tab-view');
-    const splitView  = document.getElementById('eval-project-view');
-    const histPanel  = document.getElementById('team-history-panel');
-    const legacyPanel= document.getElementById('student-eval-panel');
-    if (tabView)    tabView.classList.add('hidden');
-    if (histPanel)  histPanel.classList.add('hidden');
-    if (legacyPanel)legacyPanel.classList.add('hidden');
-    if (splitView)  splitView.classList.remove('hidden');
+    const tabView = document.getElementById('evaluation-tab-view');
+    const splitView = document.getElementById('eval-project-view');
+    const histPanel = document.getElementById('team-history-panel');
+    const legacyPanel = document.getElementById('student-eval-panel');
+    if (tabView) tabView.classList.add('hidden');
+    if (histPanel) histPanel.classList.add('hidden');
+    if (legacyPanel) legacyPanel.classList.add('hidden');
+    if (splitView) splitView.classList.remove('hidden');
 
     // Populate top bar
-    const titleEl    = document.getElementById('eval-view-title');
+    const titleEl = document.getElementById('eval-view-title');
     const subtitleEl = document.getElementById('eval-view-subtitle');
-    const groupsBtn  = document.getElementById('eval-view-groups-btn');
-    if (titleEl)    titleEl.textContent = `${proj.name} — ${mod.name || `Módulo ${mIdx + 1}`}`;
+    const groupsBtn = document.getElementById('eval-view-groups-btn');
+    if (titleEl) titleEl.textContent = `${proj.name} — ${mod.name || `Módulo ${mIdx + 1}`}`;
     if (subtitleEl) subtitleEl.textContent = saved.type === 'grupal' ? 'Evaluación grupal' : 'Evaluación individual';
     if (groupsBtn) {
         if (saved.type === 'grupal') groupsBtn.classList.remove('d-none');
@@ -9044,24 +9107,23 @@ function openEvaluationView(mIdx, pIdx) {
 
 /** Re-renders the left targets list (students or groups). */
 function _renderEvalTargetsList(saved, students) {
-    const listEl    = document.getElementById('eval-targets-list');
-    const labelEl   = document.getElementById('eval-targets-label');
-    const countEl   = document.getElementById('eval-targets-count');
+    const listEl = document.getElementById('eval-targets-list');
+    const labelEl = document.getElementById('eval-targets-label');
+    const countEl = document.getElementById('eval-targets-count');
     if (!listEl) return;
 
     const doneEvals = saved.evaluations || [];
-    const isGrupal  = saved.type === 'grupal';
-    const targets   = isGrupal
-        ? (saved.groups || []).map(g => ({ id: g.groupName, label: g.groupName, sub: `${(g.studentIds||[]).length} miembros`, isGroup: true }))
+    const isGrupal = saved.type === 'grupal';
+    const targets = isGrupal
+        ? (saved.groups || []).map(g => ({ id: g.groupName, label: g.groupName, sub: `${(g.studentIds || []).length} miembros`, isGroup: true }))
         : students.map(s => ({ id: String(s.id || s._id), label: `${s.name || ''} ${s.lastname || ''}`.trim(), sub: s.email || '', isGroup: false }));
 
     if (labelEl) labelEl.textContent = isGrupal ? 'Grupos' : 'Estudiantes';
     if (countEl) countEl.textContent = targets.length;
 
     if (targets.length === 0) {
-        listEl.innerHTML = `<li class="p-3 text-muted small fst-italic">${
-            isGrupal ? 'No hay grupos definidos. Usa el botón "Editar grupos".' : 'No hay estudiantes.'
-        }</li>`;
+        listEl.innerHTML = `<li class="p-3 text-muted small fst-italic">${isGrupal ? 'No hay grupos definidos. Usa el botón "Editar grupos".' : 'No hay estudiantes.'
+            }</li>`;
         return;
     }
 
@@ -9069,8 +9131,8 @@ function _renderEvalTargetsList(saved, students) {
         const evalEntry = doneEvals.find(e => String(e.targetId) === String(t.id));
         const isEvaluated = !!(evalEntry && evalEntry.evaluatedAt);
         const isSubmitted = !!(evalEntry && evalEntry.submissionLink);
-        const initials = t.label.split(' ').map(w => w[0] || '').slice(0,2).join('').toUpperCase() || '?';
-        
+        const initials = t.label.split(' ').map(w => w[0] || '').slice(0, 2).join('').toUpperCase() || '?';
+
         let statusIcons = '';
         if (isSubmitted) {
             statusIcons += `<i class="bi bi-cloud-arrow-up-fill text-info" title="Entregado" style="font-size: 0.9rem;"></i>`;
@@ -9095,17 +9157,17 @@ function _renderEvalTargetsList(saved, students) {
 
 /** Hides the right content area, shows the empty-state placeholder. */
 function _showEvalRightEmpty() {
-    const empty   = document.getElementById('eval-right-empty');
+    const empty = document.getElementById('eval-right-empty');
     const content = document.getElementById('eval-right-content');
-    if (empty)   empty.classList.remove('d-none');
+    if (empty) empty.classList.remove('d-none');
     if (content) content.classList.add('d-none');
 }
 
 /** Shows the right content area, hides the empty-state placeholder. */
 function _showEvalRightContent() {
-    const empty   = document.getElementById('eval-right-empty');
+    const empty = document.getElementById('eval-right-empty');
     const content = document.getElementById('eval-right-content');
-    if (empty)   empty.classList.add('d-none');
+    if (empty) empty.classList.add('d-none');
     if (content) { content.classList.remove('d-none'); content.style.display = ''; }
 }
 
@@ -9126,7 +9188,7 @@ function selectEvalTarget(targetId) {
         li.classList.toggle('active', li.dataset.targetId === String(targetId));
     });
 
-    const isGrupal  = saved.type === 'grupal';
+    const isGrupal = saved.type === 'grupal';
     const savedEval = (saved.evaluations || []).find(e => String(e.targetId) === String(targetId));
     console.log('[DEBUG] selectEvalTarget:', { targetId, isGrupal, savedEval });
 
@@ -9139,7 +9201,7 @@ function selectEvalTarget(targetId) {
                 const st = students.find(s => String(s.id || s._id) === String(sid));
                 return st ? `${st.name || ''} ${st.lastname || ''}`.trim() : sid;
             });
-            displayName = grp.groupName + (members.length ? ` · ${members.slice(0,3).map(n => escapeHtml(n)).join(', ')}${members.length > 3 ? '…' : ''}` : '');
+            displayName = grp.groupName + (members.length ? ` · ${members.slice(0, 3).map(n => escapeHtml(n)).join(', ')}${members.length > 3 ? '…' : ''}` : '');
         }
     } else {
         const st = students.find(s => String(s.id || s._id) === String(targetId));
@@ -9162,7 +9224,7 @@ function selectEvalTarget(targetId) {
     // We store the built HTML into the right panel.
 
     const headerEl = document.getElementById('eval-right-header');
-    const bodyEl   = document.getElementById('eval-right-body');
+    const bodyEl = document.getElementById('eval-right-body');
 
     if (headerEl) {
         const submissionStatus = savedEval
@@ -9185,7 +9247,7 @@ function selectEvalTarget(targetId) {
         headerEl.innerHTML = `
         <div class="d-flex align-items-center gap-3 flex-wrap">
             <div class="eval-target-avatar" style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0;background:${isDone ? 'linear-gradient(135deg,#198754,#20c997)' : 'linear-gradient(135deg,#E85D26,#f97316)'};">
-                ${isGrupal ? `<i class="bi bi-people-fill" style="font-size:1rem;"></i>` : escapeHtml(displayName.split(' ').map(w=>w[0]||'').slice(0,2).join('').toUpperCase() || '?')}
+                ${isGrupal ? `<i class="bi bi-people-fill" style="font-size:1rem;"></i>` : escapeHtml(displayName.split(' ').map(w => w[0] || '').slice(0, 2).join('').toUpperCase() || '?')}
             </div>
             <div class="flex-grow-1 min-w-0">
                 <div class="fw-bold fs-6 text-truncate">${escapeHtml(displayName)}</div>
@@ -9240,19 +9302,19 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
 
     const LEVEL_COLORS_IND = ['secondary', 'danger', 'warning', 'success'];
     const LEVEL_LABELS_IND = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
-    const LEVEL_LABELS     = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
-    const LEVEL_COLORS     = ['secondary', 'danger', 'warning', 'success'];
-    const LEVEL_BG     = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
+    const LEVEL_LABELS = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
+    const LEVEL_COLORS = ['secondary', 'danger', 'warning', 'success'];
+    const LEVEL_BG = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
     const LEVEL_BORDER = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
-    const LEVEL_TEXT   = { 1: 'Básico',  2: 'Medio',  3: 'Avanzado' };
+    const LEVEL_TEXT = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
 
     let html = `<div class="eval-competences-list">`;
     visibleComps.forEach(comp => {
         const savedCompEntry = savedEval
             ? (savedEval.competences || []).find(c => String(c.competenceId) === String(comp.id))
             : null;
-        const currentLevel  = savedCompEntry ? savedCompEntry.level : 0;
-        const rawCompId     = String(comp.id);
+        const currentLevel = savedCompEntry ? savedCompEntry.level : 0;
+        const rawCompId = String(comp.id);
         const checkedDataForComp = savedCompEntry?.checkedIndicators
             || savedEval?.checkedIndicators?.[rawCompId]
             || {};
@@ -9275,17 +9337,17 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
             ? activeTool_sv.filter(n => !removed_sv.includes(n) && !allToolObjs_sv.find(t => t.name === n && t.indicators && t.indicators.length > 0))
             : [];
 
-        const compInds            = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
-        const hasToolIndicators   = activeToolsWithInds.some(t => t.indicators.length > 0);
-        const hasCompIndicators   = compInds.initial.length || compInds.medio.length || compInds.advance.length;
+        const compInds = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
+        const hasToolIndicators = activeToolsWithInds.some(t => t.indicators.length > 0);
+        const hasCompIndicators = compInds.initial.length || compInds.medio.length || compInds.advance.length;
 
-        const safeCompId   = String(rawCompId).replace(/[^a-zA-Z0-9-]/g, '-');
+        const safeCompId = String(rawCompId).replace(/[^a-zA-Z0-9-]/g, '-');
         const safeTargetId = String(targetId).replace(/[^a-zA-Z0-9-]/g, '-');
-        const prefix       = `sv-${safeCompId}-${safeTargetId}`;
+        const prefix = `sv-${safeCompId}-${safeTargetId}`;
 
         // Counts
         const checkedByLevel = { 1: 0, 2: 0, 3: 0 };
-        const totalByLevel   = { 1: 0, 2: 0, 3: 0 };
+        const totalByLevel = { 1: 0, 2: 0, 3: 0 };
         if (hasToolIndicators) {
             activeToolsWithInds.forEach(tool => {
                 tool.indicators.forEach(ind => {
@@ -9295,7 +9357,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                 });
             });
         } else if (hasCompIndicators) {
-            [{ lvl:1, inds: compInds.initial }, { lvl:2, inds: compInds.medio }, { lvl:3, inds: compInds.advance }].forEach(({ lvl, inds }) => {
+            [{ lvl: 1, inds: compInds.initial }, { lvl: 2, inds: compInds.medio }, { lvl: 3, inds: compInds.advance }].forEach(({ lvl, inds }) => {
                 totalByLevel[lvl] = inds.length;
                 inds.forEach(ind => { if (checkedDataForComp[`comp-${ind.id}`]) checkedByLevel[lvl]++; });
             });
@@ -9314,7 +9376,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                 if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
             }
         }
-        const displayLevel  = (hasToolIndicators || hasCompIndicators) ? autoLevel : currentLevel;
+        const displayLevel = (hasToolIndicators || hasCompIndicators) ? autoLevel : currentLevel;
         const lvlBadgeColor = LEVEL_COLORS_IND[displayLevel] || 'secondary';
         const lvlBadgeLabel = LEVEL_LABELS_IND[displayLevel] || 'Sin nivel';
 
@@ -9323,28 +9385,28 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
         if (hasToolIndicators) {
             const accordionId = `acc-sv-${safeCompId}-${safeTargetId}`;
             indicatorsHtml = `<div class="accordion accordion-flush" id="${accordionId}">` +
-            activeToolsWithInds.map((tool, toolIdx) => {
-                const byLevel = { 1: [], 2: [], 3: [] };
-                tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
-                const hasChecked  = tool.indicators.some(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`]);
-                const collapseId  = `${accordionId}-t${toolIdx}`;
-                const toolAutoLevel = (() => {
-                    let lvl = 0;
-                    for (const l of [1,2,3]) {
-                        if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`])) lvl = l;
-                        else if (byLevel[l].length > 0) break;
-                    }
-                    return lvl;
-                })();
-                const activeLevels = [1,2,3].filter(l => byLevel[l].length > 0);
-                const levelCols = activeLevels.map(lvl => {
-                    const inds = byLevel[lvl];
-                    return `<div class="col">
+                activeToolsWithInds.map((tool, toolIdx) => {
+                    const byLevel = { 1: [], 2: [], 3: [] };
+                    tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
+                    const hasChecked = tool.indicators.some(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`]);
+                    const collapseId = `${accordionId}-t${toolIdx}`;
+                    const toolAutoLevel = (() => {
+                        let lvl = 0;
+                        for (const l of [1, 2, 3]) {
+                            if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`])) lvl = l;
+                            else if (byLevel[l].length > 0) break;
+                        }
+                        return lvl;
+                    })();
+                    const activeLevels = [1, 2, 3].filter(l => byLevel[l].length > 0);
+                    const levelCols = activeLevels.map(lvl => {
+                        const inds = byLevel[lvl];
+                        return `<div class="col">
                         <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
-                            <i class="bi bi-${lvl===1?'circle':lvl===2?'circle-half':'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
+                            <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
                         </div>
                         ${inds.map(ind => {
-                            const indKey   = `tool-${tool.id}-${ind.id}`;
+                            const indKey = `tool-${tool.id}-${ind.id}`;
                             const isChecked = !!(checkedDataForComp[indKey]);
                             return `<div class="form-check form-check-sm mb-0">
                                 <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
@@ -9357,8 +9419,8 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                             </div>`;
                         }).join('')}
                     </div>`;
-                }).join('');
-                return `<div class="accordion-item border-0 border-bottom">
+                    }).join('');
+                    return `<div class="accordion-item border-0 border-bottom">
                     <h2 class="accordion-header">
                         <button class="accordion-button py-2 px-2 small fw-semibold ${hasChecked ? '' : 'collapsed'}"
                             type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="background:transparent;">
@@ -9372,21 +9434,21 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                         </div>
                     </div>
                 </div>`;
-            }).join('') + `</div>`;
+                }).join('') + `</div>`;
         } else if (hasCompIndicators) {
             indicatorsHtml = [
-                { lvl:1, inds: compInds.initial },
-                { lvl:2, inds: compInds.medio },
-                { lvl:3, inds: compInds.advance }
+                { lvl: 1, inds: compInds.initial },
+                { lvl: 2, inds: compInds.medio },
+                { lvl: 3, inds: compInds.advance }
             ].filter(g => g.inds.length).map(({ lvl, inds }) => `
                 <div class="border rounded p-2 mb-2" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_BORDER[lvl]} !important;">
                     <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]};">
-                        <i class="bi bi-${lvl===1?'circle':lvl===2?'circle-half':'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                        <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
                     </div>
                     ${inds.map(ind => {
-                        const indKey   = `comp-${ind.id}`;
-                        const isChecked = !!(checkedDataForComp[indKey]);
-                        return `<div class="form-check form-check-sm mb-0">
+                const indKey = `comp-${ind.id}`;
+                const isChecked = !!(checkedDataForComp[indKey]);
+                return `<div class="form-check form-check-sm mb-0">
                             <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
                                 id="${prefix}-${escapeHtml(indKey)}"
                                 onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
@@ -9395,14 +9457,14 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                                 ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
                             </label>
                         </div>`;
-                    }).join('')}
+            }).join('')}
                 </div>`
             ).join('');
         }
 
         const indProgressHtml = (hasToolIndicators || hasCompIndicators) ? `
             <div class="d-flex gap-2 flex-wrap mb-2 eval-ind-progress">
-                ${[1,2,3].filter(lvl => totalByLevel[lvl] > 0).map(lvl => `
+                ${[1, 2, 3].filter(lvl => totalByLevel[lvl] > 0).map(lvl => `
                     <span class="badge rounded-pill" style="background:${LEVEL_BG[lvl]}; color:${LEVEL_BORDER[lvl]}; border:1px solid ${LEVEL_BORDER[lvl]}; font-size:.72rem;">
                         Nv.${lvl}: <span data-lvl-count="${lvl}">${checkedByLevel[lvl]}/${totalByLevel[lvl]}</span>
                     </span>`).join('')}
@@ -9416,8 +9478,8 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="small text-muted me-1">Nivel:</span>
                 ${LEVEL_LABELS.map((lbl, lvl) => {
-                    const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
-                    return `<button type="button"
+            const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
+            return `<button type="button"
                         class="btn btn-sm level-btn ${currentLevel === lvl ? `btn-${LEVEL_COLORS[lvl]}` : 'btn-outline-secondary'}"
                         data-target="${safeTargetId}" data-comp="${safeCompId}"
                         data-comp-name="${escapeHtml(comp.name)}" data-level="${lvl}"
@@ -9426,7 +9488,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                         ${lvl === 0 ? '<i class="bi bi-dash"></i>' : `<strong>${lvl}</strong>`}
                         <span class="ms-1 d-none d-md-inline" style="font-size:.7rem;">${escapeHtml(lbl)}</span>
                     </button>`;
-                }).join('')}
+        }).join('')}
             </div>
             ${currentLevel > 0 && levelDescs[currentLevel] ? `<div class="mt-1 small text-muted fst-italic level-desc-hint">${escapeHtml(levelDescs[currentLevel])}</div>` : `<div class="mt-1 level-desc-hint" style="min-height:1rem;"></div>`}
         ` : '';
@@ -9490,9 +9552,9 @@ function removeEvalCompetenceFromView(targetId, compId) {
 /** Closes the split-view and returns to the evaluation tab. */
 function closeEvaluationView() {
     const splitView = document.getElementById('eval-project-view');
-    const tabView   = document.getElementById('evaluation-tab-view');
+    const tabView = document.getElementById('evaluation-tab-view');
     if (splitView) splitView.classList.add('hidden');
-    if (tabView)   tabView.classList.remove('hidden');
+    if (tabView) tabView.classList.remove('hidden');
     renderEvaluationTab();
 }
 
@@ -9541,11 +9603,11 @@ function openEvaluationModal(mIdx, pIdx) {
     // DEBUG: log competence tool data
     console.log('[Eval] projCompetences:', projCompetences.map(c => ({
         id: c.id, name: c.name,
-        toolsWithIndicators_count: (c.toolsWithIndicators||[]).length,
-        first_tool: (c.toolsWithIndicators||[])[0] ? {
-            name: (c.toolsWithIndicators||[])[0].name,
-            indicators_count: ((c.toolsWithIndicators||[])[0].indicators||[]).length,
-            first_indicator: ((c.toolsWithIndicators||[])[0].indicators||[])[0]
+        toolsWithIndicators_count: (c.toolsWithIndicators || []).length,
+        first_tool: (c.toolsWithIndicators || [])[0] ? {
+            name: (c.toolsWithIndicators || [])[0].name,
+            indicators_count: ((c.toolsWithIndicators || [])[0].indicators || []).length,
+            first_indicator: ((c.toolsWithIndicators || [])[0].indicators || [])[0]
         } : null
     })));
 
@@ -9612,7 +9674,7 @@ function openEvaluationModal(mIdx, pIdx) {
             // Count checked/total indicators to compute auto-level
             // (checkedData is already set above as the flat {indKey: bool} map)
             const checkedByLevel = { 1: 0, 2: 0, 3: 0 };
-            const totalByLevel   = { 1: 0, 2: 0, 3: 0 };
+            const totalByLevel = { 1: 0, 2: 0, 3: 0 };
             if (hasToolIndicators) {
                 activeToolsWithInds.forEach(tool => {
                     tool.indicators.forEach(ind => {
@@ -9622,7 +9684,7 @@ function openEvaluationModal(mIdx, pIdx) {
                     });
                 });
             } else if (hasCompIndicators) {
-                [{ lvl:1, inds: compInds.initial },{ lvl:2, inds: compInds.medio },{ lvl:3, inds: compInds.advance }].forEach(({ lvl, inds }) => {
+                [{ lvl: 1, inds: compInds.initial }, { lvl: 2, inds: compInds.medio }, { lvl: 3, inds: compInds.advance }].forEach(({ lvl, inds }) => {
                     totalByLevel[lvl] = inds.length;
                     inds.forEach(ind => { if (checkedData[`comp-${ind.id}`]) checkedByLevel[lvl]++; });
                 });
@@ -9652,25 +9714,25 @@ function openEvaluationModal(mIdx, pIdx) {
             if (hasToolIndicators) {
                 const accordionId = `acc-grp-${safeCompId}-${safeTargetId}`;
                 indicatorsHtml = `<div class="accordion accordion-flush" id="${accordionId}">` +
-                activeToolsWithInds.map((tool, toolIdx) => {
-                    const byLevel = { 1: [], 2: [], 3: [] };
-                    tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
-                    const hasChecked = tool.indicators.some(ind => checkedData[`tool-${tool.id}-${ind.id}`]);
-                    const collapseId = `${accordionId}-t${toolIdx}`;
-                    const toolAutoLevel = (() => {
-                        let lvl = 0;
-                        for (const l of [1,2,3]) {
-                            if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedData[`tool-${tool.id}-${ind.id}`])) lvl = l;
-                            else if (byLevel[l].length > 0) break;
-                        }
-                        return lvl;
-                    })();
-                    const activeLevels = [1,2,3].filter(l => byLevel[l].length > 0);
-                    const levelCols = activeLevels.map(lvl => {
-                        const inds = byLevel[lvl];
-                        return `<div class="col">
+                    activeToolsWithInds.map((tool, toolIdx) => {
+                        const byLevel = { 1: [], 2: [], 3: [] };
+                        tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
+                        const hasChecked = tool.indicators.some(ind => checkedData[`tool-${tool.id}-${ind.id}`]);
+                        const collapseId = `${accordionId}-t${toolIdx}`;
+                        const toolAutoLevel = (() => {
+                            let lvl = 0;
+                            for (const l of [1, 2, 3]) {
+                                if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedData[`tool-${tool.id}-${ind.id}`])) lvl = l;
+                                else if (byLevel[l].length > 0) break;
+                            }
+                            return lvl;
+                        })();
+                        const activeLevels = [1, 2, 3].filter(l => byLevel[l].length > 0);
+                        const levelCols = activeLevels.map(lvl => {
+                            const inds = byLevel[lvl];
+                            return `<div class="col">
                             <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
-                                <i class="bi bi-${lvl===1?'circle':lvl===2?'circle-half':'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
+                                <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
                             </div>
                             ${inds.map(ind => {
                                 const indKey = `tool-${tool.id}-${ind.id}`;
@@ -9686,8 +9748,8 @@ function openEvaluationModal(mIdx, pIdx) {
                                 </div>`;
                             }).join('')}
                         </div>`;
-                    }).join('');
-                    return `<div class="accordion-item border-0 border-bottom">
+                        }).join('');
+                        return `<div class="accordion-item border-0 border-bottom">
                         <h2 class="accordion-header">
                             <button class="accordion-button py-2 px-2 small fw-semibold ${hasChecked ? '' : 'collapsed'}"
                                 type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="background:transparent;">
@@ -9701,21 +9763,21 @@ function openEvaluationModal(mIdx, pIdx) {
                             </div>
                         </div>
                     </div>`;
-                }).join('') + `</div>`;
+                    }).join('') + `</div>`;
             } else if (hasCompIndicators) {
                 indicatorsHtml = [
-                    { lvl:1, inds: compInds.initial },
-                    { lvl:2, inds: compInds.medio },
-                    { lvl:3, inds: compInds.advance }
+                    { lvl: 1, inds: compInds.initial },
+                    { lvl: 2, inds: compInds.medio },
+                    { lvl: 3, inds: compInds.advance }
                 ].filter(g => g.inds.length).map(({ lvl, inds }) => `
                     <div class="border rounded p-2 mb-2" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_BORDER[lvl]} !important;">
                         <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]};">
-                            <i class="bi bi-${lvl===1?'circle':lvl===2?'circle-half':'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                            <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
                         </div>
                         ${inds.map(ind => {
-                            const indKey = `comp-${ind.id}`;
-                            const isChecked = !!(checkedData[indKey]);
-                            return `<div class="form-check form-check-sm mb-0">
+                    const indKey = `comp-${ind.id}`;
+                    const isChecked = !!(checkedData[indKey]);
+                    return `<div class="form-check form-check-sm mb-0">
                                 <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
                                     id="${prefix}-${escapeHtml(indKey)}"
                                     onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
@@ -9724,7 +9786,7 @@ function openEvaluationModal(mIdx, pIdx) {
                                     ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
                                 </label>
                             </div>`;
-                        }).join('')}
+                }).join('')}
                     </div>`
                 ).join('');
             }
@@ -9745,8 +9807,8 @@ function openEvaluationModal(mIdx, pIdx) {
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <span class="small text-muted me-1">Nivel:</span>
                     ${LEVEL_LABELS.map((lbl, lvl) => {
-                        const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
-                        return `<button type="button"
+                const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
+                return `<button type="button"
                             class="btn btn-sm level-btn ${currentLevel === lvl ? `btn-${LEVEL_COLORS[lvl]}` : 'btn-outline-secondary'}"
                             data-target="${safeTargetId}" data-comp="${safeCompId}"
                             data-comp-name="${escapeHtml(comp.name)}" data-level="${lvl}"
@@ -9755,7 +9817,7 @@ function openEvaluationModal(mIdx, pIdx) {
                             ${lvl === 0 ? '<i class="bi bi-dash"></i>' : `<strong>${lvl}</strong>`}
                             <span class="ms-1 d-none d-md-inline" style="font-size:.7rem;">${escapeHtml(lbl)}</span>
                         </button>`;
-                    }).join('')}
+            }).join('')}
                 </div>
                 ${currentLevel > 0 && levelDescs[currentLevel] ? `<div class="mt-1 small text-muted fst-italic">${escapeHtml(levelDescs[currentLevel])}</div>` : ''}
             ` : '';
@@ -9846,23 +9908,23 @@ function openEvaluationModal(mIdx, pIdx) {
                                 ${buildCompetencesHtml(grp.groupName, savedEval)}
                             </div>
                             ${(() => {
-                                const ge = (saved.evaluations || []).find(e => String(e.targetId) === String(grp.groupName));
-                                if (!ge) return '';
-                                const status = ge.submissionStatus || (ge.submissionLink ? 'Entregado' : 'Pendiente');
-                                const hasLink = !!ge.submissionLink;
-                                const badge = `<span class="badge ${status === 'Entregado' ? 'bg-success' : 'bg-light text-muted border'} ms-1">
+                        const ge = (saved.evaluations || []).find(e => String(e.targetId) === String(grp.groupName));
+                        if (!ge) return '';
+                        const status = ge.submissionStatus || (ge.submissionLink ? 'Entregado' : 'Pendiente');
+                        const hasLink = !!ge.submissionLink;
+                        const badge = `<span class="badge ${status === 'Entregado' ? 'bg-success' : 'bg-light text-muted border'} ms-1">
                                     <i class="bi bi-cloud-arrow-up${status === 'Entregado' ? '-fill' : ''} me-1"></i>${status}
                                 </span>`;
-                                const linkHtml = hasLink ? `<div class="small mt-1 text-end">
+                        const linkHtml = hasLink ? `<div class="small mt-1 text-end">
                                     <a href="${escapeHtml(ge.submissionLink)}" target="_blank" class="text-decoration-none">
                                         <i class="bi bi-git me-1"></i>Repositorio entregado
                                     </a>
                                 </div>` : '';
-                                return `<div class="text-end small">
+                        return `<div class="text-end small">
                                     ${badge}
                                     ${linkHtml}
                                 </div>`;
-                            })()}
+                    })()}
                         </div>
                         <div class="mt-2">
                             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback del grupo</label>
@@ -9888,19 +9950,19 @@ function openEvaluationModal(mIdx, pIdx) {
                 <h6 class="fw-bold mb-2"><i class="bi bi-list-check me-2 text-success"></i>Evaluaciones guardadas (${doneEvals.length}/${students.length})</h6>
                 <div class="list-group gap-2">
                 ${doneEvals.map(ev => {
-                    const st = students.find(s => String(s.id || s._id) === String(ev.targetId));
-                    const stName = st ? `${st.name || ''} ${st.lastname || ''}`.trim() : ev.targetName || ev.targetId;
-                    const compsHtml = (ev.competences || []).map(c =>
-                        `<span class="badge bg-${LEVEL_COLORS_MAP[c.level] || 'secondary'} me-1">
+                const st = students.find(s => String(s.id || s._id) === String(ev.targetId));
+                const stName = st ? `${st.name || ''} ${st.lastname || ''}`.trim() : ev.targetName || ev.targetId;
+                const compsHtml = (ev.competences || []).map(c =>
+                    `<span class="badge bg-${LEVEL_COLORS_MAP[c.level] || 'secondary'} me-1">
                             Nv.${c.level} ${c.competenceName}
                         </span>`
-                    ).join('');
-                    const status = ev.submissionStatus || (ev.submissionLink ? 'Entregado' : 'Pendiente');
-                    const hasLink = !!ev.submissionLink;
-                    const statusBadge = `<span class="badge ${status === 'Entregado' ? 'bg-success' : 'bg-light text-muted border'} ms-1">
+                ).join('');
+                const status = ev.submissionStatus || (ev.submissionLink ? 'Entregado' : 'Pendiente');
+                const hasLink = !!ev.submissionLink;
+                const statusBadge = `<span class="badge ${status === 'Entregado' ? 'bg-success' : 'bg-light text-muted border'} ms-1">
                         <i class="bi bi-cloud-arrow-up${status === 'Entregado' ? '-fill' : ''} me-1"></i>${status}
                     </span>`;
-                    return `<div class="list-group-item list-group-item-action p-2 rounded border" id="saved-eval-${escapeHtml(String(ev.targetId))}">
+                return `<div class="list-group-item list-group-item-action p-2 rounded border" id="saved-eval-${escapeHtml(String(ev.targetId))}">
                         <div class="d-flex align-items-start justify-content-between gap-2">
                             <div class="flex-grow-1">
                                 <div class="fw-semibold small mb-1">
@@ -9929,7 +9991,7 @@ function openEvaluationModal(mIdx, pIdx) {
                             </div>
                         </div>
                     </div>`;
-                }).join('')}
+            }).join('')}
                 </div>
             </div>`;
         }
@@ -9941,11 +10003,11 @@ function openEvaluationModal(mIdx, pIdx) {
                 <select class="form-select" id="eval-student-select">
                     <option value="">— Seleccionar estudiante —</option>
                     ${students.map(st => {
-                        const alreadyDone = doneEvals.some(e => String(e.targetId) === String(st.id || st._id));
-                        return `<option value="${escapeHtml(String(st.id || st._id))}" ${alreadyDone ? 'style="color:#198754;font-weight:600;"' : ''}>
+            const alreadyDone = doneEvals.some(e => String(e.targetId) === String(st.id || st._id));
+            return `<option value="${escapeHtml(String(st.id || st._id))}" ${alreadyDone ? 'style="color:#198754;font-weight:600;"' : ''}>
                             ${escapeHtml((st.name || '') + ' ' + (st.lastname || ''))}${alreadyDone ? ' ✓' : ''}
                         </option>`;
-                    }).join('')}
+        }).join('')}
                 </select>
                 <button class="btn btn-primary" type="button" onclick="openStudentEvalSubModal()"
                     style="background:#E85D26;border-color:#E85D26;">
@@ -10063,25 +10125,25 @@ function _openStudentEvalSubModalFor(studentId) {
                 // Each tool = accordion item, levels shown as side-by-side columns inside
                 const accordionId = `acc-ind-${safeCompId}-${safeTargetId}`;
                 indicatorsHtml = `<div class="accordion accordion-flush" id="${accordionId}">` +
-                activeToolsWithInds.map((tool, toolIdx) => {
-                    const byLevel = { 1: [], 2: [], 3: [] };
-                    tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
-                    const hasChecked = tool.indicators.some(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`]);
-                    const collapseId = `${accordionId}-t${toolIdx}`;
-                    const toolAutoLevel = (() => {
-                        let lvl = 0;
-                        for (const l of [1,2,3]) {
-                            if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`])) lvl = l;
-                            else if (byLevel[l].length > 0) break;
-                        }
-                        return lvl;
-                    })();
-                    const activeLevels = [1,2,3].filter(l => byLevel[l].length > 0);
-                    const levelCols = activeLevels.map(lvl => {
-                        const inds = byLevel[lvl];
-                        return `<div class="col">
+                    activeToolsWithInds.map((tool, toolIdx) => {
+                        const byLevel = { 1: [], 2: [], 3: [] };
+                        tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
+                        const hasChecked = tool.indicators.some(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`]);
+                        const collapseId = `${accordionId}-t${toolIdx}`;
+                        const toolAutoLevel = (() => {
+                            let lvl = 0;
+                            for (const l of [1, 2, 3]) {
+                                if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`])) lvl = l;
+                                else if (byLevel[l].length > 0) break;
+                            }
+                            return lvl;
+                        })();
+                        const activeLevels = [1, 2, 3].filter(l => byLevel[l].length > 0);
+                        const levelCols = activeLevels.map(lvl => {
+                            const inds = byLevel[lvl];
+                            return `<div class="col">
                             <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
-                                <i class="bi bi-${lvl===1?'circle':lvl===2?'circle-half':'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
+                                <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
                             </div>
                             ${inds.map(ind => {
                                 const indKey = `tool-${tool.id}-${ind.id}`;
@@ -10101,8 +10163,8 @@ function _openStudentEvalSubModalFor(studentId) {
                                 </div>`;
                             }).join('')}
                         </div>`;
-                    }).join('');
-                    return `<div class="accordion-item border-0 border-bottom">
+                        }).join('');
+                        return `<div class="accordion-item border-0 border-bottom">
                         <h2 class="accordion-header">
                             <button class="accordion-button py-2 px-2 small fw-semibold ${hasChecked ? '' : 'collapsed'}"
                                 type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="background:transparent;">
@@ -10116,7 +10178,7 @@ function _openStudentEvalSubModalFor(studentId) {
                             </div>
                         </div>
                     </div>`;
-                }).join('') + `</div>`;
+                    }).join('') + `</div>`;
 
             } else if (hasCompIndicators) {
                 // Use general competence indicators grouped by level
@@ -10130,9 +10192,9 @@ function _openStudentEvalSubModalFor(studentId) {
                             <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
                         </div>
                         ${inds.map(ind => {
-                            const indKey = `comp-${ind.id}`;
-                            const isChecked = !!(checkedDataForComp[indKey]);
-                            return `<div class="form-check form-check-sm mb-0">
+                    const indKey = `comp-${ind.id}`;
+                    const isChecked = !!(checkedDataForComp[indKey]);
+                    return `<div class="form-check form-check-sm mb-0">
                                 <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
                                     id="${prefix}-${escapeHtml(indKey)}"
                                     data-comp-id="${safeCompId}"
@@ -10145,7 +10207,7 @@ function _openStudentEvalSubModalFor(studentId) {
                                     ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
                                 </label>
                             </div>`;
-                        }).join('')}
+                }).join('')}
                     </div>`
                 ).join('');
             }
@@ -10216,8 +10278,8 @@ function _openStudentEvalSubModalFor(studentId) {
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <span class="small text-muted me-1">Nivel:</span>
                     ${LEVEL_LABELS.map((lbl, lvl) => {
-                        const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
-                        return `<button type="button"
+                const desc = levelDescs[lvl] ? ` — ${levelDescs[lvl]}` : '';
+                return `<button type="button"
                             class="btn btn-sm level-btn ${currentLevel === lvl ? `btn-${LEVEL_COLORS[lvl]}` : 'btn-outline-secondary'}"
                             data-target="${safeTargetId}"
                             data-comp="${safeCompId}"
@@ -10228,7 +10290,7 @@ function _openStudentEvalSubModalFor(studentId) {
                             ${lvl === 0 ? '<i class="bi bi-dash"></i>' : `<strong>${lvl}</strong>`}
                             <span class="ms-1 d-none d-md-inline" style="font-size:.7rem;">${escapeHtml(lbl)}</span>
                         </button>`;
-                    }).join('')}
+            }).join('')}
                 </div>
                 ${currentLevel > 0 && levelDescs[currentLevel] ? `<div class="mt-1 small text-muted fst-italic level-desc-hint">${escapeHtml(levelDescs[currentLevel])}</div>` : `<div class="mt-1 small text-muted fst-italic level-desc-hint" style="min-height:1rem;"></div>`}
             ` : '';
@@ -10251,7 +10313,7 @@ function _openStudentEvalSubModalFor(studentId) {
                 <div class="card-body py-2 px-3">
                     ${indProgressHtml}
                     ${indicatorsHtml
-                        ? `<div class="mb-2">
+                    ? `<div class="mb-2">
                             <div class="small fw-semibold text-secondary mb-1">
                                 <i class="bi bi-list-check me-1"></i>Indicadores — marca los que cumple el estudiante:
                             </div>
@@ -10259,7 +10321,7 @@ function _openStudentEvalSubModalFor(studentId) {
                                 ${indicatorsHtml}
                             </div>
                            </div>`
-                        : ''}
+                    : ''}
                     ${activeToolsNoInds_t3.length > 0 ? `<div class="alert alert-warning py-2 px-3 mb-2" style="font-size:.8rem;">
                         <i class="bi bi-exclamation-triangle me-1"></i>
                         <strong>Sin indicadores:</strong> las herramientas
@@ -10328,7 +10390,7 @@ function removeEvalTool(targetId, compId, toolName) {
     if (container) {
         const badges = container.querySelectorAll('.badge');
         badges.forEach(badge => {
-            if (badge.textContent.trim().replace('×','').trim() === toolName || badge.textContent.includes(toolName)) {
+            if (badge.textContent.trim().replace('×', '').trim() === toolName || badge.textContent.includes(toolName)) {
                 badge.style.transition = 'opacity .2s';
                 badge.style.opacity = '0';
                 setTimeout(() => badge.remove(), 200);
@@ -10548,7 +10610,7 @@ function _closeStudentEvalPanel() {
 }
 
 /** Called by the "Cancelar" / "Volver" buttons in the inline eval panel or split view. */
-window.cancelStudentEvalPanel = function() {
+window.cancelStudentEvalPanel = function () {
     const splitView = document.getElementById('eval-project-view');
     const inSplitView = splitView && !splitView.classList.contains('hidden');
     if (inSplitView) {
@@ -10892,7 +10954,7 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
 }
 
 /** Deletes a specific student evaluation from the current project and re-renders */
-window.deleteStudentEvaluation = function(targetId) {
+window.deleteStudentEvaluation = function (targetId) {
     const saved = window._evalCurrentSaved;
     if (!saved) return;
     if (!confirm('¿Eliminar la evaluación de este estudiante?')) return;
@@ -10914,7 +10976,7 @@ window.deleteStudentEvaluation = function(targetId) {
 };
 
 /** Loads a student's existing evaluation into the sub-modal for editing */
-window.editStudentEvaluation = function(targetId) {
+window.editStudentEvaluation = function (targetId) {
     const saved = window._evalCurrentSaved;
     if (!saved) return;
     // Restore removed competences for this target so they appear again

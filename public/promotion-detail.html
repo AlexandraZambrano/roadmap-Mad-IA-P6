@@ -20,13 +20,13 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
         <div class="container-fluid">
             <a class="navbar-brand" href="dashboard.html">
-                <img class="page-title" src="./img/bootcamp_manager_logotype_bold.png" height="60"/>
+                <img class="page-title" src="./img/bootcamp_manager_logotype_bold.png" height="60" />
             </a>
-            
+
             <button class="navbar-toggler" type="button" id="sidebar-toggle" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            
+
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown">
@@ -37,9 +37,12 @@
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i
                                         class="bi bi-person me-2"></i>Perfil</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
                             <li><a class="dropdown-item" href="#" onclick="logout()"><i
-                                        class="bi bi-box-arrow-right me-2"></i><span data-i18n="logout">Cerrar Sesión</span></a></li>
+                                        class="bi bi-box-arrow-right me-2"></i><span data-i18n="logout">Cerrar
+                                        Sesión</span></a></li>
                         </ul>
                     </li>
                 </ul>
@@ -56,7 +59,7 @@
                 <div class="sidebar-sticky">
                     <ul class="nav flex-column">
 
-                                    <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" height="40" class="navbar-f5-logo mt-5" />
+                        <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" height="40" class="navbar-f5-logo mt-5" />
                         <li class="nav-item">
                             <a class="nav-link nav-link-promotions mt-4" href="dashboard.html">
                                 <i class="bi bi-arrow-left me-2"></i>Promociones
@@ -103,7 +106,8 @@
                             </a>
                         </li>
                         <li class="nav-item mt-4 teacher-only">
-                            <button type="button" class="nav-link text-start text-danger fw-semibold" onclick="openDeletePromotionModal()">
+                            <button type="button" class="nav-link text-start text-danger fw-semibold"
+                                onclick="openDeletePromotionModal()">
                                 <i class="bi bi-trash me-2"></i>Eliminar promoción
                             </button>
                         </li>
@@ -119,13 +123,13 @@
                     <div id="greeting-container" class="greeting-section mb-3">
                         <!-- Greeting will be loaded dynamically here -->
                     </div>
-                    
+
                     <div class="my-4">
                         <p id="promo-subtitle" class="promo-subtitle mb-2"></p>
                         <h1 id="promotion-title" class="promotion-title-styled">Loading...</h1>
                         <p id="promotion-desc" class="text-muted"></p>
                     </div>
-                    
+
                     <!-- Course Progress Bar -->
                     <div class="mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -133,29 +137,34 @@
                                 <h6 class="mb-0 text-dark">
                                     <i class="bi bi-graph-up me-2 text-warning"></i>Progreso del Curso
                                 </h6>
-                                <div class="d-flex align-items-center gap-2 px-3 py-1 bg-light rounded" >
+                                <div class="d-flex align-items-center gap-2 px-3 py-1 bg-light rounded">
                                     <i class="bi bi-people-fill text-warning"></i>
                                     <small class="fw-bold text-dark" id="active-students-count">-</small>
                                 </div>
                                 <!-- Withdrawn Students Block -->
-                                <div id="withdrawn-students-container" class="d-flex align-items-center gap-2 px-3 py-1 bg-withdrawn rounded">
+                                <div id="withdrawn-students-container"
+                                    class="d-flex align-items-center gap-2 px-3 py-1 bg-withdrawn rounded">
                                     <i class="bi bi-person-x text-withdrawn"></i>
                                     <small class="fw-bold text-withdrawn" id="withdrawn-students-count">-</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="progress" style="height: 28px; border-radius: 8px; background-color: #f0f0f0; position: relative;">
-                            <div id="progress-bar" class="progress-bar progress-bar-striped" role="progressbar" 
-                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="display: flex; align-items: center; justify-content: flex-end; padding-right: 12px;">
+                        <div class="progress"
+                            style="height: 28px; border-radius: 8px; background-color: #f0f0f0; position: relative;">
+                            <div id="progress-bar" class="progress-bar progress-bar-striped" role="progressbar"
+                                aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                style="display: flex; align-items: center; justify-content: flex-end; padding-right: 12px;">
                             </div>
-                            <div id="progress-label" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; font-weight: 600; color: #666; white-space: nowrap; pointer-events: none;"></div>
+                            <div id="progress-label"
+                                style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; font-weight: 600; color: #666; white-space: nowrap; pointer-events: none;">
+                            </div>
                         </div>
                         <div class="d-flex justify-content-between mt-2" style="font-size: 0.85rem;">
                             <small class="text-muted" id="progress-start-info">-</small>
                             <small class="text-muted" id="progress-end-info">-</small>
                         </div>
                     </div>
-                    
+
                     <!-- Quick Actions Widget -->
                     <div class="mb-4">
                         <h6 class="mb-3 text-dark">
@@ -166,7 +175,7 @@
                         </div>
                     </div>
                     <!-- End Quick Actions Widget -->
-                    
+
                     <!-- Overview Dashboard Section -->
                     <div class="row g-3">
                         <!-- Left Column: Agenda -->
@@ -179,7 +188,8 @@
                                 <div class="card-body p-0 d-flex flex-column">
                                     <div class="agenda-container flex-grow-1">
                                         <div class="ratio ratio-16x9">
-                                            <iframe id="calendar-preview-iframe" src="" style="border:0;" loading="lazy"></iframe>
+                                            <iframe id="calendar-preview-iframe" src="" style="border:0;"
+                                                loading="lazy"></iframe>
                                         </div>
                                     </div>
                                 </div>
@@ -263,26 +273,27 @@
                 <div id="teacher-area-tab" class="section-content hidden">
                     <div class="my-4">
                         <h1 id="teacher-area-title">Área del Docente</h1>
-                        <p id="teacher-area-desc" class="text-muted">Gestión integral del grupo y herramientas de seguimiento</p>
+                        <p id="teacher-area-desc" class="text-muted">Gestión integral del grupo y herramientas de
+                            seguimiento</p>
                     </div>
 
                     <!-- Teacher Area Sub-sections Navigation -->
                     <div class="mt-4">
                         <nav class="nav nav-tabs mb-4" id="teacher-area-subtabs" role="tablist">
-                            <button class="nav-link active" id="teacher-area-overview-tab" type="button" role="tab" aria-selected="true"
-                                onclick="switchTeacherAreaSubTab('overview')">
+                            <button class="nav-link active" id="teacher-area-overview-tab" type="button" role="tab"
+                                aria-selected="true" onclick="switchTeacherAreaSubTab('overview')">
                                 <i class="bi bi-grid me-2"></i>Resumen
                             </button>
-                            <button class="nav-link" id="teacher-area-students-tab" type="button" role="tab" aria-selected="false"
-                                onclick="switchTeacherAreaSubTab('students')">
+                            <button class="nav-link" id="teacher-area-students-tab" type="button" role="tab"
+                                aria-selected="false" onclick="switchTeacherAreaSubTab('students')">
                                 <i class="bi bi-people me-2"></i>Estudiantes
                             </button>
-                            <button class="nav-link" id="teacher-area-attendance-tab" type="button" role="tab" aria-selected="false"
-                                onclick="switchTeacherAreaSubTab('attendance')">
+                            <button class="nav-link" id="teacher-area-attendance-tab" type="button" role="tab"
+                                aria-selected="false" onclick="switchTeacherAreaSubTab('attendance')">
                                 <i class="bi bi-calendar-check me-2"></i>Asistencia
                             </button>
-                            <button class="nav-link" id="teacher-area-evaluation-tab" type="button" role="tab" aria-selected="false"
-                                onclick="switchTeacherAreaSubTab('evaluation')">
+                            <button class="nav-link" id="teacher-area-evaluation-tab" type="button" role="tab"
+                                aria-selected="false" onclick="switchTeacherAreaSubTab('evaluation')">
                                 <i class="bi bi-clipboard-check me-2"></i>Evaluación
                             </button>
                         </nav>
@@ -290,7 +301,8 @@
                         <!-- Sub-sections Content -->
                         <div class="tab-content" id="teacher-area-subtabs-content">
                             <!-- Overview Tab -->
-                            <div class="tab-pane fade show active" id="teacher-area-overview" role="tabpanel" aria-labelledby="teacher-area-overview-tab">
+                            <div class="tab-pane fade show active" id="teacher-area-overview" role="tabpanel"
+                                aria-labelledby="teacher-area-overview-tab">
                                 <div class="mb-4">
                                     <h6 class="mb-3 text-dark fw-bold">
                                         <i class="bi bi-lightning-charge text-warning me-2"></i>Accesos Rápidos
@@ -298,7 +310,8 @@
                                     <div id="teacher-area-quick-actions" class="p-3 bg-light rounded-3 border">
                                         <!-- Teacher quick actions will be loaded here -->
                                         <div class="text-center py-4">
-                                            <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                                            <div class="spinner-border text-primary spinner-border-sm" role="status">
+                                            </div>
                                             <span class="ms-2">Cargando acciones...</span>
                                         </div>
                                     </div>
@@ -306,17 +319,21 @@
                             </div>
 
                             <!-- Students Tab -->
-                            <div class="tab-pane fade" id="teacher-area-students" role="tabpanel" aria-labelledby="teacher-area-students-tab">
+                            <div class="tab-pane fade" id="teacher-area-students" role="tabpanel"
+                                aria-labelledby="teacher-area-students-tab">
                                 <div id="students-tab">
                                     <div class="d-flex justify-content-between align-items-center my-4">
                                         <h2>Estudiantes</h2>
                                         <div class="d-flex flex-wrap gap-2">
-                                            <button class="btn btn-outline-secondary" onclick="exportStudentsCsv()" id="export-all-students-btn">
-                                                <i class="bi bi-download me-2"></i>Descarga CSV
+                                            <button class="btn btn-outline-secondary" onclick="exportAllStudentsExcel()"
+                                                id="export-all-students-btn">
+                                                <i class="bi bi-file-earmark-excel me-2"></i>Descarga Excel
                                             </button>
-                                            <button class="btn btn-outline-success" onclick="exportSelectedStudentsCsv()"
-                                                id="export-selected-btn" style="display:none;">
-                                                <i class="bi bi-download me-2"></i>Descarga Seleccionados CSV
+                                            <button class="btn btn-outline-success"
+                                                onclick="exportSelectedStudentsExcel()" id="export-selected-btn"
+                                                style="display:none;">
+                                                <i class="bi bi-file-earmark-excel me-2"></i>Descarga Seleccionados
+                                                Excel
                                             </button>
                                             <button class="btn btn-outline-danger" onclick="deleteSelectedStudents()"
                                                 id="delete-selected-btn" style="display:none;">
@@ -331,7 +348,8 @@
                                                 </button>
                                                 <ul class="dropdown-menu dropdown-menu-end shadow">
                                                     <li>
-                                                        <a class="dropdown-item d-flex align-items-center" href="#" onclick="generateSelectedStudentsPDF()">
+                                                        <a class="dropdown-item d-flex align-items-center" href="#"
+                                                            onclick="generateSelectedStudentsPDF()">
                                                             <i class="bi bi-file-earmark-person me-2 text-warning"></i>
                                                             <span>Informe competen. (Seleccionados)</span>
                                                         </a>
@@ -340,27 +358,26 @@
                                             </div>
                                         </div>
                                     </div>
-                
+
                                     <div class="mb-4">
                                         <div class="input-group">
                                             <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                            <input type="text" id="student-search-input" class="form-control" 
-                                                   placeholder="Buscar por nombre, email, nacionalidad o profesión..."
-                                                   onkeyup="filterStudents(this.value)">
+                                            <input type="text" id="student-search-input" class="form-control"
+                                                placeholder="Buscar por nombre, email, nacionalidad o profesión..."
+                                                onkeyup="filterStudents(this.value)">
                                         </div>
                                     </div>
-                
+
                                     <div class="table-responsive">
                                         <table class="table table-hover align-middle">
                                             <thead class="table-light">
                                                 <tr>
                                                     <th style="width: 40px;">
-                                                        <input type="checkbox" class="form-check-input" id="select-all-students" onclick="toggleAllStudents(this)">
+                                                        <input type="checkbox" class="form-check-input"
+                                                            id="select-all-students" onclick="toggleAllStudents(this)">
                                                     </th>
                                                     <th>Nombre</th>
                                                     <th>Email</th>
-                                                    <th>Nacionalidad</th>
-                                                    <th>Profesión</th>
                                                     <th class="text-end">Acciones</th>
                                                 </tr>
                                             </thead>
@@ -373,30 +390,38 @@
                             </div>
 
                             <!-- Attendance Tab -->
-                            <div class="tab-pane fade" id="teacher-area-attendance" role="tabpanel" aria-labelledby="teacher-area-attendance-tab">
+                            <div class="tab-pane fade" id="teacher-area-attendance" role="tabpanel"
+                                aria-labelledby="teacher-area-attendance-tab">
                                 <div id="attendance-tab">
                                     <div class="d-flex justify-content-between align-items-center my-4 flex-wrap gap-3">
                                         <h2 class="mb-0"> Control de Asistencia</h2>
-                                        <div class="d-flex align-items-center gap-3 flex-wrap w-100 justify-content-end">
-                                            <button class="btn" onclick="exportAttendanceToExcel()" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 500;">
+                                        <div
+                                            class="d-flex align-items-center gap-3 flex-wrap w-100 justify-content-end">
+                                            <button class="btn" onclick="exportAttendanceToExcel()"
+                                                style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 500;">
                                                 <i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar en Excel
                                             </button>
                                             <div class="d-flex align-items-center gap-2" id="month-selector">
-                                                <button class="btn" onclick="prevAttendanceMonth()" style="color: var(--principal-1); border: 1px solid var(--principal-1);">
+                                                <button class="btn" onclick="prevAttendanceMonth()"
+                                                    style="color: var(--principal-1); border: 1px solid var(--principal-1);">
                                                     <i class="bi bi-chevron-left"></i>
                                                 </button>
-                                                <h4 class="mb-0" id="current-attendance-month-display" style="color: var(--principal-1); font-weight: 600; min-width: 140px; text-align: center;">Month Year</h4>
-                                                <button class="btn" onclick="nextAttendanceMonth()" style="color: var(--principal-1); border: 1px solid var(--principal-1);">
+                                                <h4 class="mb-0" id="current-attendance-month-display"
+                                                    style="color: var(--principal-1); font-weight: 600; min-width: 140px; text-align: center;">
+                                                    Month Year</h4>
+                                                <button class="btn" onclick="nextAttendanceMonth()"
+                                                    style="color: var(--principal-1); border: 1px solid var(--principal-1);">
                                                     <i class="bi bi-chevron-right"></i>
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
-                
+
                                     <!-- Attendance Stats Row -->
                                     <div class="row mb-4 g-2" id="attendance-stats-container">
                                         <div class="col-auto d-flex">
-                                            <div class="card" style="background-color: var(--green-f5); color: var(--principal-2); border: none;">
+                                            <div class="card"
+                                                style="background-color: var(--green-f5); color: var(--principal-2); border: none;">
                                                 <div class="card-body text-center py-2">
                                                     <h6 class="mb-0">Presente</h6>
                                                     <h3 class="mb-0" id="stat-present-total">0</h3>
@@ -404,7 +429,8 @@
                                             </div>
                                         </div>
                                         <div class="col-auto d-flex">
-                                            <div class="card" style="background-color: var(--principal-1); color: var(--principal-3); border: none;">
+                                            <div class="card"
+                                                style="background-color: var(--principal-1); color: var(--principal-3); border: none;">
                                                 <div class="card-body text-center py-2">
                                                     <h6 class="mb-0">Ausente</h6>
                                                     <h3 class="mb-0" id="stat-absent-total">0</h3>
@@ -412,7 +438,8 @@
                                             </div>
                                         </div>
                                         <div class="col-auto d-flex">
-                                            <div class="card" style="background-color: var(--complementario-2); color: var(--principal-2); border: none;">
+                                            <div class="card"
+                                                style="background-color: var(--complementario-2); color: var(--principal-2); border: none;">
                                                 <div class="card-body text-center py-2">
                                                     <h6 class="mb-0">Retraso</h6>
                                                     <h3 class="mb-0" id="stat-late-total">0</h3>
@@ -420,7 +447,8 @@
                                             </div>
                                         </div>
                                         <div class="col-auto d-flex">
-                                            <div class="card" style="background-color: var(--blue-light-f5); color: var(--principal-2); border: none;">
+                                            <div class="card"
+                                                style="background-color: var(--blue-light-f5); color: var(--principal-2); border: none;">
                                                 <div class="card-body text-center py-2">
                                                     <h6 class="mb-0">Justificado</h6>
                                                     <h3 class="mb-0" id="stat-justified-total">0</h3>
@@ -428,7 +456,8 @@
                                             </div>
                                         </div>
                                         <div class="col-auto d-flex">
-                                            <div class="card" style="background-color: #e9d8fd; color: #5b21b6; border: none;">
+                                            <div class="card"
+                                                style="background-color: #e9d8fd; color: #5b21b6; border: none;">
                                                 <div class="card-body text-center py-2">
                                                     <h6 class="mb-0">Sale antes</h6>
                                                     <h3 class="mb-0" id="stat-early-leave-total">0</h3>
@@ -436,7 +465,8 @@
                                             </div>
                                         </div>
                                         <div class="col-auto d-flex">
-                                            <div class="card" style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--grey-light-f5);">
+                                            <div class="card"
+                                                style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--grey-light-f5);">
                                                 <div class="card-body text-center py-2">
                                                     <h6 class="mb-0">Media Asistencia</h6>
                                                     <h3 class="mb-0" id="stat-attendance-avg">0%</h3>
@@ -444,17 +474,22 @@
                                             </div>
                                         </div>
                                     </div>
-                
+
                                     <div class="card mb-4">
                                         <div class="card-body p-0">
                                             <div class="table-responsive attendance-table-wrapper">
                                                 <table class="table table-bordered mb-0" id="attendance-table">
-                                                    <thead style="background-color: var(--complementario-1-extra-light);">
+                                                    <thead
+                                                        style="background-color: var(--complementario-1-extra-light);">
                                                         <tr id="attendance-weekday-row">
-                                                            <th class="sticky-column" style="min-width: 250px; z-index: 10; background-color: var(--complementario-1-extra-light);"></th>
+                                                            <th class="sticky-column"
+                                                                style="min-width: 250px; z-index: 10; background-color: var(--complementario-1-extra-light);">
+                                                            </th>
                                                         </tr>
                                                         <tr id="attendance-header-row">
-                                                            <th class="sticky-column" style="min-width: 250px; z-index: 10; background-color: var(--complementario-1-extra-light); color: var(--principal-1); font-weight: 600;">Estudiante</th>
+                                                            <th class="sticky-column"
+                                                                style="min-width: 250px; z-index: 10; background-color: var(--complementario-1-extra-light); color: var(--principal-1); font-weight: 600;">
+                                                                Estudiante</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="attendance-body">
@@ -463,14 +498,28 @@
                                                 </table>
                                             </div>
                                         </div>
-                                        <div class="card-footer" style="background-color: var(--complementario-1-extra-light);">
-                                            <div class="d-flex flex-wrap gap-4 small" style="color: var(--principal-2);">
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color: var(--green-f5);"></span> Presente</div>
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color: var(--principal-1);"></span> Ausente</div>
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color: var(--complementario-2);"></span> Con retraso</div>
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color: var(--blue-light-f5);"></span> Justificado</div>
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2" style="background-color: #e9d8fd;"></span> Sale antes</div>
-                                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i> <strong>Click</strong> para marcar | <strong>Clic derecho</strong> para comentario</div>
+                                        <div class="card-footer"
+                                            style="background-color: var(--complementario-1-extra-light);">
+                                            <div class="d-flex flex-wrap gap-4 small"
+                                                style="color: var(--principal-2);">
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--green-f5);"></span> Presente
+                                                </div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--principal-1);"></span> Ausente
+                                                </div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--complementario-2);"></span> Con
+                                                    retraso</div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--blue-light-f5);"></span>
+                                                    Justificado</div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: #e9d8fd;"></span> Sale antes</div>
+                                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i>
+                                                    <strong>Click</strong> para marcar | <strong>Clic derecho</strong>
+                                                    para comentario
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -478,41 +527,54 @@
                             </div>
 
                             <!-- Evaluation Tab -->
-                            <div class="tab-pane fade" id="teacher-area-evaluation" role="tabpanel" aria-labelledby="teacher-area-evaluation-tab">
+                            <div class="tab-pane fade" id="teacher-area-evaluation" role="tabpanel"
+                                aria-labelledby="teacher-area-evaluation-tab">
                                 <div id="evaluation-tab">
                                     <div id="evaluation-tab-view">
                                         <div class="d-flex justify-content-between align-items-center my-4">
                                             <div>
-                                                <h2><i class="bi bi-clipboard-check me-2 text-primary"></i>Evaluación de Proyectos</h2>
+                                                <h2><i class="bi bi-clipboard-check me-2 text-primary"></i>Evaluación de
+                                                    Proyectos</h2>
                                             </div>
                                         </div>
                                         <div id="evaluation-content">
                                             <!-- populated by JS -->
                                         </div>
                                     </div>
-                
+
                                     <div id="team-history-panel" class="hidden">
                                         <div class="d-flex align-items-center gap-3 my-4">
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeTeamHistoryView()"><i class="bi bi-arrow-left me-1"></i>Volver</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                onclick="closeTeamHistoryView()"><i
+                                                    class="bi bi-arrow-left me-1"></i>Volver</button>
                                             <h4 class="mb-0 fw-bold">Histórico de equipos</h4>
                                         </div>
                                         <div id="team-history-panel-body" class="pb-4"></div>
                                     </div>
-                
+
                                     <div id="eval-project-view" class="hidden">
                                         <!-- Split view content (header, sidebar, right panel) -->
                                         <div class="eval-view-topbar d-flex align-items-center gap-3 py-3 mb-0">
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeEvaluationView()"><i class="bi bi-arrow-left me-1"></i>Volver</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                onclick="closeEvaluationView()"><i
+                                                    class="bi bi-arrow-left me-1"></i>Volver</button>
                                             <div class="flex-grow-1 min-w-0">
-                                                <h5 class="mb-0 fw-bold text-truncate" id="eval-view-title">Evaluación</h5>
+                                                <h5 class="mb-0 fw-bold text-truncate" id="eval-view-title">Evaluación
+                                                </h5>
                                                 <p class="mb-0 text-muted small" id="eval-view-subtitle"></p>
                                             </div>
-                                            <button type="button" class="btn btn-sm btn-primary" onclick="saveIndividualStudentEval()"><i class="bi bi-save me-1"></i>Guardar</button>
+                                            <button type="button" class="btn btn-sm btn-primary"
+                                                onclick="saveIndividualStudentEval()"><i
+                                                    class="bi bi-save me-1"></i>Guardar</button>
                                         </div>
                                         <div class="eval-split-layout">
-                                            <aside class="eval-targets-sidebar"><ul class="eval-targets-list list-unstyled mb-0" id="eval-targets-list"></ul></aside>
+                                            <aside class="eval-targets-sidebar">
+                                                <ul class="eval-targets-list list-unstyled mb-0" id="eval-targets-list">
+                                                </ul>
+                                            </aside>
                                             <main class="eval-right-panel" id="eval-right-panel">
-                                                <div id="eval-right-empty" class="text-center py-5">Selecciona un alumno</div>
+                                                <div id="eval-right-empty" class="text-center py-5">Selecciona un alumno
+                                                </div>
                                                 <div id="eval-right-content" class="d-none">
                                                     <div id="eval-right-header" class="p-3 border-bottom"></div>
                                                     <div id="eval-right-body" class="p-3"></div>
@@ -520,10 +582,12 @@
                                             </main>
                                         </div>
                                     </div>
-                                    
+
                                     <div id="student-eval-panel" class="hidden">
                                         <div class="d-flex align-items-center gap-3 my-4">
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cancelStudentEvalPanel()"><i class="bi bi-arrow-left me-1"></i>Volver</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                onclick="cancelStudentEvalPanel()"><i
+                                                    class="bi bi-arrow-left me-1"></i>Volver</button>
                                             <h4 class="mb-0 fw-bold">Evaluación Individual</h4>
                                         </div>
                                         <div id="student-eval-panel-body"></div>
@@ -548,33 +612,40 @@
                         <!-- Student Access Password Card -->
                         <div class="col-lg-6">
                             <div class="card h-100 border-0 shadow-sm">
-                                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, var(--principal-1) 0%, var(--complementario-2) 100%);">
+                                <div class="card-header bg-gradient"
+                                    style="background: linear-gradient(135deg, var(--principal-1) 0%, var(--complementario-2) 100%);">
                                     <h6 class="mb-0 text-dark"><i class="bi bi-key me-2"></i>Acceso del estudiante</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label for="access-password-input" class="form-label small fw-bold">Contraseña</label>
+                                        <label for="access-password-input"
+                                            class="form-label small fw-bold">Contraseña</label>
                                         <div class="password-input-group">
-                                            <input type="password" class="form-control form-control-sm" id="access-password-input"
-                                                placeholder="Enter password">
+                                            <input type="password" class="form-control form-control-sm"
+                                                id="access-password-input" placeholder="Enter password">
                                             <button type="button" class="password-toggle"
                                                 onclick="togglePasswordVisibility('access-password-input')">
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </div>
                                     </div>
-                                    <button class="btn btn-sm w-100" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;" onclick="updateAccessPassword()">
+                                    <button class="btn btn-sm w-100"
+                                        style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;"
+                                        onclick="updateAccessPassword()">
                                         <i class="bi bi-save me-1"></i>Actualizar
                                     </button>
 
-                                    <div id="password-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style="font-size: 0.85rem;">
+                                    <div id="password-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert"
+                                        style="font-size: 0.85rem;">
                                     </div>
                                 </div>
                                 <div class="card-footer bg-light border-top p-2">
                                     <small class="text-muted d-block mb-2">Link generado:</small>
                                     <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control form-control-sm" id="student-access-link" readonly>
-                                        <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyAccessLink()">
+                                        <input type="text" class="form-control form-control-sm" id="student-access-link"
+                                            readonly>
+                                        <button class="btn btn-outline-secondary btn-sm" type="button"
+                                            onclick="copyAccessLink()">
                                             <i class="bi bi-clipboard"></i>
                                         </button>
                                     </div>
@@ -585,32 +656,41 @@
                         <!-- Teaching Content Card -->
                         <div class="col-lg-6">
                             <div class="card h-100 border-0 shadow-sm">
-                                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, var(--blue-light-f5) 0%, var(--green-f5) 100%);">
-                                    <h6 class="mb-0 text-dark"><i class="bi bi-book me-2"></i>Planificador / Refactor</h6>
+                                <div class="card-header bg-gradient"
+                                    style="background: linear-gradient(135deg, var(--blue-light-f5) 0%, var(--green-f5) 100%);">
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-book me-2"></i>Planificador / Refactor
+                                    </h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label for="teaching-content-url" class="form-label small fw-bold">URL del contenido</label>
+                                        <label for="teaching-content-url" class="form-label small fw-bold">URL del
+                                            contenido</label>
                                         <input type="url" class="form-control form-control-sm" id="teaching-content-url"
                                             placeholder="https://example.com" />
                                     </div>
-                                    <button class="btn btn-sm w-100" style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;" onclick="updateTeachingContent()">
+                                    <button class="btn btn-sm w-100"
+                                        style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;"
+                                        onclick="updateTeachingContent()">
                                         <i class="bi bi-save me-1"></i>Guardar
                                     </button>
 
-                                    <div id="teaching-content-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style="font-size: 0.85rem;">
+                                    <div id="teaching-content-alert" class="alert alert-sm mt-2 mb-0 hidden p-2"
+                                        role="alert" style="font-size: 0.85rem;">
                                     </div>
                                 </div>
                                 <div class="card-footer bg-light border-top p-2">
                                     <small class="text-muted d-block mb-2">Preview:</small>
                                     <div class="d-flex gap-1">
-                                        <a id="teaching-content-preview-btn" href="#" class="btn btn-sm btn-outline-primary hidden" target="_blank">
+                                        <a id="teaching-content-preview-btn" href="#"
+                                            class="btn btn-sm btn-outline-primary hidden" target="_blank">
                                             <i class="bi bi-book me-1"></i>Vista
                                         </a>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="removeTeachingContent()" id="remove-teaching-btn" style="display:none;">
+                                        <button class="btn btn-sm btn-outline-danger" onclick="removeTeachingContent()"
+                                            id="remove-teaching-btn" style="display:none;">
                                             <i class="bi bi-trash"></i>
                                         </button>
-                                        <small class="text-muted align-self-center ms-1" id="no-content-message">No hay contenido</small>
+                                        <small class="text-muted align-self-center ms-1" id="no-content-message">No hay
+                                            contenido</small>
                                     </div>
                                 </div>
                             </div>
@@ -619,32 +699,40 @@
                         <!-- Asana Workspace Card -->
                         <div class="col-lg-6">
                             <div class="card h-100 border-0 shadow-sm">
-                                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, #FF6B6B 0%, #F06595 100%);">
+                                <div class="card-header bg-gradient"
+                                    style="background: linear-gradient(135deg, #FF6B6B 0%, #F06595 100%);">
                                     <h6 class="mb-0 text-dark"><i class="bi bi-kanban me-2"></i>Asana</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label for="asana-workspace-url" class="form-label small fw-bold">URL del espacio de trabajo</label>
+                                        <label for="asana-workspace-url" class="form-label small fw-bold">URL del
+                                            espacio de trabajo</label>
                                         <input type="url" class="form-control form-control-sm" id="asana-workspace-url"
                                             placeholder="https://app.asana.com/0/..." />
                                     </div>
-                                    <button class="btn btn-sm w-100" style="background-color: #FF6B6B; color: white; border: none; font-weight: 600;" onclick="updateAsanaWorkspace()">
+                                    <button class="btn btn-sm w-100"
+                                        style="background-color: #FF6B6B; color: white; border: none; font-weight: 600;"
+                                        onclick="updateAsanaWorkspace()">
                                         <i class="bi bi-save me-1"></i>Guardar
                                     </button>
 
-                                    <div id="asana-workspace-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style="font-size: 0.85rem;">
+                                    <div id="asana-workspace-alert" class="alert alert-sm mt-2 mb-0 hidden p-2"
+                                        role="alert" style="font-size: 0.85rem;">
                                     </div>
                                 </div>
                                 <div class="card-footer bg-light border-top p-2">
                                     <small class="text-muted d-block mb-2">Estado:</small>
                                     <div class="d-flex gap-1">
-                                        <a id="asana-workspace-preview-btn" href="#" class="btn btn-sm btn-outline-danger hidden" target="_blank">
+                                        <a id="asana-workspace-preview-btn" href="#"
+                                            class="btn btn-sm btn-outline-danger hidden" target="_blank">
                                             <i class="bi bi-kanban me-1"></i>Abrir
                                         </a>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="removeAsanaWorkspace()" id="remove-asana-btn" style="display:none;">
+                                        <button class="btn btn-sm btn-outline-danger" onclick="removeAsanaWorkspace()"
+                                            id="remove-asana-btn" style="display:none;">
                                             <i class="bi bi-trash"></i>
                                         </button>
-                                        <small class="text-muted align-self-center ms-1" id="no-asana-message">No configurado</small>
+                                        <small class="text-muted align-self-center ms-1" id="no-asana-message">No
+                                            configurado</small>
                                     </div>
                                 </div>
                             </div>
@@ -676,11 +764,11 @@
                     <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
                         <h2 class="mb-0">Detalles del Programa</h2>
                         <div class="d-flex gap-2">
-                            <button id="preview-roadmap-btn" class="btn btn-outline-primary" onclick="previewPromotion()" 
-                                title="Vista previa del roadmap">
+                            <button id="preview-roadmap-btn" class="btn btn-outline-primary"
+                                onclick="previewPromotion()" title="Vista previa del roadmap">
                                 <i class="bi bi-eye me-2"></i>Preview Roadmap
                             </button>
-                            <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()" 
+                            <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()"
                                 title="Save all changes to Program Details">
                                 <i class="bi bi-save me-2"></i>Guardar Todos los Cambios
                             </button>
@@ -689,48 +777,48 @@
 
                     <!-- Program Details Navigation Tabs -->
                     <nav class="nav nav-tabs mb-4" id="program-details-tabs" role="tablist">
-                        <button class="nav-link active" id="program-details-roadmap-tab" type="button" role="tab" aria-selected="true"
-                            onclick="switchProgramDetailsTab('roadmap')">
+                        <button class="nav-link active" id="program-details-roadmap-tab" type="button" role="tab"
+                            aria-selected="true" onclick="switchProgramDetailsTab('roadmap')">
                             <i class="bi bi-map me-2"></i>Roadmap
                         </button>
-                        <button class="nav-link" id="program-details-calendar-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('calendar')">
+                        <button class="nav-link" id="program-details-calendar-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('calendar')">
                             <i class="bi bi-calendar me-2"></i>Calendario
                         </button>
-                        <button class="nav-link" id="program-details-schedule-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('schedule')">
+                        <button class="nav-link" id="program-details-schedule-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('schedule')">
                             <i class="bi bi-clock me-2"></i>Horario
                         </button>
-                        <button class="nav-link" id="program-details-team-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('team')">
+                        <button class="nav-link" id="program-details-team-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('team')">
                             <i class="bi bi-people me-2"></i>Equipo
                         </button>
-                        <button class="nav-link" id="program-details-resources-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('resources')">
+                        <button class="nav-link" id="program-details-resources-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('resources')">
                             <i class="bi bi-tools me-2"></i>Recursos
                         </button>
-                        <button class="nav-link" id="program-details-pildoras-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('pildoras')">
+                        <button class="nav-link" id="program-details-pildoras-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('pildoras')">
                             <i class="bi bi-lightbulb me-2"></i>Píldoras
                         </button>
-                        <button class="nav-link" id="program-details-evaluation-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('evaluation')">
+                        <button class="nav-link" id="program-details-evaluation-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('evaluation')">
                             <i class="bi bi-clipboard-check me-2"></i>Evaluación
                         </button>
-                        <button class="nav-link" id="program-details-virtual-classroom-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('virtual-classroom')">
+                        <button class="nav-link" id="program-details-virtual-classroom-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('virtual-classroom')">
                             <i class="bi bi-laptop me-2"></i>Aula Virtual
                         </button>
-                        <button class="nav-link" id="program-details-quicklinks-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('quicklinks')">
+                        <button class="nav-link" id="program-details-quicklinks-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('quicklinks')">
                             <i class="bi bi-lightning me-2"></i>Quick Links
                         </button>
-                        <button class="nav-link" id="program-details-competences-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('competences')">
+                        <button class="nav-link" id="program-details-competences-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('competences')">
                             <i class="bi bi-award me-2"></i>Competencias
                         </button>
-                        <button class="nav-link" id="program-details-sections-tab" type="button" role="tab" aria-selected="false"
-                            onclick="switchProgramDetailsTab('sections')">
+                        <button class="nav-link" id="program-details-sections-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('sections')">
                             <i class="bi bi-file-text me-2"></i>Secciones
                         </button>
                     </nav>
@@ -738,7 +826,8 @@
                     <!-- Tab Content -->
                     <div class="tab-content" id="program-details-content">
                         <!-- Roadmap Tab -->
-                        <div class="tab-pane fade show active" id="program-details-roadmap" role="tabpanel" aria-labelledby="program-details-roadmap-tab">
+                        <div class="tab-pane fade show active" id="program-details-roadmap" role="tabpanel"
+                            aria-labelledby="program-details-roadmap-tab">
                             <div class="justify-content-between align-items-center mb-4 detail-card">
                                 <h5 class="mb-0">Roadmap & Módulos</h5>
                                 <div class="d-flex gap-2">
@@ -764,16 +853,19 @@
                         </div>
 
                         <!-- Calendario Tab -->
-                        <div class="tab-pane fade" id="program-details-calendar" role="tabpanel" aria-labelledby="program-details-calendar-tab">
+                        <div class="tab-pane fade" id="program-details-calendar" role="tabpanel"
+                            aria-labelledby="program-details-calendar-tab">
                             <div class="card">
                                 <div class="card-body">
                                     <h5 class="card-title">Configuración del Calendario</h5>
                                     <form id="calendar-form">
                                         <div class="mb-3">
-                                            <label for="google-calendar-id" class="form-label">Google Calendar ID</label>
+                                            <label for="google-calendar-id" class="form-label">Google Calendar
+                                                ID</label>
                                             <input type="text" class="form-control" id="google-calendar-id"
                                                 placeholder="your-calendar@group.calendar.google.com" />
-                                            <small class="text-muted">Encuentra el Googke calendar ID en las configuraciones de Google Calendar</small>
+                                            <small class="text-muted">Encuentra el Googke calendar ID en las
+                                                configuraciones de Google Calendar</small>
                                         </div>
                                         <button type="submit" class="btn btn-primary">Guardar calendario</button>
                                     </form>
@@ -788,67 +880,82 @@
                         </div>
 
                         <!-- Schedule Tab -->
-                        <div class="tab-pane fade" id="program-details-schedule" role="tabpanel" aria-labelledby="program-details-schedule-tab">
+                        <div class="tab-pane fade" id="program-details-schedule" role="tabpanel"
+                            aria-labelledby="program-details-schedule-tab">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-6 border-end pb-md-0 pb-4">
-                                            <h6 class="text-primary fw-bold mb-3"><i class="bi bi-laptop me-2"></i>Online</h6>
+                                            <h6 class="text-primary fw-bold mb-3"><i
+                                                    class="bi bi-laptop me-2"></i>Online</h6>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Hora de entrada</label>
-                                                <input type="time" class="form-control form-control-sm" id="sched-online-entry">
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-online-entry">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Inicio Píldoras</label>
-                                                <input type="time" class="form-control form-control-sm" id="sched-online-start">
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-online-start">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Break</label>
-                                                <input type="time" class="form-control form-control-sm" id="sched-online-break">
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-online-break">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Comida (si se toma)</label>
-                                                <input type="text" class="form-control form-control-sm" id="sched-online-lunch" placeholder="Use text if needed">
+                                                <input type="text" class="form-control form-control-sm"
+                                                    id="sched-online-lunch" placeholder="Use text if needed">
                                             </div>
                                             <div class="mb-0">
                                                 <label class="form-label form-label-sm">Hora de salida</label>
-                                                <input type="time" class="form-control form-control-sm" id="sched-online-finish">
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-online-finish">
                                             </div>
                                         </div>
                                         <div class="col-md-6 ps-md-4">
                                             <h6 class=" fw-bold mb-3"><i class="bi bi-people me-2"></i>Presencial</h6>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Hora de entrada</label>
-                                                <input type="time" class="form-control form-control-sm" id="sched-presential-entry">
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-entry">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Hora de Entrada</label>
-                                                <input type="time" class="form-control form-control-sm" id="sched-presential-start">
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-start">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Break</label>
-                                                <input type="time" class="form-control form-control-sm" id="sched-presential-break">
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-break">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label form-label-sm">Comida</label>
-                                                <input type="time" class="form-control form-control-sm" id="sched-presential-lunch">
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-lunch">
                                             </div>
                                             <div class="mb-0">
                                                 <label class="form-label form-label-sm">Hora de salida</label>
-                                                <input type="time" class="form-control form-control-sm" id="sched-presential-finish">
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-finish">
                                             </div>
                                         </div>
                                     </div>
                                     <div class="mt-4 pt-3 border-top">
-                                        <label class="form-label form-label-sm">Notas adicionales sobre el horario</label>
-                                        <textarea class="form-control form-control-sm" id="sched-notes" rows="2"></textarea>
+                                        <label class="form-label form-label-sm">Notas adicionales sobre el
+                                            horario</label>
+                                        <textarea class="form-control form-control-sm" id="sched-notes"
+                                            rows="2"></textarea>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Team Tab -->
-                        <div class="tab-pane fade" id="program-details-team" role="tabpanel" aria-labelledby="program-details-team-tab">
+                        <div class="tab-pane fade" id="program-details-team" role="tabpanel"
+                            aria-labelledby="program-details-team-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0"><i class="bi bi-people me-2"></i>Miembros del equipo</h6>
@@ -879,7 +986,8 @@
                         </div>
 
                         <!-- Resources Tab -->
-                        <div class="tab-pane fade" id="program-details-resources" role="tabpanel" aria-labelledby="program-details-resources-tab">
+                        <div class="tab-pane fade" id="program-details-resources" role="tabpanel"
+                            aria-labelledby="program-details-resources-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0"><i class="bi bi-tools me-2"></i>Recursos</h6>
@@ -908,7 +1016,8 @@
                         </div>
 
                         <!-- Píldoras Tab -->
-                        <div class="tab-pane fade" id="program-details-pildoras" role="tabpanel" aria-labelledby="program-details-pildoras-tab">
+                        <div class="tab-pane fade" id="program-details-pildoras" role="tabpanel"
+                            aria-labelledby="program-details-pildoras-tab">
                             <div class="card">
                                 <div class="card-header bg-light">
                                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -920,7 +1029,8 @@
                                                     onclick="navigateToPreviousModule()" disabled>
                                                     <i class="bi bi-chevron-left"></i>
                                                 </button>
-                                                <span class="fw-semibold text-primary" id="current-module-name">Módulo I</span>
+                                                <span class="fw-semibold text-primary" id="current-module-name">Módulo
+                                                    I</span>
                                                 <button class="btn btn-sm btn-outline-secondary" id="next-module-btn"
                                                     onclick="navigateToNextModule()">
                                                     <i class="bi bi-chevron-right"></i>
@@ -948,8 +1058,7 @@
                                             <i class="bi bi-plus"></i> Agregar Píldora
                                         </button>
                                         <button class="btn btn-sm btn-outline-secondary" type="button"
-                                            id="pildoras-excel-template-btn"
-                                            onclick="downloadPildorasExcelTemplate()">
+                                            id="pildoras-excel-template-btn" onclick="downloadPildorasExcelTemplate()">
                                             <i class="bi bi-download"></i> Plantilla Excel
                                         </button>
                                         <input type="file" id="pildoras-excel-input" accept=".xlsx,.xls" class="d-none"
@@ -983,10 +1092,12 @@
                         </div>
 
                         <!-- Evaluation Tab -->
-                        <div class="tab-pane fade" id="program-details-evaluation" role="tabpanel" aria-labelledby="program-details-evaluation-tab">
+                        <div class="tab-pane fade" id="program-details-evaluation" role="tabpanel"
+                            aria-labelledby="program-details-evaluation-tab">
                             <div class="card">
                                 <div class="card-header bg-light">
-                                    <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Criterio de Evaluación</h6>
+                                    <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Criterio de Evaluación
+                                    </h6>
                                 </div>
                                 <div class="card-body">
                                     <textarea class="form-control" id="evaluation-text" rows="6"
@@ -996,7 +1107,8 @@
                         </div>
 
                         <!-- Quick Links Tab -->
-                        <div class="tab-pane fade" id="program-details-virtual-classroom" role="tabpanel" aria-labelledby="program-details-virtual-classroom-tab">
+                        <div class="tab-pane fade" id="program-details-virtual-classroom" role="tabpanel"
+                            aria-labelledby="program-details-virtual-classroom-tab">
                             <!-- Aula Virtual panel (moved from Evaluation tab) -->
                             <div class="card mb-3" id="virtual-classroom-panel">
                                 <div class="card-body">
@@ -1006,20 +1118,24 @@
                                                 <i class="bi bi-laptop me-2 text-primary"></i>Aula Virtual
                                             </h5>
                                             <p class="text-muted small mb-0">
-                                                Activa un proyecto para que el estudiantado entregue su repositorio desde la vista pública.
+                                                Activa un proyecto para que el estudiantado entregue su repositorio
+                                                desde la vista pública.
                                             </p>
                                         </div>
                                         <div class="text-end">
-                                            <span class="badge bg-secondary" id="vc-status-badge">Sin proyecto activo</span>
+                                            <span class="badge bg-secondary" id="vc-status-badge">Sin proyecto
+                                                activo</span>
                                         </div>
                                     </div>
 
                                     <div class="row g-3 align-items-end">
                                         <div class="col-md-5">
-                                            <label for="vc-project-select" class="form-label small fw-semibold text-muted">
+                                            <label for="vc-project-select"
+                                                class="form-label small fw-semibold text-muted">
                                                 Proyecto vinculado
                                             </label>
-                                            <select id="vc-project-select" class="form-select form-select-sm" onchange="onVirtualClassroomProjectChange()">
+                                            <select id="vc-project-select" class="form-select form-select-sm"
+                                                onchange="onVirtualClassroomProjectChange()">
                                                 <option value="">Selecciona módulo y proyecto…</option>
                                             </select>
                                             <div class="form-text small" id="vc-project-help">
@@ -1037,7 +1153,8 @@
                                             </div>
                                         </div>
                                         <div class="col-md-4">
-                                            <label for="vc-briefing-url" class="form-label small fw-semibold text-muted">
+                                            <label for="vc-briefing-url"
+                                                class="form-label small fw-semibold text-muted">
                                                 Link al briefing del proyecto
                                             </label>
                                             <input type="text" id="vc-briefing-url" class="form-control form-control-sm"
@@ -1052,22 +1169,25 @@
                                                     <span class="small fw-semibold text-muted">
                                                         Competencias a evaluar (definidas en Evaluación)
                                                     </span>
-                                                    <span class="badge bg-light text-dark border small" id="vc-competences-count">
+                                                    <span class="badge bg-light text-dark border small"
+                                                        id="vc-competences-count">
                                                         0 competencias
                                                     </span>
                                                 </div>
                                                 <div id="vc-competences-list" class="small text-muted">
-                                                    <span class="fst-italic">Selecciona un proyecto para ver sus competencias.</span>
+                                                    <span class="fst-italic">Selecciona un proyecto para ver sus
+                                                        competencias.</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-4 d-flex justify-content-md-end align-items-start gap-2 mt-2 mt-md-0">
+                                        <div
+                                            class="col-md-4 d-flex justify-content-md-end align-items-start gap-2 mt-2 mt-md-0">
                                             <button type="button" class="btn btn-sm btn-outline-secondary"
                                                 id="vc-deactivate-btn" onclick="deactivateVirtualClassroom()" disabled>
                                                 <i class="bi bi-x-circle me-1"></i>Desactivar
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-primary"
-                                                id="vc-activate-btn" onclick="saveVirtualClassroom(true)">
+                                            <button type="button" class="btn btn-sm btn-primary" id="vc-activate-btn"
+                                                onclick="saveVirtualClassroom(true)">
                                                 <i class="bi bi-play-circle me-1"></i>Activar Aula Virtual
                                             </button>
                                         </div>
@@ -1076,7 +1196,8 @@
                             </div>
                         </div>
 
-                        <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel" aria-labelledby="program-details-quicklinks-tab">
+                        <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel"
+                            aria-labelledby="program-details-quicklinks-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h6>
@@ -1093,7 +1214,8 @@
                         </div>
 
                         <!-- Sections Tab -->
-                        <div class="tab-pane fade" id="program-details-sections" role="tabpanel" aria-labelledby="program-details-sections-tab">
+                        <div class="tab-pane fade" id="program-details-sections" role="tabpanel"
+                            aria-labelledby="program-details-sections-tab">
                             <div class="card">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Secciones</h6>
@@ -1110,15 +1232,18 @@
                         </div>
 
                         <!-- Competencias Tab -->
-                        <div class="tab-pane fade" id="program-details-competences" role="tabpanel" aria-labelledby="program-details-competences-tab">
+                        <div class="tab-pane fade" id="program-details-competences" role="tabpanel"
+                            aria-labelledby="program-details-competences-tab">
                             <div class="card">
                                 <div class="card-header bg-light">
                                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                                         <div class="d-flex align-items-center gap-2">
-                                            <h6 class="mb-0"><i class="bi bi-award me-2"></i>Competencias del Programa</h6>
+                                            <h6 class="mb-0"><i class="bi bi-award me-2"></i>Competencias del Programa
+                                            </h6>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
-                                            <select class="form-select form-select-sm w-auto" id="competences-area-filter"
+                                            <select class="form-select form-select-sm w-auto"
+                                                id="competences-area-filter"
                                                 onchange="window.ProgramCompetences?.filterByArea()">
                                                 <option value="">Todas las áreas</option>
                                             </select>
@@ -1129,9 +1254,12 @@
                                     <div class="alert alert-info d-flex align-items-start gap-2 py-2 mb-3">
                                         <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
                                         <div class="small">
-                                            Las competencias se definen por proyecto en la sección <strong>Evaluación</strong>.
-                                            Haz clic en el badge de competencias de cada tarjeta de proyecto para seleccionar qué competencias y herramientas se evaluarán.
-                                            Esta vista se actualiza automáticamente y se muestra en la <strong>página pública</strong> del bootcamp.
+                                            Las competencias se definen por proyecto en la sección
+                                            <strong>Evaluación</strong>.
+                                            Haz clic en el badge de competencias de cada tarjeta de proyecto para
+                                            seleccionar qué competencias y herramientas se evaluarán.
+                                            Esta vista se actualiza automáticamente y se muestra en la <strong>página
+                                                pública</strong> del bootcamp.
                                         </div>
                                     </div>
                                     <div id="competences-list-container">
@@ -1196,8 +1324,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                     <button type="button" class="btn btn-primary d-none" id="eval-modal-save-btn"
-                        onclick="saveProjectEvaluation()"
-                        style="background:#E85D26;border-color:#E85D26;">
+                        onclick="saveProjectEvaluation()" style="background:#E85D26;border-color:#E85D26;">
                         <i class="bi bi-save me-1"></i>Guardar evaluación
                     </button>
                 </div>
@@ -1206,7 +1333,8 @@
     </div>
 
     <!-- Delete Promotion Confirmation Modal -->
-    <div class="modal fade" id="deletePromotionModal" tabindex="-1" aria-labelledby="deletePromotionModalLabel" aria-hidden="true">
+    <div class="modal fade" id="deletePromotionModal" tabindex="-1" aria-labelledby="deletePromotionModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header border-danger">
@@ -1217,7 +1345,8 @@
                 </div>
                 <div class="modal-body">
                     <p class="mb-3">
-                        Esta acción <strong>no se puede deshacer</strong>. Se eliminarán los datos asociados a esta promoción
+                        Esta acción <strong>no se puede deshacer</strong>. Se eliminarán los datos asociados a esta
+                        promoción
                         (roadmap, módulos, estudiantes, etc.).
                     </p>
                     <p class="mb-2">Escribe <strong>ELIMINAR</strong> para confirmar:</p>
@@ -1389,31 +1518,37 @@
                         <h6 class="text-primary border-bottom pb-1 mb-3">Datos Obligatorios</h6>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="student-name" class="form-label fw-semibold">Nombre(s) <span class="text-danger">*</span></label>
+                                <label for="student-name" class="form-label fw-semibold">Nombre(s) <span
+                                        class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="student-name" required />
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="student-lastname" class="form-label fw-semibold">Apellido(s) <span class="text-danger">*</span></label>
+                                <label for="student-lastname" class="form-label fw-semibold">Apellido(s) <span
+                                        class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="student-lastname" required />
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="student-email" class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                                <label for="student-email" class="form-label fw-semibold">Email <span
+                                        class="text-danger">*</span></label>
                                 <input type="email" class="form-control" id="student-email" required />
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="student-phone" class="form-label fw-semibold">Teléfono <span class="text-danger">*</span></label>
+                            <!-- <div class="col-md-3 mb-3">
+                                <label for="student-phone" class="form-label fw-semibold">Teléfono <span
+                                        class="text-danger">*</span></label>
                                 <input type="tel" class="form-control" id="student-phone" required />
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label for="student-age" class="form-label fw-semibold">Edad <span class="text-danger">*</span></label>
+                            </div> -->
+                            <!-- <div class="col-md-3 mb-3">
+                                <label for="student-age" class="form-label fw-semibold">Edad <span
+                                        class="text-danger">*</span></label>
                                 <input type="number" class="form-control" id="student-age" min="16" max="99" required />
-                            </div>
+                            </div> -->
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="student-admin-situation" class="form-label fw-semibold">Situación Administrativa <span class="text-danger">*</span></label>
+                        <!-- <div class="row"> -->
+                        <!-- <div class="col-md-6 mb-3">
+                                <label for="student-admin-situation" class="form-label fw-semibold">Situación
+                                    Administrativa <span class="text-danger">*</span></label>
                                 <select class="form-select" id="student-admin-situation" required>
                                     <option value="">Seleccionar...</option>
                                     <option value="nacional">Nacional</option>
@@ -1423,19 +1558,21 @@
                                     <option value="no_permiso_trabajo">Sin permiso de trabajo</option>
                                     <option value="otro">Otro</option>
                                 </select>
-                            </div>
-                        </div>
+                            </div> -->
+                        <!-- </div> -->
 
                         <!-- Datos opcionales -->
-                        <h6 class="text-secondary border-bottom pb-1 mb-3 mt-2">Datos Opcionales</h6>
+                        <!-- <h6 class="text-secondary border-bottom pb-1 mb-3 mt-2">Datos Opcionales</h6>
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="student-nationality" class="form-label">Nacionalidad</label>
-                                <input type="text" class="form-control" id="student-nationality" placeholder="Ej: Española, Colombiana..." />
+                                <input type="text" class="form-control" id="student-nationality"
+                                    placeholder="Ej: Española, Colombiana..." />
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="student-document" class="form-label">Documento Identificativo</label>
-                                <input type="text" class="form-control" id="student-document" placeholder="DNI / NIE / Pasaporte" />
+                                <input type="text" class="form-control" id="student-document"
+                                    placeholder="DNI / NIE / Pasaporte" />
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="student-gender" class="form-label">Sexo</label>
@@ -1447,7 +1584,7 @@
                                     <option value="no_especifica">Prefiero no especificar</option>
                                 </select>
                             </div>
-                        </div>
+                        </div> -->
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="student-english-level" class="form-label">Nivel de inglés</label>
@@ -1461,7 +1598,7 @@
                                     <option value="C2">C2 - Maestría</option>
                                 </select>
                             </div>
-                            <div class="col-md-4 mb-3">
+                            <!-- <div class="col-md-4 mb-3">
                                 <label for="student-education-level" class="form-label">Nivel Educativo</label>
                                 <select class="form-select" id="student-education-level">
                                     <option value="">—</option>
@@ -1474,27 +1611,40 @@
                                     <option value="postgrado">Postgrado / Máster</option>
                                     <option value="doctorado">Doctorado</option>
                                 </select>
-                            </div>
-                            <div class="col-md-4 mb-3">
+                            </div> -->
+                            <!-- <div class="col-md-4 mb-3">
                                 <label for="student-profession" class="form-label">Profesión</label>
-                                <input type="text" class="form-control" id="student-profession" placeholder="Ej: Diseñadora, Economista..." />
-                            </div>
+                                <input type="text" class="form-control" id="student-profession"
+                                    placeholder="Ej: Diseñadora, Economista..." />
+                            </div> -->
                         </div>
-                        <div class="row">
+                        <!-- <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="student-community" class="form-label">Comunidad de Residencia</label>
                                 <select class="form-select" id="student-community">
                                     <option value="">—</option>
-                                    <option>Andalucía</option><option>Aragón</option><option>Asturias</option>
-                                    <option>Baleares</option><option>Canarias</option><option>Cantabria</option>
-                                    <option>Castilla-La Mancha</option><option>Castilla y León</option>
-                                    <option>Cataluña</option><option>Ceuta</option><option>Madrid</option>
-                                    <option>Comunidad Valenciana</option><option>Extremadura</option>
-                                    <option>Galicia</option><option>La Rioja</option><option>Melilla</option>
-                                    <option>Murcia</option><option>Navarra</option><option>País Vasco</option>
+                                    <option>Andalucía</option>
+                                    <option>Aragón</option>
+                                    <option>Asturias</option>
+                                    <option>Baleares</option>
+                                    <option>Canarias</option>
+                                    <option>Cantabria</option>
+                                    <option>Castilla-La Mancha</option>
+                                    <option>Castilla y León</option>
+                                    <option>Cataluña</option>
+                                    <option>Ceuta</option>
+                                    <option>Madrid</option>
+                                    <option>Comunidad Valenciana</option>
+                                    <option>Extremadura</option>
+                                    <option>Galicia</option>
+                                    <option>La Rioja</option>
+                                    <option>Melilla</option>
+                                    <option>Murcia</option>
+                                    <option>Navarra</option>
+                                    <option>País Vasco</option>
                                 </select>
                             </div>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -1536,7 +1686,8 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label for="update-modules-completed" class="form-label">Módulos completados</label>
+                                        <label for="update-modules-completed" class="form-label">Módulos
+                                            completados</label>
                                         <input type="number" class="form-control" id="update-modules-completed" min="0"
                                             max="20" />
                                     </div>
@@ -1731,7 +1882,8 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveProjectAssignmentDetail()">Guardar</button>
+                    <button type="button" class="btn btn-primary"
+                        onclick="saveProjectAssignmentDetail()">Guardar</button>
                 </div>
             </div>
         </div>
@@ -1750,13 +1902,15 @@
                         <div class="mb-3">
                             <label for="collaborator-email" class="form-label">Email</label>
                             <input type="email" class="form-control" id="collaborator-email" required />
-                            <small class="text-muted">Ingresa el email existente de un compañero para definirlo como colaborador</small>
+                            <small class="text-muted">Ingresa el email existente de un compañero para definirlo como
+                                colaborador</small>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="addCollaboratorByEmail()">Agregar colaborador</button>
+                    <button type="button" class="btn btn-primary" onclick="addCollaboratorByEmail()">Agregar
+                        colaborador</button>
                 </div>
             </div>
         </div>
@@ -1774,10 +1928,12 @@
                     <form id="team-form">
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Seleccionar colaborador</label>
-                            <select class="form-select" id="team-from-collaborator" onchange="fillTeamFromCollaborator()" required>
+                            <select class="form-select" id="team-from-collaborator"
+                                onchange="fillTeamFromCollaborator()" required>
                                 <option value="">— Selecciona un colaborador —</option>
                             </select>
-                            <div class="form-text">Solo colaboradores asignados a este programa pueden ser agregados</div>
+                            <div class="form-text">Solo colaboradores asignados a este programa pueden ser agregados
+                            </div>
                         </div>
                         <!-- Collaborator info preview -->
                         <div id="team-collab-preview" class="d-none mb-3">
@@ -1798,7 +1954,8 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">LinkedIn <span class="text-muted small">(opcional)</span></label>
-                            <input type="url" class="form-control" id="team-linkedin" placeholder="https://linkedin.com/in/...">
+                            <input type="url" class="form-control" id="team-linkedin"
+                                placeholder="https://linkedin.com/in/...">
                         </div>
                     </form>
                 </div>
@@ -1827,10 +1984,10 @@
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold mb-1">Buscar recurso</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                                    <span class="input-group-text bg-white"><i
+                                            class="bi bi-search text-muted"></i></span>
                                     <input type="text" id="resource-search-input" class="form-control border-start-0"
-                                        placeholder="Nombre, tecnología, proveedor…"
-                                        oninput="filterResourceCatalog()">
+                                        placeholder="Nombre, tecnología, proveedor…" oninput="filterResourceCatalog()">
                                     <button class="btn btn-outline-secondary" type="button"
                                         onclick="document.getElementById('resource-search-input').value='';filterResourceCatalog()">
                                         <i class="bi bi-x-lg"></i>
@@ -1839,13 +1996,15 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold mb-1">Área</label>
-                                <select id="resource-area-filter" class="form-select" onchange="filterResourceCatalog()">
+                                <select id="resource-area-filter" class="form-select"
+                                    onchange="filterResourceCatalog()">
                                     <option value="">Todas las áreas</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold mb-1">Tipo</label>
-                                <select id="resource-type-filter" class="form-select" onchange="filterResourceCatalog()">
+                                <select id="resource-type-filter" class="form-select"
+                                    onchange="filterResourceCatalog()">
                                     <option value="">Todos los tipos</option>
                                 </select>
                             </div>
@@ -1873,7 +2032,8 @@
     </div>
 
     <!-- Collaborator Selection Modal -->
-    <div class="modal fade" id="collaboratorModal" tabindex="-1">        <div class="modal-dialog">
+    <div class="modal fade" id="collaboratorModal" tabindex="-1">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Agregar Colaborador</h5>
@@ -1885,7 +2045,8 @@
                         <select class="form-select" id="collaborator-select" onchange="onCollaboratorSelected()">
                             <option value="">Loading users...</option>
                         </select>
-                        <div class="form-text">Los usuarios registrados recientemente deben almenos haber hecho un login para aparecer aquí.</div>
+                        <div class="form-text">Los usuarios registrados recientemente deben almenos haber hecho un login
+                            para aparecer aquí.</div>
                     </div>
                     <div id="collaborator-info-preview" class="d-none">
                         <div class="alert alert-light border d-flex align-items-center gap-3 mb-3">
@@ -1898,16 +2059,20 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Asignación de módulo <span class="text-muted small">(Opcional)</span></label>
-                        <div id="collaborator-module-checklist" class="d-flex flex-column gap-2 border rounded p-2" style="max-height:180px; overflow-y:auto;">
+                        <label class="form-label">Asignación de módulo <span
+                                class="text-muted small">(Opcional)</span></label>
+                        <div id="collaborator-module-checklist" class="d-flex flex-column gap-2 border rounded p-2"
+                            style="max-height:180px; overflow-y:auto;">
                             <span class="text-muted small">Cargando módulos...</span>
                         </div>
-                        <div class="form-text">Selecciona los módulos en los que estará presente. Puede ser más de uno o todos.</div>
+                        <div class="form-text">Selecciona los módulos en los que estará presente. Puede ser más de uno o
+                            todos.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="addCollaboratorById()">Agregar Colaborador</button>
+                    <button type="button" class="btn btn-primary" onclick="addCollaboratorById()">Agregar
+                        Colaborador</button>
                 </div>
             </div>
         </div>
@@ -1922,7 +2087,8 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted small mb-3">Selecciona los módulos en los que estará presente <strong id="collab-modules-name"></strong>. Puede ser más de uno o todos.</p>
+                    <p class="text-muted small mb-3">Selecciona los módulos en los que estará presente <strong
+                            id="collab-modules-name"></strong>. Puede ser más de uno o todos.</p>
                     <div id="collab-modules-checklist" class="d-flex flex-column gap-2">
                         <!-- Checkboxes generated dynamically -->
                     </div>
@@ -1968,7 +2134,8 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveEmployabilityItem()">Guardar sesión</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEmployabilityItem()">Guardar
+                        sesión</button>
                 </div>
             </div>
         </div>
@@ -2030,7 +2197,8 @@
                         <i class="bi bi-list-check me-1"></i> Resumen del mes
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveAttendanceFromModal()">Guardar Cambios</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAttendanceFromModal()">Guardar
+                        Cambios</button>
                 </div>
             </div>
         </div>
@@ -2040,13 +2208,15 @@
     <div class="modal fade" id="studentSummaryModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header" style="background-color: var(--complementario-1-extra-light); border-bottom: 2px solid var(--principal-1);">
-                    <h5 class="modal-title" style="color: var(--principal-1); font-weight: 600;"><i class="bi bi-person me-2"></i>Resumen del mes: <span
-                            id="summary-student-name">-</span></h5>
+                <div class="modal-header"
+                    style="background-color: var(--complementario-1-extra-light); border-bottom: 2px solid var(--principal-1);">
+                    <h5 class="modal-title" style="color: var(--principal-1); font-weight: 600;"><i
+                            class="bi bi-person me-2"></i>Resumen del mes: <span id="summary-student-name">-</span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <h6 id="summary-month-title" class="mb-4" style="color: var(--principal-1); font-weight: 600;">-</h6>
+                    <h6 id="summary-month-title" class="mb-4" style="color: var(--principal-1); font-weight: 600;">-
+                    </h6>
 
                     <div class="table-responsive">
                         <table class="table table-sm table-hover">
@@ -2063,7 +2233,8 @@
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer" style="background-color: var(--complementario-1-extra-light); gap: 8px; flex-wrap: wrap;">
+                <div class="modal-footer"
+                    style="background-color: var(--complementario-1-extra-light); gap: 8px; flex-wrap: wrap;">
                     <button type="button" class="btn btn-sm" id="summary-pdf-month-btn"
                         onclick="exportStudentAttendancePdf('month')"
                         style="background-color: var(--complementario-2); color: var(--principal-2); border: none;">
@@ -2084,7 +2255,8 @@
     </div>
 
     <!-- Acta de Inicio Modal -->
-    <div class="modal fade" id="actaInicioModal" tabindex="-1" aria-labelledby="actaInicioModalLabel" aria-hidden="true">
+    <div class="modal fade" id="actaInicioModal" tabindex="-1" aria-labelledby="actaInicioModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header" style="background:#E85D26;">
@@ -2092,7 +2264,8 @@
                         <h5 class="modal-title text-white mb-0" id="actaInicioModalLabel">
                             <i class="bi bi-file-earmark-lock2 me-2"></i>Acta de Inicio — Datos Confidenciales
                         </h5>
-                        <small class="text-white opacity-75">Solo visible para el equipo. No se muestra a los estudiantes.</small>
+                        <small class="text-white opacity-75">Solo visible para el equipo. No se muestra a los
+                            estudiantes.</small>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -2129,7 +2302,8 @@
                         <!-- Tipo proyecto -->
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Tipo proyecto formativo</label>
-                            <input type="text" class="form-control" id="acta-project-type" value="Bootcamp" placeholder="Bootcamp">
+                            <input type="text" class="form-control" id="acta-project-type" value="Bootcamp"
+                                placeholder="Bootcamp">
                         </div>
 
                         <!-- Fechas salida positiva -->
@@ -2191,16 +2365,20 @@
                             </div>
                             <select class="form-select" id="acta-presential-location">
                                 <option value="">-- Selecciona sede --</option>
-                                <option value="C/ Fernando Poo, 25, Arganzuela, 28045 Madrid">C/ Fernando Poo, 25, Arganzuela, 28045 Madrid</option>
-                                <option value="Av. del Bogatell, 82, Sant Martí, 08005 Barcelona">Av. del Bogatell, 82, Sant Martí, 08005 Barcelona</option>
-                                <option value="C/ María Josefa, 27, Centro, 33209 Gijón, Asturias">C/ María Josefa, 27, Centro, 33209 Gijón, Asturias</option>
+                                <option value="C/ Fernando Poo, 25, Arganzuela, 28045 Madrid">C/ Fernando Poo, 25,
+                                    Arganzuela, 28045 Madrid</option>
+                                <option value="Av. del Bogatell, 82, Sant Martí, 08005 Barcelona">Av. del Bogatell, 82,
+                                    Sant Martí, 08005 Barcelona</option>
+                                <option value="C/ María Josefa, 27, Centro, 33209 Gijón, Asturias">C/ María Josefa, 27,
+                                    Centro, 33209 Gijón, Asturias</option>
                             </select>
                         </div>
 
                         <!-- Materiales -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">Materiales/recursos necesarios</label>
-                            <textarea class="form-control" id="acta-materials" rows="2">No son necesarios recursos adicionales.</textarea>
+                            <textarea class="form-control" id="acta-materials"
+                                rows="2">No son necesarios recursos adicionales.</textarea>
                         </div>
 
                         <!-- Período prácticas -->
@@ -2216,7 +2394,8 @@
                         <!-- Financiadores (etiquetas únicas) -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">Financiadores</label>
-                            <small class="text-muted d-block mb-1">Añade cada financiador como etiqueta única. Pulsa Enter o el botón para añadir.</small>
+                            <small class="text-muted d-block mb-1">Añade cada financiador como etiqueta única. Pulsa
+                                Enter o el botón para añadir.</small>
                             <div class="input-group mb-2">
                                 <input type="text" class="form-control" id="acta-funder-input" placeholder="Ej: SAGE.">
                                 <button class="btn btn-outline-secondary" type="button" onclick="actaAddFunder()">
@@ -2229,7 +2408,8 @@
                         <!-- Fecha justificación financiadores -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">Fecha de justificación a cada financiador</label>
-                            <textarea class="form-control" id="acta-funder-deadlines" rows="2" placeholder="Ej: Realización de reportes a JP Morgan y Sage."></textarea>
+                            <textarea class="form-control" id="acta-funder-deadlines" rows="2"
+                                placeholder="Ej: Realización de reportes a JP Morgan y Sage."></textarea>
                         </div>
 
                         <!-- OKR y KPIs FF5 -->
@@ -2244,10 +2424,12 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
                         <!-- KPIs financiadores (por financiador) -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">KPIs financiadores</label>
-                            <small class="text-muted d-block mb-2">Define los KPIs para cada financiador añadido.</small>
+                            <small class="text-muted d-block mb-2">Define los KPIs para cada financiador
+                                añadido.</small>
                             <div id="acta-funder-kpis-container">
                                 <!-- Generated dynamically per funder -->
-                                <p class="text-muted fst-italic small" id="acta-funder-kpis-empty">Añade financiadores primero para definir sus KPIs.</p>
+                                <p class="text-muted fst-italic small" id="acta-funder-kpis-empty">Añade financiadores
+                                    primero para definir sus KPIs.</p>
                             </div>
                         </div>
 
@@ -2257,11 +2439,13 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
                         <!-- Día off Formador/a -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">Día off Formador/a</label>
-                            <small class="text-muted d-block mb-1">Por módulo: selecciona el día libre del formador/a principal.</small>
+                            <small class="text-muted d-block mb-1">Por módulo: selecciona el día libre del formador/a
+                                principal.</small>
                             <div id="acta-trainer-dayoff-rows">
                                 <!-- Rows added dynamically per module, and one manual row -->
                             </div>
-                            <button class="btn btn-sm btn-outline-secondary mt-1" type="button" onclick="actaAddDayOffRow('trainer')">
+                            <button class="btn btn-sm btn-outline-secondary mt-1" type="button"
+                                onclick="actaAddDayOffRow('trainer')">
                                 <i class="bi bi-plus"></i> Añadir módulo
                             </button>
                         </div>
@@ -2269,10 +2453,12 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
                         <!-- Día off CoFormador/a -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">Día off CoFormador/a</label>
-                            <small class="text-muted d-block mb-1">Por módulo: selecciona el día libre del coformador/a.</small>
+                            <small class="text-muted d-block mb-1">Por módulo: selecciona el día libre del
+                                coformador/a.</small>
                             <div id="acta-cotrainer-dayoff-rows">
                             </div>
-                            <button class="btn btn-sm btn-outline-secondary mt-1" type="button" onclick="actaAddDayOffRow('cotrainer')">
+                            <button class="btn btn-sm btn-outline-secondary mt-1" type="button"
+                                onclick="actaAddDayOffRow('cotrainer')">
                                 <i class="bi bi-plus"></i> Añadir módulo
                             </button>
                         </div>
@@ -2280,7 +2466,8 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
                         <!-- Reuniones de proyecto -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">Planificación reuniones de proyecto</label>
-                            <textarea class="form-control" id="acta-project-meetings" rows="2">Ver el calendario de reuniones en Asana.</textarea>
+                            <textarea class="form-control" id="acta-project-meetings"
+                                rows="2">Ver el calendario de reuniones en Asana.</textarea>
                         </div>
 
                         <!-- Reuniones de equipo -->
@@ -2297,9 +2484,11 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
                                     </select>
                                 </div>
                                 <div class="col-auto d-flex align-items-center gap-1">
-                                    <input type="time" class="form-control" id="acta-team-meeting-start" value="14:30" style="width:120px;">
+                                    <input type="time" class="form-control" id="acta-team-meeting-start" value="14:30"
+                                        style="width:120px;">
                                     <span class="text-muted">–</span>
-                                    <input type="time" class="form-control" id="acta-team-meeting-end" value="15:00" style="width:120px;">
+                                    <input type="time" class="form-control" id="acta-team-meeting-end" value="15:00"
+                                        style="width:120px;">
                                 </div>
                             </div>
                         </div>
@@ -2310,25 +2499,30 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
                             <label class="form-label fw-semibold">
                                 <i class="bi bi-pen me-1 text-secondary"></i>Aprobación y difusión del documento
                             </label>
-                            <small class="text-muted d-block mb-2">Persona responsable de aprobar y difundir este acta.</small>
+                            <small class="text-muted d-block mb-2">Persona responsable de aprobar y difundir este
+                                acta.</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Nombre</label>
-                            <input type="text" class="form-control" id="acta-approval-name" placeholder="Nombre completo" list="acta-users-datalist">
+                            <input type="text" class="form-control" id="acta-approval-name"
+                                placeholder="Nombre completo" list="acta-users-datalist">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Cargo</label>
-                            <input type="text" class="form-control" id="acta-approval-role" placeholder="Ej: Project Manager">
+                            <input type="text" class="form-control" id="acta-approval-role"
+                                placeholder="Ej: Project Manager">
                         </div>
 
                     </div><!-- /row -->
                 </div><!-- /modal-body -->
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="Reports.printActaInicio(promotionId)">
+                    <button type="button" class="btn btn-outline-secondary"
+                        onclick="Reports.printActaInicio(promotionId)">
                         <i class="bi bi-file-earmark-pdf me-1"></i>Generar PDF
                     </button>
-                    <button type="button" class="btn btn-primary" onclick="saveActaData()" style="background:#E85D26;border-color:#E85D26;">
+                    <button type="button" class="btn btn-primary" onclick="saveActaData()"
+                        style="background:#E85D26;border-color:#E85D26;">
                         <i class="bi bi-save me-1"></i>Guardar
                     </button>
                 </div>
@@ -2337,16 +2531,44 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
     </div>
 
     <style>
-        .min-height-tag { min-height: 32px; }
-        .acta-tag {
-            display:inline-flex; align-items:center; gap:4px;
-            background:#f0f0f0; border:1px solid #ccc; border-radius:20px;
-            padding:2px 10px 2px 12px; font-size:.85rem;
+        .min-height-tag {
+            min-height: 32px;
         }
-        .acta-tag .rm { cursor:pointer; color:#888; font-size:1rem; line-height:1; }
-        .acta-tag .rm:hover { color:#c00; }
-        .acta-dayoff-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
-        .acta-dayoff-row input[type=text] { flex:1; min-width:120px; }
+
+        .acta-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            padding: 2px 10px 2px 12px;
+            font-size: .85rem;
+        }
+
+        .acta-tag .rm {
+            cursor: pointer;
+            color: #888;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .acta-tag .rm:hover {
+            color: #c00;
+        }
+
+        .acta-dayoff-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+
+        .acta-dayoff-row input[type=text] {
+            flex: 1;
+            min-width: 120px;
+        }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

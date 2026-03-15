@@ -1604,6 +1604,78 @@ app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
 });
 
 // Export attendance for entire promotion period as Excel
+// Export students to Excel
+app.get('/api/promotions/:promotionId/students/export', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    let query = { promotionId: req.params.promotionId };
+    
+    // Filter by IDs if provided (comma-separated list)
+    if (req.query.ids) {
+      const ids = req.query.ids.split(',');
+      query.id = { $in: ids };
+    }
+
+    const students = await Student.find(query).sort({ isWithdrawn: 1, name: 1, lastname: 1 });
+
+    if (students.length === 0) {
+      return res.status(400).json({ error: 'No se encontraron estudiantes para exportar' });
+    }
+
+    // Build worksheet data using array of arrays
+    const headers = [
+      'Nombre', 'Apellidos', 'Email', 'Teléfono', 'Edad', 'Género',
+      'Situación Administrativa', 'Nacionalidad', 'Documento ID',
+      'Nivel Inglés', 'Nivel Educativo', 'Profesión', 'Comunidad', 'Estado'
+    ];
+    
+    const worksheetData = [headers];
+
+    students.forEach(s => {
+      worksheetData.push([
+        s.name,
+        s.lastname,
+        s.email,
+        s.phone,
+        s.age,
+        s.gender,
+        s.administrativeSituation,
+        s.nationality,
+        s.identificationDocument,
+        s.englishLevel,
+        s.educationLevel,
+        s.profession,
+        s.community,
+        s.isWithdrawn ? 'BAJA' : 'Activo'
+      ]);
+    });
+
+    const worksheet = xlsx.utils.aoa_to_sheet(worksheetData);
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, 'Estudiantes');
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 8 }, { wch: 10 },
+      { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 20 },
+      { wch: 20 }, { wch: 10 }
+    ];
+
+    const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=estudiantes-${promotion.name.replace(/\s+/g, '-')}.xlsx`);
+    res.send(buffer);
+
+  } catch (error) {
+    console.error('Error exporting students:', error);
+    res.status(500).json({ error: `Error al exportar estudiantes: ${error.message}` });
+  }
+});
+
 app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (req, res) => {
   try {
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
