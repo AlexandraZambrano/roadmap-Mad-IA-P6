@@ -4,7 +4,7 @@
     color: #FF6B35 !important;
 }
 
-:root{
+:root {
     --principal-1: #FF4700;
     --principal-2: #020100;
     --principal-3: #FFFFFF;
@@ -26,6 +26,7 @@
     --grey-light-f5: #e2d2cd;
     --bs-nav-link-hover-color: #FFFFFF;
 }
+
 * {
     margin: 0;
     padding: 0;
@@ -34,7 +35,7 @@
 
 body {
     background-color: #ffffff;
- /* background-color: rgba(244, 166, 150, 0.559);  */
+    /* background-color: rgba(244, 166, 150, 0.559);  */
 }
 
 .page-title {
@@ -45,7 +46,7 @@ body {
     margin-bottom: 0;
 }
 
-.detail-card{
+.detail-card {
     display: flex;
 }
 
@@ -117,8 +118,8 @@ body {
     margin-bottom: 0 !important;
 }
 
-#userMenu  {
-    color:#ffffff;
+#userMenu {
+    color: #ffffff;
 }
 
 #userMenu::after {
@@ -152,6 +153,7 @@ body {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -200,15 +202,15 @@ body {
 
 /* Promotions button - orange style */
 .nav-link-promotions {
-    background-color: var(--principal-1)!important;
+    background-color: var(--principal-1) !important;
     color: white !important;
-    box-shadow: #3e19014a 2px 2px 6px ;
+    box-shadow: #3e19014a 2px 2px 6px;
 }
 
 
 
 .nav-link-promotions:hover {
-    background-color: #e63a00  !important;
+    background-color: #e63a00 !important;
     color: white !important;
     border-left: none !important;
 }
@@ -279,18 +281,18 @@ main {
     box-shadow: 0 5px 15px rgba(255, 71, 0, 0.4);
 }
 
-.btn-outline-primary{
-    background-color: var( --purple-light-f5);
-    color:black;
-    border: 2px solid var( --purple-light-f5);
-      font-weight: 500;
+.btn-outline-primary {
+    background-color: var(--purple-light-f5);
+    color: black;
+    border: 2px solid var(--purple-light-f5);
+    font-weight: 500;
 
 }
 
-.btn-outline-primary:hover{
-  background-color: #c1aee6;
-  color: #000;
-border-color: #c1aee6;
+.btn-outline-primary:hover {
+    background-color: #c1aee6;
+    color: #000;
+    border-color: #c1aee6;
 
 }
 
@@ -351,24 +353,24 @@ border-color: #c1aee6;
 
 /* Preview Button Green Style */
 .btn-preview-green {
-  background-color: var(--green-f5);
-  border-color: var(--green-f5);
-  color: #000;
-  font-weight: 500;
+    background-color: var(--green-f5);
+    border-color: var(--green-f5);
+    color: #000;
+    font-weight: 500;
 }
 
 .btn-preview-green:hover {
-  background-color: #7ee5b4;
-  border-color: #7ee5b4;
-  color: #000;
+    background-color: #7ee5b4;
+    border-color: #7ee5b4;
+    color: #000;
 }
 
 .btn-preview-green:focus,
 .btn-preview-green:active {
-  background-color: #6dd9a8;
-  border-color: #6dd9a8;
-  color: #000;
-  box-shadow: 0 0 0 0.25rem rgba(154, 246, 194, 0.5);
+    background-color: #6dd9a8;
+    border-color: #6dd9a8;
+    color: #000;
+    box-shadow: 0 0 0 0.25rem rgba(154, 246, 194, 0.5);
 }
 
 
@@ -538,12 +540,15 @@ border-color: #c1aee6;
     color: #6b2b33;
     opacity: 0.85;
 }
+
 .student-row-withdrawn td {
     border-color: rgba(220, 53, 69, 0.15) !important;
 }
+
 .student-name-cell-withdrawn {
     background-color: rgba(220, 53, 69, 0.1) !important;
 }
+
 /* keep attendance cells from overriding the row tint unless they have own status */
 .student-row-withdrawn .attendance-cell:not(.attendance-present):not(.attendance-absent):not(.attendance-late):not(.attendance-justified):not(.attendance-early-leave):not(.attendance-blocked) {
     background-color: rgba(220, 53, 69, 0.07) !important;
@@ -588,7 +593,7 @@ border-color: #c1aee6;
 
 .btn-outline-success:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Password input group styling */
@@ -704,34 +709,34 @@ border-color: #c1aee6;
     padding: 0.375rem 0.5rem;
 }
 
-        .dropdown-item-custom {
-            padding: 0;
-        }
+.dropdown-item-custom {
+    padding: 0;
+}
 
-        .dropdown-item-custom .form-check {
-            padding: 0.5rem 1rem;
-            margin: 0;
-            border-radius: 0;
-        }
+.dropdown-item-custom .form-check {
+    padding: 0.5rem 1rem;
+    margin: 0;
+    border-radius: 0;
+}
 
-        .dropdown-item-custom .form-check:hover {
-            background-color: var(--bs-gray-100);
-        }
+.dropdown-item-custom .form-check:hover {
+    background-color: var(--bs-gray-100);
+}
 
-        .dropdown-item-custom .form-check-label {
-            width: 100%;
-            cursor: pointer;
-        }
+.dropdown-item-custom .form-check-label {
+    width: 100%;
+    cursor: pointer;
+}
 
-        .pildora-students-dropdown .dropdown-menu {
-            width: 100% !important;
-        }
+.pildora-students-dropdown .dropdown-menu {
+    width: 100% !important;
+}
 
 
-        #module-pildoras-count{
-            background-color: var(--green-f5);
+#module-pildoras-count {
+    background-color: var(--green-f5);
 
-        }
+}
 
 /* ==================== MOBILE RESPONSIVE - SIDEBAR HAMBURGER MENU ==================== */
 
@@ -1173,7 +1178,7 @@ border-color: #c1aee6;
         margin-left: -5px;
     }
 
-    .row > [class*='col-'] {
+    .row>[class*='col-'] {
         padding-right: 5px;
         padding-left: 5px;
     }
@@ -1242,15 +1247,16 @@ border-color: #c1aee6;
 
 /* ===== Program Details Optimization ===== */
 #info-tab {
-    padding-bottom: 2rem; /* Minimal padding at bottom */
+    padding-bottom: 2rem;
+    /* Minimal padding at bottom */
 }
 
-#info-tab > .d-flex {
+#info-tab>.d-flex {
     flex-wrap: wrap;
     gap: 1rem;
 }
 
-#info-tab .d-flex > div {
+#info-tab .d-flex>div {
     flex: 1;
     min-width: 200px;
 }
@@ -1303,6 +1309,7 @@ border-color: #c1aee6;
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1418,7 +1425,7 @@ border-color: #c1aee6;
         padding: 0.5rem;
     }
 
-    #info-tab > .d-flex {
+    #info-tab>.d-flex {
         flex-direction: column;
     }
 
@@ -1467,7 +1474,7 @@ border-color: #c1aee6;
         padding-bottom: 1rem;
     }
 
-    #info-tab > .d-flex {
+    #info-tab>.d-flex {
         flex-direction: column;
         gap: 0.8rem;
     }
@@ -1516,10 +1523,12 @@ border-color: #c1aee6;
     font-weight: 600;
     transition: color .15s;
 }
+
 .student-name-link:hover {
     color: var(--complementario-2) !important;
     text-decoration: underline !important;
 }
+
 #student-search-input:focus {
     border-color: var(--principal-1);
     box-shadow: 0 0 0 0.2rem rgba(255, 71, 0, 0.15);
@@ -1531,25 +1540,35 @@ border-color: #c1aee6;
     overflow: hidden;
     transition: box-shadow .15s;
 }
-.eval-comp-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,.1);
+
+#eval-right-body {
+    overflow: scroll;
 }
+
+.eval-comp-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+}
+
 .eval-comp-card .card-header {
     border-bottom: 1px solid #dee2e6;
 }
+
 .eval-comp-card .level-btn {
     min-width: 2.8rem;
     font-size: .78rem;
     transition: all .12s;
 }
+
 .eval-comp-card .level-btn:hover {
     transform: translateY(-1px);
 }
+
 .eval-comp-card .level-desc-hint {
     font-size: .75rem;
     min-height: 1.1rem;
     line-height: 1.3;
 }
+
 .eval-competences-list {
     overflow-y: auto;
     padding-right: 2px;
@@ -1580,7 +1599,7 @@ border-color: #c1aee6;
     border: 1px solid #dee2e6;
     border-radius: 0.5rem;
     background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
     margin-top: 0.75rem;
 }
 
@@ -1714,16 +1733,19 @@ border-color: #c1aee6;
     #eval-project-view {
         height: auto;
     }
+
     .eval-split-layout {
         flex-direction: column;
         height: auto;
     }
+
     .eval-targets-sidebar {
         width: 100%;
         max-height: 220px;
         border-right: none;
         border-bottom: 1px solid #dee2e6;
     }
+
     .eval-right-panel {
         min-height: 400px;
     }
@@ -1733,32 +1755,39 @@ border-color: #c1aee6;
 .resource-catalog-card {
     transition: box-shadow .18s, transform .18s;
 }
+
 .resource-catalog-card:hover {
-    box-shadow: 0 6px 18px rgba(0,0,0,.12) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .12) !important;
     transform: translateY(-2px);
 }
+
 .resource-catalog-card .card-body {
     font-size: .875rem;
 }
+
 #resource-catalog-grid {
     max-height: 60vh;
     overflow-y: auto;
     scroll-behavior: smooth;
 }
+
 #resourceModal .modal-header {
     background: linear-gradient(135deg, #2563eb, #7c3aed);
 }
+
 #resourceModal .modal-body {
     padding: 0;
 }
+
 #resource-search-input:focus {
     border-color: #7c3aed;
-    box-shadow: 0 0 0 .2rem rgba(124,58,237,.18);
+    box-shadow: 0 0 0 .2rem rgba(124, 58, 237, .18);
 }
+
 #resource-area-filter:focus,
 #resource-type-filter:focus {
     border-color: #7c3aed;
-    box-shadow: 0 0 0 .2rem rgba(124,58,237,.18);
+    box-shadow: 0 0 0 .2rem rgba(124, 58, 237, .18);
 }
 
 /* ─── Course Progress Bar Styles ─── */
@@ -1770,6 +1799,7 @@ border-color: #c1aee6;
     background: var(--principal-1);
     transition: width 0.3s ease;
 }
+
 progress-bar progress-bar-striped {
     background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
     background-size: 40px 40px;
@@ -1783,6 +1813,7 @@ progress-bar progress-bar-striped {
     0% {
         background-position: 0;
     }
+
     100% {
         background-position: 40px;
     }
@@ -2106,6 +2137,7 @@ progress-bar progress-bar-striped {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
