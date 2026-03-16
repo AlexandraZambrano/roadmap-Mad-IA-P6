@@ -161,64 +161,58 @@ window.saveProfileInfo = async function () {
 };
 
 window.changePassword = async function () {
-    const token = localStorage.getItem('token');
-    const currentPassword = document.getElementById('current-password').value;
-    const newPassword = document.getElementById('new-password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
-
     const alertEl = document.getElementById('password-alert');
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-        alertEl.className = 'alert alert-warning';
-        alertEl.textContent = 'All fields are required';
-        alertEl.classList.remove('hidden');
-        return;
-    }
+    const emailEl = document.getElementById('reset-email');
+    const email = emailEl ? emailEl.value.trim() : '';
 
-    if (newPassword !== confirmPassword) {
+    if (!email) {
         alertEl.className = 'alert alert-warning';
-        alertEl.textContent = 'New passwords do not match';
-        alertEl.classList.remove('hidden');
-        return;
-    }
-
-    if (newPassword.length < 8) {
-        alertEl.className = 'alert alert-warning';
-        alertEl.textContent = 'Password must be at least 8 characters';
+        alertEl.textContent = 'Por favor, introduce tu correo electrónico.';
         alertEl.classList.remove('hidden');
         return;
     }
 
     try {
-        const response = await fetch(`${API_URL}/api/change-password`, {
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === 'localhost';
+        const resetUrl = isLocal
+            ? 'http://localhost:8000/reset-password/api-request-reset'
+            : 'https://users.coderf5.es/reset-password/api-request-reset';
+
+        const response = await fetch(resetUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ currentPassword, newPassword })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
         });
+
+        // Many reset-password endpoints return 200/204 with no body, or a JSON message
+        let data = {};
+        const text = await response.text();
+        try { data = JSON.parse(text); } catch { /* no JSON body */ }
 
         if (response.ok) {
             alertEl.className = 'alert alert-success';
-            alertEl.textContent = 'Password changed successfully! Please log in again.';
+            alertEl.textContent = data.message || 'En breves recibirás un correo con el enlace para cambiar tu contraseña.';
             alertEl.classList.remove('hidden');
-
-            setTimeout(() => {
-                logout();
-            }, 2000);
+            // Do NOT close the modal — let the user read the confirmation
         } else {
-            const data = await response.json();
             alertEl.className = 'alert alert-danger';
-            alertEl.textContent = data.error || 'Error changing password';
+            alertEl.textContent = data.message || data.error || 'Error al enviar el correo. Inténtalo de nuevo.';
             alertEl.classList.remove('hidden');
         }
     } catch (error) {
-        console.error('Error changing password:', error);
+        console.error('Error sending reset password email:', error);
         alertEl.className = 'alert alert-danger';
-        alertEl.textContent = 'Error changing password';
+        alertEl.textContent = 'Error de conexión. Inténtalo de nuevo.';
         alertEl.classList.remove('hidden');
     }
+};
+
+window.logout = function () {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('role');
+    window.location.href = 'login.html';
 };
 
 // (initProfileModal is called inside the main DOMContentLoaded block)
@@ -262,6 +256,19 @@ let deletePromotionModal;
 try {
     const userJson = localStorage.getItem('user');
     currentUser = userJson && userJson !== 'undefined' ? JSON.parse(userJson) : {};
+    // Display user name in navbar
+    if (currentUser && currentUser.name) {
+        const teacherNameEl = document.getElementById('teacher-name');
+        if (teacherNameEl) {
+            teacherNameEl.textContent = currentUser.name;
+        }
+    }
+    // Show admin panel button only for superadmin
+    const role = localStorage.getItem('role') || currentUser.role;
+    if (role === 'superadmin') {
+        document.getElementById('admin-panel-divider')?.classList.remove('d-none');
+        document.getElementById('admin-panel-item')?.classList.remove('d-none');
+    }
 } catch (e) {
     console.error('Error parsing user data', e);
 }
