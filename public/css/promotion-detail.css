@@ -179,7 +179,7 @@ body {
 }
 
 .sidebar .nav-link {
-    background-color: #ffffffbe;
+    background-color: #ffffffa0;
     color: #333333;
     padding: 10px 15px;
     border-radius: 5px;
@@ -202,17 +202,19 @@ body {
 
 /* Promotions button - orange style */
 .nav-link-promotions {
-    background-color: var(--principal-1) !important;
     color: white !important;
+    border: white 1px solid !important;
+    background-color: transparent !important;
     box-shadow: #3e19014a 2px 2px 6px;
 }
 
 
 
 .nav-link-promotions:hover {
-    background-color: #e63a00 !important;
+    background-color: white !important;
     color: white !important;
     border-left: none !important;
+    color: var(--principal-1) !important;
 }
 
 main {
@@ -2490,5 +2492,35 @@ progress-bar progress-bar-striped {
     .note-action-btn {
         padding: 0.35rem 0.5rem;
         font-size: 0.95rem;
+    }
+}
+
+/* ==================== NAVBAR PROMOTION TITLE ==================== */
+
+.navbar-promotion-title {
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    max-width: 300px;
+    padding: 0 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: white;
+}
+
+#navbar-promotion-name {
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* Hide on smaller screens */
+@media (max-width: 991.98px) {
+    .navbar-promotion-title {
+        display: none !important;
     }
 }

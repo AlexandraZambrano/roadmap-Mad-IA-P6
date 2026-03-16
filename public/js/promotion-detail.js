@@ -2346,6 +2346,17 @@ function checkAuth() {
     }
 }
 
+/**
+ * Update the navbar to display the current promotion name
+ * @param {string} promotionName - Name of the promotion to display
+ */
+function updateNavbarPromotionName(promotionName) {
+    const navbarElement = document.getElementById('navbar-promotion-name');
+    if (navbarElement && promotionName) {
+        navbarElement.textContent = promotionName;
+    }
+}
+
 function switchTab(tabId) {
     // Persist active tab so page reloads land on the same section
     sessionStorage.setItem(`activeTab_${promotionId}`, tabId);
@@ -2826,6 +2837,9 @@ async function loadPromotion() {
             _setTC('promotion-title', promotion.name);
             _setTC('promotion-desc', promotion.description || '');
             _setTC('modules-count', (promotion.modules || []).length);
+
+            // Update navbar with promotion name
+            updateNavbarPromotionName(promotion.name);
 
             // Render dynamic greeting (generic, without mentioning promo)
             renderGreeting();
