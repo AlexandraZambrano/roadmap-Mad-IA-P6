@@ -68,6 +68,7 @@ body {
     color: var(--principal-3);
     /* font-size: large; */
     border-radius: 5px;
+    font-size: 0.8rem;
 
 }
 
