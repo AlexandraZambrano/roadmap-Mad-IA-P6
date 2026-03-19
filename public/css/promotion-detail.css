@@ -292,6 +292,7 @@ body {
 
 .section-content {
     display: block;
+    margin-top: 5rem;
 }
 
 .section-content.hidden {
@@ -817,7 +818,7 @@ body {
 
     main {
         margin-left: 280px;
-        margin-top: 80px; /* Offset for fixed navbar */
+        margin-top: 0px; /* Offset for fixed navbar */
         padding: 2rem;
         transition: margin-left 0.3s ease;
         min-height: calc(100vh - 80px);
@@ -840,7 +841,7 @@ body {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: #ff4700 !important;
+        color: #ffffff !important;
         margin-right: 15px;
         position: relative;
         z-index: 1060;

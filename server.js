@@ -446,7 +446,8 @@ function normaliseEvalCompetence(comp) {
 
   // tools array — extract tool objects with their indicators (for tool-based evaluation)
   const toolsRaw = comp.tools || [];
-  const tools = toolsRaw.map(t => ({ id: t.id, name: t.name, description: t.description || '' }));
+  console.log('❌❌😉😉💜💜💜📌📌  toolsRaw:', toolsRaw);
+  const tools = toolsRaw.map(t => ({ id: t.id, name: t.name, description: t.description, indicators: t.indicators, referents: t.referents, resources: t.resources|| '' }));
 
   // Build levels by collecting indicators from ALL tools and grouping by levelId
   // Each tool has its own indicators with a numeric levelId field
@@ -612,9 +613,9 @@ app.get('/api/competences', verifyToken, async (req, res) => {
     try {
       console.log('[GET /api/competences] 🔄 Attempting to fetch from external API: https://evaluation.coderf5.es/v1/competences/');
       const rows = await evalApiGet('/competences/', token);
-      console.log('[GET /api/competences] ✓ Successfully fetched', rows.length, 'raw competences from external API');
+      console.log('[GET /api/competences] ✓ Successfully fetched', rows, 'raw competences from external API');
       const normalised = rows.map(normaliseEvalCompetence);
-      console.log('[GET /api/competences] ✓ Normalised data includes:', normalised.length, 'competences with areas, tools, indicators');
+      console.log('❌❌😉😉💜💜💜📌📌[GET /api/competences] ✓ Normalised data includes:', normalised[0].tools, 'competences with areas, tools, indicators');
       if (normalised.length > 0) {
         console.log('[GET /api/competences] ✓ Sample competence structure:', JSON.stringify({
           id: normalised[0].id,
