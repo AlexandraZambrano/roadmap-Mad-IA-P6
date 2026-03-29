@@ -35,7 +35,7 @@ import CompetenceIndicator from './backend/models/CompetenceIndicator.js';
 import CompetenceTool from './backend/models/CompetenceTool.js';
 import CompetenceArea from './backend/models/CompetenceArea.js';
 import CompetenceResource from './backend/models/CompetenceResource.js';
-import { sendPasswordEmail } from './backend/utils/email.js';
+import { sendPasswordEmail, sendReportEmail } from './backend/utils/email.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -82,7 +82,8 @@ mongoose.connect(MONGO_URI)
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Middleware
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -1875,6 +1876,34 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
   } catch (error) {
     console.error('Error exporting attendance:', error);
     res.status(500).json({ error: `Error al exportar asistencia: ${error.message}` });
+  }
+});
+
+// Send report by email
+app.post('/api/reports/send-email', verifyToken, async (req, res) => {
+  try {
+    const { to, subject, body, filename, base64Data } = req.body;
+
+    if (!to || !base64Data) {
+      return res.status(400).json({ error: 'Recipient and PDF data are required' });
+    }
+
+    const attachments = [{
+      filename: filename || 'informe.pdf',
+      content: base64Data.split('base64,').pop(),
+      encoding: 'base64'
+    }];
+
+    const success = await sendReportEmail(to, subject || 'Informe de Asistencia', body || 'Se adjunta el informe solicitado.', attachments);
+
+    if (success) {
+      res.json({ message: 'Email enviado correctamente' });
+    } else {
+      res.status(500).json({ error: 'Error al enviar el email' });
+    }
+  } catch (error) {
+    console.error('Error in send-email route:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

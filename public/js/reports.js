@@ -542,8 +542,8 @@
      * Shows a Bootstrap modal to select a week from a list of options.
      * Returns Promise<number|null>: the index of the selected option, or null if cancelled.
      */
-    function _askWeekSelect(title, options) {
-        console.log('[Reports] Showing _askWeekSelect modal');
+    function _askWeekSelect(title, options, collaborators = []) {
+        console.log('[Reports] Showing _askWeekSelect modal with collaborators');
         return new Promise(resolve => {
             const openModalEl   = document.querySelector('.modal.show');
             const openModalInst = openModalEl ? (window.bootstrap?.Modal.getInstance(openModalEl) || null) : null;
@@ -562,6 +562,12 @@
                 optHtml += `<option value="${idx}">${_esc(opt.label)}</option>`;
             });
 
+            let collHtml = '';
+            collaborators.forEach(c => {
+                collHtml += `<option value="${c.email}">${_esc(c.name)} (${_esc(c.email)})</option>`;
+            });
+            collHtml += `<option value="manual">Añadir otro email manualmente...</option>`;
+
             const div = document.createElement('div');
             div.innerHTML = `
 <div class="modal fade" id="${id}" tabindex="-1" aria-labelledby="${id}-label" aria-hidden="true">
@@ -575,20 +581,40 @@
       </div>
       <div class="modal-body pb-2">
         <label class="form-label fw-semibold mb-1" style="font-size:.875rem;color:#4A4A6A;">
-          Elige la semana a descargar
+          Elige la semana para el informe
         </label>
-        <select id="${id}-select" class="form-select" style="font-size:.875rem;">
+        <select id="${id}-select" class="form-select mb-3" style="font-size:.875rem;">
           ${optHtml}
         </select>
-        <div class="form-text mt-1 text-muted">Solo se generará en PDF la semana elegida para mejorar el rendimiento y legibilidad.</div>
+        
+        <div class="p-3 mb-2 rounded border" style="background: #f8f9fa;">
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="${id}-send-check">
+              <label class="form-check-label fw-semibold" for="${id}-send-check" style="color: #1A1A2E;">Enviar por email tras generar</label>
+            </div>
+            
+            <div id="${id}-email-section" style="display:none;">
+              <label class="form-label small text-muted mb-1">Destinatario:</label>
+              <select id="${id}-dest-select" class="form-select form-select-sm mb-2" style="font-size:.8rem;">
+                ${collHtml}
+              </select>
+              <input type="email" id="${id}-manual-email" class="form-control form-control-sm" placeholder="ejemplo@email.com" style="display:none;font-size:.8rem;">
+            </div>
+        </div>
+        
+        <div class="form-text mt-1 text-muted small">Al elegir "Enviar", el sistema generará el PDF y lo hará llegar por email al destino seleccionado.</div>
       </div>
-      <div class="modal-footer pt-2">
+      <div class="modal-footer pt-1">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
           <i class="bi bi-x me-1"></i>Cancelar
         </button>
-        <button type="button" class="btn btn-sm" id="${id}-confirm"
-          style="background:#FF6B35;color:#fff;border:none;">
-          <i class="bi bi-file-earmark-pdf me-1"></i>Generar PDF
+        <button type="button" class="btn btn-sm" id="${id}-download-btn" 
+          style="background:#f1f3f5;color:#4A4A6A;border:1px solid #dee2e6;">
+          <i class="bi bi-download me-1"></i>Descargar PDF
+        </button>
+        <button type="button" class="btn btn-sm" id="${id}-send-btn" 
+          style="background:#FF6B35;color:#fff;border:none;display:none;">
+          <i class="bi bi-send me-1"></i>Generar y Enviar
         </button>
       </div>
     </div>
@@ -597,16 +623,57 @@
             document.body.appendChild(div.firstElementChild);
 
             const modalEl  = document.getElementById(id);
-            if (!window.bootstrap?.Modal) return resolve(options.length ? 0 : null);
+            if (!window.bootstrap?.Modal) return resolve(options.length ? { weekIdx: 0, action: 'download' } : null);
             const modal    = new window.bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
             let   resolved = false;
 
-            document.getElementById(`${id}-confirm`).addEventListener('click', () => {
-                if (resolved) return;
-                resolved = true;
-                const val = parseInt(document.getElementById(`${id}-select`).value, 10);
-                modal.hide();
-                resolve(isNaN(val) ? 0 : val);
+            const sendCheck = document.getElementById(`${id}-send-check`);
+            const emailSec  = document.getElementById(`${id}-email-section`);
+            const destSel   = document.getElementById(`${id}-dest-select`);
+            const manualIn  = document.getElementById(`${id}-manual-email`);
+            const downBtn   = document.getElementById(`${id}-download-btn`);
+            const sendBtn   = document.getElementById(`${id}-send-btn`);
+
+            sendCheck.addEventListener('change', () => {
+                const checked = sendCheck.checked;
+                emailSec.style.display = checked ? 'block' : 'none';
+                sendBtn.style.display  = checked ? 'inline-block' : 'none';
+                downBtn.style.display  = checked ? 'none' : 'inline-block';
+            });
+
+            destSel.addEventListener('change', () => {
+                manualIn.style.display = (destSel.value === 'manual') ? 'block' : 'none';
+            });
+
+            downBtn.addEventListener('click', () => {
+               if (resolved) return;
+               resolved = true;
+               const val = parseInt(document.getElementById(`${id}-select`).value, 10);
+               modal.hide();
+               resolve({
+                 weekIdx: isNaN(val) ? 0 : val,
+                 action: 'download'
+               });
+            });
+
+            sendBtn.addEventListener('click', () => {
+               if (resolved) return;
+               let email = destSel.value;
+               if (email === 'manual') {
+                  email = manualIn.value.trim();
+                  if (!email || !email.includes('@')) {
+                      alert('Por favor, indica un email válido.');
+                      return;
+                  }
+               }
+               resolved = true;
+               const val = parseInt(document.getElementById(`${id}-select`).value, 10);
+               modal.hide();
+               resolve({
+                 weekIdx: isNaN(val) ? 0 : val,
+                 action: 'send',
+                 email: email
+               });
             });
 
             modalEl.addEventListener('hidden.bs.modal', () => {
@@ -2151,14 +2218,16 @@ async function printActaInicio(promotionId) {
         const token = localStorage.getItem('token');
         try {
             _showSaving('Recopilando datos de asistencia...');
-            const [promoRes, stuRes] = await Promise.all([
+            const [promoRes, stuRes, collRes] = await Promise.all([
                 fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${API_URL}/api/promotions/${promotionId}/students`, { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch(`${API_URL}/api/promotions/${promotionId}/students`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/promotions/${promotionId}/collaborators`, { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
             
             if (!promoRes.ok) throw new Error('No se pudo cargar la promoción');
             const promo = await promoRes.json();
             const students = await stuRes.json();
+            const collaborators = collRes.ok ? await collRes.json() : [];
             
             // Get holidays
             const holRes = await fetch(`${API_URL}/api/promotions/${promotionId}/holidays`, { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null);
@@ -2211,11 +2280,11 @@ async function printActaInicio(promotionId) {
                 return;
             }
 
-            // Ask user which week they want to download
-            const selectedOptIndex = await _askWeekSelect('Descargar Asistencia', filteredWeeks);
-            if (selectedOptIndex === null) return; // User cancelled
+            // Ask user which week they want and if they want to send it
+            const selection = await _askWeekSelect('Asistencia Semanal', filteredWeeks, collaborators);
+            if (selection === null) return; // User cancelled
 
-            const selectedWeek = filteredWeeks[selectedOptIndex];
+            const selectedWeek = filteredWeeks[selection.weekIdx];
 
             _showSaving('Descargando datos de la semana...');
 
@@ -2327,9 +2396,38 @@ async function printActaInicio(promotionId) {
             </div>`;
 
             const filename = `asistencia_semana_${selectedWeek.wIdx + 1}_${(promo.name || 'promo').replace(/\s+/g, '-')}.pdf`;
-            _showSaving('Generando PDF...');
-            await _savePdf(html, filename);
-            _hideSaving();
+            _showSaving(selection.action === 'send' ? 'Generando y enviando...' : 'Generando PDF...');
+
+            const pdf = await _renderToPdf(html, filename);
+
+            if (selection.action === 'send') {
+                const base64Data = pdf.output('datauristring');
+                const emailRes = await fetch(`${API_URL}/api/reports/send-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        to: selection.email,
+                        subject: `Informe de Asistencia Semanal: ${promo.name} - Semana ${selectedWeek.wIdx + 1}`,
+                        body: `Hola,<br><br>Se adjunta el informe de asistencia semanal correspondiente a la <strong>Semana ${selectedWeek.wIdx + 1}</strong> de la promoción <strong>${promo.name}</strong> (${_fmtDateEs(formatLocal(selectedWeek.dates[0]))} al ${_fmtDateEs(formatLocal(selectedWeek.dates[4]))}).<br><br>Un saludo,<br>Sistema de Gestión de Bootcamps`,
+                        filename: filename,
+                        base64Data: base64Data
+                    })
+                });
+
+                if (emailRes.ok) {
+                    _hideSaving();
+                    alert('¡Email enviado correctamente a ' + selection.email + '!');
+                } else {
+                    const error = await emailRes.json();
+                    throw new Error(error.error || 'Error al enviar el email');
+                }
+            } else {
+                pdf.save(filename);
+                _hideSaving();
+            }
         } catch (e) {
             _hideSaving();
             console.error('[Reports] printWeeklyAttendance:', e);
