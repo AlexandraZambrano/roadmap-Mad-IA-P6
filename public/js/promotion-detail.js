@@ -8739,24 +8739,31 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
     });
     html += `</div></div>`;
 
-    // ── Actual teams per project ─────────────────────────────────────────────
+    // ── Actual teams per project (Accordion) ──────────────────────────────────
     html += `<h6 class="fw-semibold text-secondary mb-3 mt-4"><i class="bi bi-people me-1"></i>Listado de Equipos por Proyecto</h6>
-    <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">`;
-    grupalProjects.forEach(gp => {
-        html += `<div class="col">
-            <div class="card h-100 border-0 shadow-sm" style="background:#fdfdfd; border:1px solid #eee !important;">
-                <div class="card-header border-0 py-2" style="background:rgba(232, 93, 38, 0.05);">
-                    <div class="fw-bold text-primary small" style="color:#E85D26 !important; font-size:0.75rem;">${escapeHtml(gp.modName)}</div>
-                    <div class="fw-bold" style="color:#1A1A2E;">${escapeHtml(gp.projName)}</div>
-                </div>
-                <div class="card-body p-2">
-                    <div class="list-group list-group-flush">`;
+    <div class="accordion accordion-flush border rounded mb-4 shadow-sm" id="projectTeamsAccordion">`;
+    grupalProjects.forEach((gp, idx) => {
+        const itemId = `accItem-${idx}`;
+        html += `<div class="accordion-item">
+            <h2 class="accordion-header" id="heading-${itemId}">
+                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${itemId}" aria-expanded="false" aria-controls="collapse-${itemId}" style="background: #fff;">
+                    <div class="d-flex flex-column text-start">
+                        <span class="text-primary fw-bold small" style="color:#E85D26 !important; font-size:0.7rem; line-height:1;">${escapeHtml(gp.modName)}</span>
+                        <span class="fw-bold mt-1" style="color:#1A1A2E; font-size:0.9rem;">${escapeHtml(gp.projName)}</span>
+                    </div>
+                </button>
+            </h2>
+            <div id="collapse-${itemId}" class="accordion-collapse collapse" aria-labelledby="heading-${itemId}" data-bs-parent="#projectTeamsAccordion">
+                <div class="accordion-body p-2" style="background:#fafafa;">
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-2">`;
         gp.groups.forEach((grp, gIdx) => {
             const memberNames = (grp.studentIds || []).map(id => studentMap.get(String(id)) || id);
-            html += `<div class="list-group-item px-2 py-2 border-0 mb-1 rounded" style="background:#fff; border:1px solid #f0f0f0 !important;">
-                <div class="fw-bold text-muted mb-1" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Equipo ${gIdx + 1}</div>
-                <div class="d-flex flex-wrap gap-1">
-                    ${memberNames.map(name => `<span class="badge border fw-normal text-dark" style="background:#f8f9fa; font-size:0.8rem; padding: 4px 8px;">${escapeHtml(name)}</span>`).join('')}
+            html += `<div class="col">
+                <div class="p-2 border rounded shadow-sm bg-white h-100">
+                    <div class="fw-bold text-muted mb-1" style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px;">Equipo ${gIdx + 1}</div>
+                    <div class="d-flex flex-wrap gap-1">
+                        ${memberNames.map(name => `<span class="badge border fw-normal text-dark" style="background:#f8f9fa; font-size:0.75rem; padding: 3px 6px;">${escapeHtml(name)}</span>`).join('')}
+                    </div>
                 </div>
             </div>`;
         });
