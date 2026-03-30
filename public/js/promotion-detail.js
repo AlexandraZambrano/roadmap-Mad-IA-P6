@@ -376,145 +376,125 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Initialize mobile menu
-    initMobileMenu();
+    // Main initialization sequence
+    async function init() {
+        // Initialize mobile menu
+        initMobileMenu();
 
-    // Set up calendar preview iframe in Overview
-    const calendarPreviewIframe = document.getElementById('calendar-preview-iframe');
-    if (calendarPreviewIframe) {
-        // The calendar will be loaded when loadCalendar() is called and when the calendar ID is available
-        // We'll set this up in a function that gets called after the calendar is loaded
-        window.setupCalendarPreview = function () {
-            // Use the global calendar ID variable instead of relying on the HTML field
-            const calendarId = currentCalendarId || '';
+        // Setup calendar preview
+        setupCalendarPreviewHandler();
 
-            if (calendarId) {
-                const embedUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Madrid&mode=AGENDA`;
-                calendarPreviewIframe.src = embedUrl;
-                console.log('[setupCalendarPreview] Calendar preview loaded with AGENDA mode:', embedUrl);
-            } else {
-                calendarPreviewIframe.src = '';
-                console.log('[setupCalendarPreview] No calendar ID found');
-            }
-        };
-    }
+        // Initialize modals only if elements exist (teacher view)
+        const moduleModalEl = document.getElementById('moduleModal');
+        if (moduleModalEl) moduleModal = new bootstrap.Modal(moduleModalEl);
 
-    // Initialize modals only if elements exist (teacher view)
-    const moduleModalEl = document.getElementById('moduleModal');
-    if (moduleModalEl) moduleModal = new bootstrap.Modal(moduleModalEl);
+        const quickLinkModalEl = document.getElementById('quickLinkModal');
+        if (quickLinkModalEl) quickLinkModal = new bootstrap.Modal(quickLinkModalEl);
 
-    const quickLinkModalEl = document.getElementById('quickLinkModal');
-    if (quickLinkModalEl) quickLinkModal = new bootstrap.Modal(quickLinkModalEl);
+        const sectionModalEl = document.getElementById('sectionModal');
+        if (sectionModalEl) sectionModal = new bootstrap.Modal(sectionModalEl);
 
-    const sectionModalEl = document.getElementById('sectionModal');
-    if (sectionModalEl) sectionModal = new bootstrap.Modal(sectionModalEl);
+        const studentModalEl = document.getElementById('studentModal');
+        if (studentModalEl) studentModal = new bootstrap.Modal(studentModalEl);
 
-    const studentModalEl = document.getElementById('studentModal');
-    if (studentModalEl) studentModal = new bootstrap.Modal(studentModalEl);
+        const studentProgressModalEl = document.getElementById('studentProgressModal');
+        if (studentProgressModalEl) studentProgressModal = new bootstrap.Modal(studentProgressModalEl);
 
-    const studentProgressModalEl = document.getElementById('studentProgressModal');
-    if (studentProgressModalEl) studentProgressModal = new bootstrap.Modal(studentProgressModalEl);
+        const projectAssignmentDetailModalEl = document.getElementById('projectAssignmentDetailModal');
+        if (projectAssignmentDetailModalEl) projectAssignmentDetailModal = new bootstrap.Modal(projectAssignmentDetailModalEl);
 
-    const projectAssignmentDetailModalEl = document.getElementById('projectAssignmentDetailModal');
-    if (projectAssignmentDetailModalEl) projectAssignmentDetailModal = new bootstrap.Modal(projectAssignmentDetailModalEl);
+        // New Modals (Teacher)
+        const teamModalEl = document.getElementById('teamModal');
+        if (teamModalEl) teamModal = new bootstrap.Modal(teamModalEl);
 
-    // New Modals (Teacher)
-    const teamModalEl = document.getElementById('teamModal');
-    if (teamModalEl) teamModal = new bootstrap.Modal(teamModalEl);
+        const resourceModalEl = document.getElementById('resourceModal');
+        if (resourceModalEl) resourceModal = new bootstrap.Modal(resourceModalEl);
 
-    const resourceModalEl = document.getElementById('resourceModal');
-    if (resourceModalEl) resourceModal = new bootstrap.Modal(resourceModalEl);
+        const deletePromotionModalEl = document.getElementById('deletePromotionModal');
+        if (deletePromotionModalEl) deletePromotionModal = new bootstrap.Modal(deletePromotionModalEl);
 
-    const deletePromotionModalEl = document.getElementById('deletePromotionModal');
-    if (deletePromotionModalEl) deletePromotionModal = new bootstrap.Modal(deletePromotionModalEl);
+        const collaboratorModalEl = document.getElementById('collaboratorModal');
+        if (collaboratorModalEl) collaboratorModal = new bootstrap.Modal(collaboratorModalEl);
 
-    const collaboratorModalEl = document.getElementById('collaboratorModal');
-    if (collaboratorModalEl) collaboratorModal = new bootstrap.Modal(collaboratorModalEl);
+        const editTeamModalEl = document.getElementById('editTeamModal');
+        if (editTeamModalEl) editTeamModal = new bootstrap.Modal(editTeamModalEl);
 
-    const editTeamModalEl = document.getElementById('editTeamModal');
-    if (editTeamModalEl) editTeamModal = new bootstrap.Modal(editTeamModalEl);
+        initEmployabilityModal();
+        initProfileModal();
 
-    initEmployabilityModal();
-    initProfileModal();
+        // Wire funder Enter key
+        document.getElementById('acta-funder-input')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); actaAddFunder(); }
+        });
 
-    // Wire funder Enter key
-    document.getElementById('acta-funder-input')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { e.preventDefault(); actaAddFunder(); }
-    });
+        // 1. Load Promotion basics (Populates modules list for all other components)
+        await loadPromotion();
 
-    // Apply student-role view restrictions
-    setTimeout(() => {
-        const role = localStorage.getItem('role');
-        if (role === 'student') {
-            document.body.classList.add('student-view');
-            const previewBtn = document.querySelector('button[onclick="previewPromotion()"]');
-            if (previewBtn) previewBtn.remove();
-            const style = document.createElement('style');
-            style.innerHTML = `
-                .btn-primary, .btn-danger, .btn-outline-danger,
-                a[href="#students"] { display: none !important; }
-                #students-tab { display: none !important; }
-            `;
-            document.head.appendChild(style);
-            const studentsLink = document.querySelector('a[href="#students"]');
-            if (studentsLink && studentsLink.parentElement) {
-                studentsLink.parentElement.style.display = 'none';
-            }
-        }
-    }, 100);
+        if (isTeacherOrAdmin()) {
+            // 2. Load Extended info (Acta), Students, and Collaborators in parallel
+            _showExtendedInfoLoading(true);
+            await Promise.all([
+                loadExtendedInfo().finally(() => _showExtendedInfoLoading(false)),
+                loadStudents(),
+                loadCollaborators(),
+                loadAccessPassword()
+            ]);
 
-    if (isTeacherOrAdmin()) {
-        // Overlay gates only on ExtendedInfo (Acta data) — students load independently in the background
-        _showExtendedInfoLoading(true);
-        loadExtendedInfo().finally(() => {
-            _showExtendedInfoLoading(false);
-            // Open Acta modal AFTER overlay finishes fading (320ms fade + buffer)
+            // Open Acta modal AFTER overlay finishes (if requested)
             if (new URLSearchParams(window.location.search).get('openActa') === '1') {
                 setTimeout(() => openActaModal(), 400);
             }
-        });
-        loadStudents(); // runs independently, no overlay dependency
-        loadCollaborators();
-        loadAccessPassword(); // pre-load access settings data
-    } else {
-        // Remove preview button for students
-        const previewBtn = document.querySelector('button[onclick="previewPromotion()"]');
-        if (previewBtn) previewBtn.remove();
+            
+            setupForms();
+        } else {
+            // Student role: Clean up Teacher-only UIs
+            const previewBtn = document.querySelector('button[onclick="previewPromotion()"]');
+            if (previewBtn) previewBtn.remove();
+        }
+
+        // 3. UI logic
+        loadQuickLinks();
+        loadQuickActions();
+        loadSections();
+
+        // 4. Feature modules
+        if (typeof NotesManager !== 'undefined' && typeof NotesUI !== 'undefined') {
+            const notesManager = new NotesManager('promotionNotes', promotionId);
+            const notesUI = new NotesUI(notesManager, 'notes-container');
+            notesUI.render();
+            window.notesManager = notesManager;
+            window.notesUI = notesUI;
+        }
+
+        if (typeof window.StudentTracking !== 'undefined') {
+            window.StudentTracking.init(promotionId);
+        }
+
+        // 5. Restore last active tab (Safe now because loadPromotion/loadCollaborators finished)
+        const validTabs = ['overview', 'info', 'students', 'attendance', 'collaborators', 'access-settings', 'evaluation'];
+        let savedTab = sessionStorage.getItem(`activeTab_${promotionId}`) || 'overview';
+        if (!validTabs.includes(savedTab)) savedTab = 'overview';
+        window.location.hash = savedTab;
+        switchTab(savedTab);
     }
 
-    loadPromotion();
-    loadQuickLinks();
-    loadQuickActions();
-    loadSections();
-
-    if (isTeacherOrAdmin()) {
-        setupForms();
-    }
-
-    // ── Inicializar Bloc de Notas (Notes Manager) ─────────────────────────────
-    if (typeof NotesManager !== 'undefined' && typeof NotesUI !== 'undefined') {
-        const notesManager = new NotesManager('promotionNotes', promotionId);
-        const notesUI = new NotesUI(notesManager, 'notes-container');
-        notesUI.render();
-        window.notesManager = notesManager; // Exponer globalmente para debugging/acceso externo
-        window.notesUI = notesUI;
-        console.log('[Notes] Bloc de Notas inicializado para promoción:', promotionId);
-    }
-    // ── /Inicializar Bloc de Notas ────────────────────────────────────────────
-
-    // Restore last active tab (or default to overview)
-    // Guard against stale tab IDs (e.g. 'roadmap'/'calendar' that no longer exist as standalone sections)
-    const validTabs = ['overview', 'info', 'students', 'attendance', 'collaborators', 'access-settings', 'evaluation'];
-    let savedTab = sessionStorage.getItem(`activeTab_${promotionId}`) || 'overview';
-    if (!validTabs.includes(savedTab)) savedTab = 'overview';
-    window.location.hash = savedTab;
-    switchTab(savedTab);
-
-    // Inicializar módulo de Fichas de Seguimiento (independiente)
-    if (typeof window.StudentTracking !== 'undefined') {
-        window.StudentTracking.init(promotionId);
-    }
+    init().catch(err => console.error('[Init] Initialization failed:', err));
 });
+
+function setupCalendarPreviewHandler() {
+    const calendarPreviewIframe = document.getElementById('calendar-preview-iframe');
+    if (calendarPreviewIframe) {
+        window.setupCalendarPreview = function () {
+            const calendarId = currentCalendarId || '';
+            if (calendarId) {
+                const embedUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Madrid&mode=AGENDA`;
+                calendarPreviewIframe.src = embedUrl;
+            } else {
+                calendarPreviewIframe.src = '';
+            }
+        };
+    }
+}
 
 async function loadExtendedInfo() {
     const token = localStorage.getItem('token');
@@ -2919,6 +2899,8 @@ async function loadPromotion() {
         if (response.ok) {
             const promotion = await response.json();
             window.currentPromotion = promotion; // Store globally for editing
+            promotionModules = promotion.modules || [];
+            window.promotionModules = promotionModules;
             const _setTC = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
             _setTC('promotion-title', promotion.name);
             _setTC('promotion-desc', promotion.description || '');
