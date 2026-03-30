@@ -5881,7 +5881,7 @@ async function updateAccessPassword(source = 'default') {
     if (!isTeacherOrAdmin()) return;
 
     const token = localStorage.getItem('token');
-    
+
     // Determine which input fields to use based on source
     const prefix = source === 'teacher-area' ? 'teacher-area-' : '';
     const passwordInput = document.getElementById(`${prefix}access-password-input`);
@@ -6059,7 +6059,7 @@ async function updateTeachingContent(source = 'default') {
     if (!isTeacherOrAdmin()) return;
 
     const token = localStorage.getItem('token');
-    
+
     // Determine which input fields to use based on source
     const prefix = source === 'teacher-area' ? 'teacher-area-' : '';
     const urlInput = document.getElementById(`${prefix}teaching-content-url`);
@@ -6227,7 +6227,7 @@ async function updateAsanaWorkspace(source = 'default') {
     if (!isTeacherOrAdmin()) return;
 
     const token = localStorage.getItem('token');
-    
+
     // Determine which input fields to use based on source
     const prefix = source === 'teacher-area' ? 'teacher-area-' : '';
     const urlInput = document.getElementById(`${prefix}asana-workspace-url`);
@@ -6448,7 +6448,7 @@ function updateSelectionState() {
     const bulkReportsDropdown = document.getElementById('bulk-reports-dropdown');
     if (bulkReportsDropdown) {
         bulkReportsDropdown.style.display = selectedCount > 0 ? 'inline-block' : 'none';
-        
+
         // Always populate the dropdown menu when it's displayed to ensure correct handlers
         const dropdownMenu = bulkReportsDropdown.querySelector('.dropdown-menu');
         if (dropdownMenu) {
@@ -6504,13 +6504,13 @@ function _getSelectedStudentIds() {
         .map(cb => cb.dataset.studentId);
 }
 
-window._bulkReportTechnical = function() {
+window._bulkReportTechnical = function () {
     console.log('[Reports] _bulkReportTechnical triggered');
     const ids = _getSelectedStudentIds();
     console.log('[Reports] Selected student IDs:', ids);
-    if (!ids.length) { 
-        alert('Selecciona al menos un estudiante.'); 
-        return; 
+    if (!ids.length) {
+        alert('Selecciona al menos un estudiante.');
+        return;
     }
     if (!window.Reports) {
         console.error('[Reports] window.Reports library is not defined!');
@@ -6520,7 +6520,7 @@ window._bulkReportTechnical = function() {
     window.Reports.printBulkTechnical(ids, promotionId);
 }
 
-window._bulkReportTransversal = function() {
+window._bulkReportTransversal = function () {
     console.log('[Reports] _bulkReportTransversal triggered');
     const ids = _getSelectedStudentIds();
     if (!ids.length) { alert('Selecciona al menos un estudiante.'); return; }
@@ -6531,7 +6531,7 @@ window._bulkReportTransversal = function() {
     window.Reports.printBulkTransversal(ids, promotionId);
 }
 
-window._bulkReportByProject = async function() {
+window._bulkReportByProject = async function () {
     // ... rest of the function remains the same but attached to window
     // I'll just change the start of the function in SearchReplace
     // Remove any existing modal
@@ -7800,7 +7800,7 @@ async function loadEvaluation() {
             }
         }));
 
-        
+
         // Merge program competences (from ext) with full catalog data so description/levels/tools are available
         const extComps = ext.competences || window._extendedInfoCompetences || [];
         const enrichedCompetences = extComps.map(ec => {
@@ -7812,7 +7812,7 @@ async function loadEvaluation() {
                 startModule: ec.startModule || null
             };
         });
-        
+
         // console.log(`🎈 ${(let i = 0; i < catalog.length; i++) catalog[i].name}`)
         // Also keep catalog entries that might be referenced by project competenceIds but not in extComps
         const extIds = new Set(extComps.map(c => String(c.id)));
@@ -8716,6 +8716,7 @@ function closeTeamHistoryView() {
 function openTeamHistoryModal() { openTeamHistoryView(); }
 
 function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, studentPartners, allGrupalForSelect) {
+
     if (grupalProjects.length === 0) {
         return `<div class="alert alert-info">
             <i class="bi bi-info-circle me-2"></i>
@@ -8727,6 +8728,30 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
         Muestra con quién ha coincidido cada estudiante en proyectos grupales.
         Las celdas indican el número de veces que han sido compañeros de equipo.
     </p>`;
+
+    if (allGrupalForSelect.length > 0) {
+        html += `
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-plus-circle text-primary me-2"></i>Crear / editar grupos para un proyecto</h6>
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <select class="form-select form-select-sm" id="th-project-select" style="max-width:380px;">
+                        <option value="">— Selecciona un proyecto grupal —</option>`;
+        allGrupalForSelect.forEach(gp => {
+            html += `<option value="${gp.mIdx}|${gp.pIdx}">${escapeHtml(gp.modName)} — ${escapeHtml(gp.projName)}</option>`;
+        });
+        html += `   </select>
+                    <button id="th-open-groups-btn" class="btn btn-sm btn-primary" style="background:#E85D26;border-color:#E85D26;">
+                        <i class="bi bi-diagram-3 me-1"></i>Abrir gestor de grupos
+                    </button>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    <i class="bi bi-lightbulb me-1 text-warning"></i>
+                    Usa el histórico de arriba para evitar repetir compañeros y formar grupos equilibrados.
+                </p>
+            </div>
+        </div>`;
+    }
 
     // ── Project summary pills ────────────────────────────────────────────────
     html += `<div class="mb-4">
@@ -8779,45 +8804,47 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
     const sortedStudentIds = Array.from(allStudentIds).sort((a, b) =>
         (studentMap.get(a) || a).localeCompare(studentMap.get(b) || b));
 
-    html += `<h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-person-lines-fill me-1"></i>Coincidencias por estudiante</h6>
-    <div class="table-responsive mb-4">
-    <table class="table table-bordered table-sm align-middle" style="font-size:.85rem;">
-        <thead class="table-light">
-            <tr>
-                <th style="min-width:160px;">Estudiante</th>
-                <th>Compañeros de equipo</th>
-            </tr>
-        </thead>
-        <tbody>`;
+    // html += `<h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-person-lines-fill me-1"></i>Coincidencias por estudiante</h6>
+    // <div class="table-responsive mb-4">
+    // <table class="table table-bordered table-sm align-middle" style="font-size:.85rem;">
+    //     <thead class="table-light">
+    //         <tr>
+    //             <th style="min-width:160px;">Estudiante</th>
+    //             <th>Compañeros de equipo</th>
+    //         </tr>
+    //     </thead>
+    //     <tbody>`;
+
+    // ── Create/edit groups for a project ──────────────────────────────────────
 
     sortedStudentIds.forEach(id => {
         const name = studentMap.get(id) || id;
         const partners = studentPartners[id] || [];
         const maxRepeat = partners.reduce((m, p) => Math.max(m, p.count), 0);
-        const rowBg = maxRepeat >= 2 ? 'style="background:#fff8f8;"' : '';
-        html += `<tr ${rowBg}>
-            <td class="fw-semibold">${escapeHtml(name)}</td>
-            <td>`;
-        if (partners.length === 0) {
-            html += `<span class="text-muted fst-italic small">Sin coincidencias</span>`;
-        } else {
-            html += `<div class="d-flex flex-wrap gap-1">`;
-            partners.forEach(p => {
-                const pName = studentMap.get(p.partnerId) || p.partnerId;
-                const tip = p.projects.join(', ');
-                const style = p.count >= 2
-                    ? 'background:#f8d7da;color:#842029;border:1px solid #f5c2c7;'
-                    : 'background:#fff3cd;color:#856404;border:1px solid #ffc107;';
-                const icon = p.count >= 2 ? '⚠ ' : '';
-                html += `<span class="badge rounded-pill" style="${style}font-size:.8rem;" title="${escapeHtml(tip)}">
-                    ${escapeHtml(pName)} <strong>${icon}${p.count}×</strong>
-                </span>`;
-            });
-            html += `</div>`;
-        }
-        html += `</td></tr>`;
+        // const rowBg = maxRepeat >= 2 ? 'style="background:#fff8f8;"' : '';
+        // html += `<tr ${rowBg}>
+        //     <td class="fw-semibold">${escapeHtml(name)}</td>
+        //     <td>`;
+        // if (partners.length === 0) {
+        //     html += `<span class="text-muted fst-italic small">Sin coincidencias</span>`;
+        // } else {
+        //     html += `<div class="d-flex flex-wrap gap-1">`;
+        //     partners.forEach(p => {
+        //         const pName = studentMap.get(p.partnerId) || p.partnerId;
+        //         const tip = p.projects.join(', ');
+        //         const style = p.count >= 2
+        //             ? 'background:#f8d7da;color:#842029;border:1px solid #f5c2c7;'
+        //             : 'background:#fff3cd;color:#856404;border:1px solid #ffc107;';
+        //         const icon = p.count >= 2 ? '⚠ ' : '';
+        //         html += `<span class="badge rounded-pill" style="${style}font-size:.8rem;" title="${escapeHtml(tip)}">
+        //             ${escapeHtml(pName)} <strong>${icon}${p.count}×</strong>
+        //         </span>`;
+        //     });
+        // html += `</div>`;
+        // }
+        // html += `</td></tr>`;
     });
-    html += `</tbody></table></div>`;
+    // html += `</tbody></table></div>`;
 
     // ── Matrix (if ≤ 20 students) ─────────────────────────────────────────────
     if (sortedStudentIds.length <= 20) {
@@ -8847,31 +8874,6 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
             html += `</tr>`;
         });
         html += `</tbody></table></div></details>`;
-    }
-
-    // ── Create/edit groups for a project ──────────────────────────────────────
-    if (allGrupalForSelect.length > 0) {
-        html += `
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <h6 class="fw-semibold mb-3"><i class="bi bi-plus-circle text-primary me-2"></i>Crear / editar grupos para un proyecto</h6>
-                <div class="d-flex gap-2 flex-wrap align-items-center">
-                    <select class="form-select form-select-sm" id="th-project-select" style="max-width:380px;">
-                        <option value="">— Selecciona un proyecto grupal —</option>`;
-        allGrupalForSelect.forEach(gp => {
-            html += `<option value="${gp.mIdx}|${gp.pIdx}">${escapeHtml(gp.modName)} — ${escapeHtml(gp.projName)}</option>`;
-        });
-        html += `   </select>
-                    <button id="th-open-groups-btn" class="btn btn-sm btn-primary" style="background:#E85D26;border-color:#E85D26;">
-                        <i class="bi bi-diagram-3 me-1"></i>Abrir gestor de grupos
-                    </button>
-                </div>
-                <p class="text-muted small mt-2 mb-0">
-                    <i class="bi bi-lightbulb me-1 text-warning"></i>
-                    Usa el histórico de arriba para evitar repetir compañeros y formar grupos equilibrados.
-                </p>
-            </div>
-        </div>`;
     }
 
     // ── Legend ────────────────────────────────────────────────────────────────
@@ -9767,18 +9769,18 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                     <div class="ind-comp-container">
                         <div id="ind-container-comp-${safeCompId}-${safeTargetId}" style="display:flex; overflow-y:auto;">
                             ${[
-                                { lvl: 1, inds: compInds.initial },
-                                { lvl: 2, inds: compInds.medio },
-                                { lvl: 3, inds: compInds.advance }
-                            ].filter(g => g.inds.length).map(({ lvl, inds }) => `
+                    { lvl: 1, inds: compInds.initial },
+                    { lvl: 2, inds: compInds.medio },
+                    { lvl: 3, inds: compInds.advance }
+                ].filter(g => g.inds.length).map(({ lvl, inds }) => `
                                 <div class="border rounded p-2 mb-2" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_BORDER[lvl]} !important; margin: 0 1rem 0 1rem;">
                                     <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]};">
                                         <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
                                     </div>
                                     ${inds.map(ind => {
-                                        const indKey = `comp-${ind.id}`;
-                                        const isChecked = !!(checkedDataForComp[indKey]);
-                                        return `<div class="form-check form-check-sm mb-0">
+                    const indKey = `comp-${ind.id}`;
+                    const isChecked = !!(checkedDataForComp[indKey]);
+                    return `<div class="form-check form-check-sm mb-0">
                                             <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
                                                 id="${prefix}-${escapeHtml(indKey)}"
                                                 onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
@@ -9787,9 +9789,9 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                                                 ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
                                             </label>
                                         </div>`;
-                                    }).join('')}
+                }).join('')}
                                 </div>`
-                            ).join('')}
+                ).join('')}
                         </div>
                     </div>
                 </div>` : ''}
@@ -9797,32 +9799,32 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                     <div class="small fw-semibold text-info mb-1"><i class="bi bi-tools me-1"></i>Indicadores de Herramientas — para registro técnico (no afecta nivel):</div>
                     <div id="ind-container-tools-${safeCompId}-${safeTargetId}">
                         ${(() => {
-                            const accordionId = `acc-sv-${safeCompId}-${safeTargetId}`;
-                            return `<div class="accordion accordion-flush" id="${accordionId}">` +
-                                activeToolsWithInds.map((tool, toolIdx) => {
-                                    const byLevel = { 1: [], 2: [], 3: [] };
-                                    tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
-                                    const hasChecked = tool.indicators.some(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`]);
-                                    const collapseId = `${accordionId}-t${toolIdx}`;
-                                    const toolAutoLevel = (() => {
-                                        let lvl = 0;
-                                        for (const l of [1, 2, 3]) {
-                                            if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`])) lvl = l;
-                                            else if (byLevel[l].length > 0) break;
-                                        }
-                                        return lvl;
-                                    })();
-                                    const activeLevels = [1, 2, 3].filter(l => byLevel[l].length > 0);
-                                    const levelCols = activeLevels.map(lvl => {
-                                        const inds = byLevel[lvl];
-                                        return `<div class="col">
+                    const accordionId = `acc-sv-${safeCompId}-${safeTargetId}`;
+                    return `<div class="accordion accordion-flush" id="${accordionId}">` +
+                        activeToolsWithInds.map((tool, toolIdx) => {
+                            const byLevel = { 1: [], 2: [], 3: [] };
+                            tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
+                            const hasChecked = tool.indicators.some(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`]);
+                            const collapseId = `${accordionId}-t${toolIdx}`;
+                            const toolAutoLevel = (() => {
+                                let lvl = 0;
+                                for (const l of [1, 2, 3]) {
+                                    if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`])) lvl = l;
+                                    else if (byLevel[l].length > 0) break;
+                                }
+                                return lvl;
+                            })();
+                            const activeLevels = [1, 2, 3].filter(l => byLevel[l].length > 0);
+                            const levelCols = activeLevels.map(lvl => {
+                                const inds = byLevel[lvl];
+                                return `<div class="col">
                                         <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
                                             <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
                                         </div>
                                         ${inds.map(ind => {
-                                            const indKey = `tool-${tool.id}-${ind.id}`;
-                                            const isChecked = !!(checkedDataForComp[indKey]);
-                                            return `<div class="form-check form-check-sm mb-0">
+                                    const indKey = `tool-${tool.id}-${ind.id}`;
+                                    const isChecked = !!(checkedDataForComp[indKey]);
+                                    return `<div class="form-check form-check-sm mb-0">
                                                 <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
                                                     id="${prefix}-${escapeHtml(indKey)}"
                                                     onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
@@ -9831,10 +9833,10 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                                                     ${ind.description ? `<span class="text-muted fst-italic d-block" style="font-size:.65rem;">${escapeHtml(ind.description)}</span>` : ''}
                                                 </label>
                                             </div>`;
-                                        }).join('')}
+                                }).join('')}
                                     </div>`;
-                                    }).join('');
-                                    return `<div class="accordion-item border-0 border-bottom">
+                            }).join('');
+                            return `<div class="accordion-item border-0 border-bottom">
                                     <h2 class="accordion-header">
                                         <button class="accordion-button py-2 px-2 small fw-semibold ${hasChecked ? '' : 'collapsed'}"
                                             type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="background:transparent;">
@@ -9848,8 +9850,8 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                                         </div>
                                     </div>
                                 </div>`;
-                                }).join('') + `</div>`;
-                        })()}
+                        }).join('') + `</div>`;
+                })()}
                     </div>
                 </div>` : ''}
                 ${activeToolsNoInds.length > 0 ? `<div class="alert alert-warning py-2 px-3 mb-2" style="font-size:.8rem;">
@@ -11069,7 +11071,7 @@ async function saveProjectEvaluation() {
         bootstrap.Modal.getInstance(document.getElementById('evaluationModal'))?.hide();
         renderEvaluationTab();
         showToast('Evaluación guardada correctamente', 'success');
-        
+
         if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = originalBtnHtml; }
     } catch (err) {
         console.error('[saveProjectEvaluation]', err);
@@ -11118,7 +11120,7 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
                 // Build achieved indicators list: [{type, toolName, indicatorName, indicatorId, levelId}]
                 // Now includes BOTH tool indicators and competence indicators
                 const achievedIndicators = [];
-                
+
                 // Add tool indicators (for technical tracking)
                 toolsWithInds.forEach(t => {
                     if (!t.indicators) return;
@@ -11188,7 +11190,7 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
                     .filter(t => t.indicators && t.indicators.some(ind => compChecked[`tool-${t.id}-${ind.id}`]))
                     .map(t => t.name);
                 const achievedIndicators = [];
-                
+
                 // Add tool indicators
                 toolsWithInds.forEach(t => {
                     if (!t.indicators) return;
@@ -11204,7 +11206,7 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
                         }
                     });
                 });
-                
+
                 // Add competence indicators
                 [
                     { lvl: 1, inds: compIndicators.initial },
@@ -11223,7 +11225,7 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
                         }
                     });
                 });
-                
+
                 return {
                     competenceId: ce.competenceId,
                     competenceName: ce.competenceName,
