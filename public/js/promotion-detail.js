@@ -1323,15 +1323,30 @@ function fillTeamFromCollaborator() {
     const role = collab.userRole || 'Formador/a';
     roleBadge.className = `badge ${roleColors[role] || 'bg-secondary'}`;
     roleBadge.textContent = role;
-    preview.classList.remove('d-none');
 
-    // Pre-select the collaborator's first assigned module if any
-    const moduleSelect = document.getElementById('team-module');
+    // Show assigned modules in preview if any
     const assignedModules = collab.moduleIds || [];
     if (assignedModules.length > 0) {
-        // Select the first assigned module that exists in the dropdown
+        const modNames = [];
+        assignedModules.forEach(mid => {
+            const found = (window.promotionModules || []).find(m => String(m.id) === String(mid));
+            if (found) modNames.push(found.name);
+        });
+        const modulesText = modNames.length > 0 ? `Asignado a: ${modNames.join(', ')}` : '';
+        const previewEmail = document.getElementById('team-preview-email');
+        if (previewEmail) {
+            previewEmail.innerHTML = `${escapeHtml(collab.email || '')}<br><span class="text-primary fw-bold" style="font-size:0.75rem;">${escapeHtml(modulesText)}</span>`;
+        }
+    }
+
+    preview.classList.remove('d-none');
+
+    // Pre-select the collaborator's first assigned module if any in the dropdown
+    const moduleSelect = document.getElementById('team-module');
+    if (assignedModules.length > 0) {
+        // Select the first assigned module that exists in the dropdown (robust comparison)
         for (const opt of moduleSelect.options) {
-            if (assignedModules.includes(opt.value)) {
+            if (assignedModules.some(mid => String(mid) === String(opt.value))) {
                 moduleSelect.value = opt.value;
                 break;
             }
@@ -1359,8 +1374,25 @@ function addTeamMember() {
 
     const linkedin = document.getElementById('team-linkedin').value;
     const moduleEl = document.getElementById('team-module');
-    const moduleId = moduleEl.value;
-    const moduleName = moduleId ? moduleEl.options[moduleEl.selectedIndex].text : '';
+    const selectedModuleId = moduleEl.value;
+    const selectedModuleName = selectedModuleId ? moduleEl.options[moduleEl.selectedIndex].text : '';
+
+    // DEFAULT to collaborator's pre-assigned modules if no manual override is selected
+    let finalModuleId = selectedModuleId;
+    let finalModuleName = selectedModuleName;
+
+    const assignedModules = collab.moduleIds || [];
+    if (!finalModuleId && assignedModules.length > 0) {
+        const modNames = [];
+        assignedModules.forEach(mid => {
+            const found = (window.promotionModules || []).find(m => String(m.id) === String(mid));
+            if (found) modNames.push(found.name);
+        });
+        if (modNames.length > 0) {
+            finalModuleName = modNames.join(', ');
+            finalModuleId = String(assignedModules[0]); // Keep one ID for legacy field compatibility
+        }
+    }
 
     extendedInfoData.team.push({
         collaboratorId: collab.id,
@@ -1368,8 +1400,8 @@ function addTeamMember() {
         role: collab.userRole || 'Formador/a',
         email: collab.email || '',
         linkedin,
-        moduleId,
-        moduleName
+        moduleId: finalModuleId,
+        moduleName: finalModuleName
     });
     displayTeam();
     teamModal.hide();
