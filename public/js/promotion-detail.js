@@ -5624,7 +5624,13 @@ async function displayCollaborators(collaborators) {
 
     if (!tbody && !listGroup) return;
 
-    const isOwner = window.currentPromotion && window.currentPromotion.teacherId === currentUser.id;
+    const userId = currentUser.id || currentUser._id;
+    const role = localStorage.getItem('role') || currentUser.userRole || currentUser.role;
+    const isAdmin = role === 'superadmin';
+    const isOwner = window.currentPromotion && window.currentPromotion.teacherId === userId;
+    const isCollab = window.currentPromotion && (window.currentPromotion.collaborators || []).includes(userId);
+    const canManage = isOwner || isCollab || isAdmin;
+
     const modules = window.promotionModules || [];
     const roleColors = { 'Formador/a': 'primary', 'CoFormador/a': 'success', 'Coordinador/a': 'warning' };
 
@@ -5647,10 +5653,10 @@ async function displayCollaborators(collaborators) {
                 const userRole = collab.userRole || 'Formador/a';
                 const badgeColor = roleColors[userRole] || 'secondary';
                 const ownerBadge = collab.isOwner ? '<span class="badge bg-dark ms-1">Owner</span>' : '';
-                const editModulesBtn = isOwner
+                const editModulesBtn = canManage
                     ? `<button class="btn btn-sm btn-outline-primary me-1" onclick="openCollaboratorModulesModal('${collab.id}')" title="Modificar"><i class="bi bi-pencil"></i></button>`
                     : '';
-                const removeBtn = (isOwner && !collab.isOwner)
+                const removeBtn = (canManage && !collab.isOwner)
                     ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${collab.id}')" title="Quitar colaborador"><i class="bi bi-trash"></i></button>`
                     : '';
                 const tr = document.createElement('tr');
@@ -5676,10 +5682,10 @@ async function displayCollaborators(collaborators) {
                 const userRole = teacher.userRole || 'Formador/a';
                 const badgeColor = roleColors[userRole] || 'secondary';
                 const ownerBadge = teacher.isOwner ? '<span class="badge bg-dark ms-2">Owner</span>' : '';
-                const editModulesBtn = isOwner
+                const editModulesBtn = canManage
                     ? `<button class="btn btn-sm btn-outline-primary me-1" onclick="openCollaboratorModulesModal('${teacher.id}')" title="Modificar"><i class="bi bi-pencil"></i></button>`
                     : '';
-                const deleteBtn = (isOwner && !teacher.isOwner)
+                const deleteBtn = (canManage && !teacher.isOwner)
                     ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${teacher.id}')" title="Quitar colaborador"><i class="bi bi-trash"></i></button>`
                     : '';
                 const div = document.createElement('div');

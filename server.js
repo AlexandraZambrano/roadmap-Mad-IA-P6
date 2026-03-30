@@ -4137,7 +4137,10 @@ app.put('/api/promotions/:promotionId/collaborators/:teacherId/modules', verifyT
 
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
-    if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Only owner can manage module assignments' });
+    const isOwner = promotion.teacherId === req.user.id;
+    const isCollab = (promotion.collaborators || []).includes(req.user.id);
+    const isAdmin = req.user.userRole === 'superadmin';
+    if (!isOwner && !isCollab && !isAdmin) return res.status(403).json({ error: 'Only teaching team can manage module assignments' });
 
     if (req.params.teacherId === promotion.teacherId) {
       promotion.ownerModules = moduleIds;
@@ -4164,7 +4167,10 @@ app.delete('/api/promotions/:promotionId/collaborators/:teacherId', verifyToken,
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
-    if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Only owner can remove collaborators' });
+    const isOwner = promotion.teacherId === req.user.id;
+    const isCollab = (promotion.collaborators || []).includes(req.user.id);
+    const isAdmin = req.user.userRole === 'superadmin';
+    if (!isOwner && !isCollab && !isAdmin) return res.status(403).json({ error: 'Only teaching team can manage collaborators' });
 
     promotion.collaborators = (promotion.collaborators || []).filter(id => id !== req.params.teacherId);
     promotion.collaboratorModules = (promotion.collaboratorModules || []).filter(m => m.teacherId !== req.params.teacherId);
