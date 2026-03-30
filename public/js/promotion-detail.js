@@ -238,7 +238,8 @@ function togglePasswordVisibility(inputId) {
 
 
 let promotionId = null;
-let moduleModal, quickLinkModal, sectionModal, studentModal, studentProgressModal, teamModal, resourceModal, collaboratorModal, projectAssignmentDetailModal;
+let moduleModal, quickLinkModal, sectionModal, studentModal, studentProgressModal, teamModal, editTeamModal, resourceModal,
+    collaboratorModal, projectAssignmentDetailModal;
 // Always read role fresh from localStorage so external auth (users.coderf5.es),
 // which writes 'role' after the page loads, is picked up correctly.
 // 'superadmin' has the same edit rights as 'teacher'.
@@ -429,6 +430,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const collaboratorModalEl = document.getElementById('collaboratorModal');
     if (collaboratorModalEl) collaboratorModal = new bootstrap.Modal(collaboratorModalEl);
+
+    const editTeamModalEl = document.getElementById('editTeamModal');
+    if (editTeamModalEl) editTeamModal = new bootstrap.Modal(editTeamModalEl);
 
     initEmployabilityModal();
     initProfileModal();
@@ -661,7 +665,8 @@ function displayTeam() {
             <td>${moduleCell}</td>
             <td>${linkedinCell}</td>
             <td>
-                <button class="btn btn-sm btn-danger" onclick="deleteTeamMember(${index})"><i class="bi bi-trash"></i></button>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditTeamModal(${index})" title="Editar"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteTeamMember(${index})" title="Eliminar"><i class="bi bi-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -1383,10 +1388,41 @@ function addTeamMember() {
 }
 
 function deleteTeamMember(index) {
-    if (confirm('Delete this member?')) {
+    if (confirm('¿Eliminar este miembro del equipo?')) {
         extendedInfoData.team.splice(index, 1);
         displayTeam();
     }
+}
+
+function openEditTeamModal(index) {
+    const member = (extendedInfoData.team || [])[index];
+    if (!member) return;
+
+    document.getElementById('edit-team-index').value = index;
+    document.getElementById('edit-team-name').value = member.name || '';
+    document.getElementById('edit-team-role').value = member.role || '';
+    document.getElementById('edit-team-email').value = member.email || '';
+    document.getElementById('edit-team-modules').value = member.moduleName || '';
+    document.getElementById('edit-team-linkedin').value = member.linkedin || '';
+
+    editTeamModal.show();
+}
+
+function updateTeamMember() {
+    const index = parseInt(document.getElementById('edit-team-index').value);
+    if (isNaN(index)) return;
+
+    const member = extendedInfoData.team[index];
+    if (!member) return;
+
+    member.name = document.getElementById('edit-team-name').value.trim();
+    member.role = document.getElementById('edit-team-role').value.trim();
+    member.email = document.getElementById('edit-team-email').value.trim();
+    member.moduleName = document.getElementById('edit-team-modules').value.trim();
+    member.linkedin = document.getElementById('edit-team-linkedin').value.trim();
+
+    displayTeam();
+    editTeamModal.hide();
 }
 
 // ── Resource Catalog (evaluation.coderf5.es/v1/resources — via local proxy) ──
@@ -5589,7 +5625,7 @@ async function displayCollaborators(collaborators) {
                     ? `<button class="btn btn-sm btn-outline-secondary me-1" onclick="openCollaboratorModulesModal('${collab.id}', '${escapeHtml(collab.name)}')" title="Editar módulos"><i class="bi bi-journal-bookmark"></i></button>`
                     : '';
                 const removeBtn = (isOwner && !collab.isOwner)
-                    ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${collab.id}')" title="Remove collaborator"><i class="bi bi-person-dash"></i></button>`
+                    ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${collab.id}')" title="Quitar colaborador"><i class="bi bi-person-dash"></i></button>`
                     : '';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -5597,7 +5633,7 @@ async function displayCollaborators(collaborators) {
                     <td><span class="badge bg-${badgeColor}">${escapeHtml(userRole)}</span></td>
                     <td>${escapeHtml(collab.email)}</td>
                     <td>${getModuleNames(collab.moduleIds)}</td>
-                    <td class="text-nowrap">${editModulesBtn}${removeBtn || (!isOwner ? '' : '')}</td>
+                    <td class="text-nowrap">${editModulesBtn}${removeBtn}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -5822,7 +5858,7 @@ async function addCollaboratorById() {
 }
 
 async function removeCollaborator(teacherId) {
-    if (!confirm('Are you sure you want to remove this collaborator?')) return;
+    if (!confirm('¿Estás seguro de que deseas quitar a este colaborador del programa?')) return;
 
     const token = localStorage.getItem('token');
     try {
@@ -5832,14 +5868,21 @@ async function removeCollaborator(teacherId) {
         });
 
         if (response.ok) {
-            location.reload();
+            // Also remove from team list if present
+            const tIdx = (extendedInfoData.team || []).findIndex(m => m.collaboratorId === teacherId);
+            if (tIdx !== -1) {
+                extendedInfoData.team.splice(tIdx, 1);
+            }
+            // Better to reload or just refresh lists
+            await loadCollaborators();
+            displayTeam();
         } else {
             const data = await response.json();
-            alert(data.error || 'Failed to remove collaborator');
+            alert(data.error || 'No se pudo quitar al colaborador');
         }
     } catch (error) {
         console.error('Error removing collaborator:', error);
-        alert('Connection error');
+        alert('Error de conexión');
     }
 }
 

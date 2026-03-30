@@ -1975,6 +1975,50 @@
         </div>
     </div>
 
+    <!-- Edit Team Member Modal -->
+    <div class="modal fade" id="editTeamModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar miembro del Equipo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-team-form">
+                        <input type="hidden" id="edit-team-index">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control bg-light" id="edit-team-name" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Rol</label>
+                            <input type="text" class="form-control bg-light" id="edit-team-role" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control bg-light" id="edit-team-email" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Módulos (Texto visible)</label>
+                            <input type="text" class="form-control" id="edit-team-modules">
+                            <div class="form-text">Esto es lo que verán los estudiantes en la tabla.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">LinkedIn</label>
+                            <input type="url" class="form-control" id="edit-team-linkedin">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="updateTeamMember()">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
     <!-- Resource Modal — Search & Select from evaluation.coderf5.es/v1/resources -->
     <div class="modal fade" id="resourceModal" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">

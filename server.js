@@ -4047,6 +4047,25 @@ app.get('/api/teachers', verifyToken, async (req, res) => {
   }
 });
 
+app.put('/api/teachers/:id', verifyToken, async (req, res) => {
+  try {
+    const { name, email, userRole } = req.body;
+    if (email) {
+      const existing = await Teacher.findOne({ email, id: { $ne: req.params.id } });
+      if (existing) return res.status(400).json({ error: 'Email already in use' });
+    }
+    const teacher = await Teacher.findOneAndUpdate(
+      { id: req.params.id },
+      { name, email, userRole },
+      { new: true, runValidators: true }
+    );
+    if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+    res.json(teacher);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/promotions/:promotionId/collaborators', verifyToken, async (req, res) => {
   try {
     const promotion = await Promotion.findOne({ id: req.params.promotionId });
