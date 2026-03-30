@@ -1356,21 +1356,18 @@ function addTeamMember() {
 
     const linkedin = document.getElementById('team-linkedin').value;
 
-    // AUTOMATICALLY aggregate all pre-assigned module names from collaborator
     const assignedModules = collab.moduleIds || [];
-    let finalModuleId = '';
+    let finalModuleIds = assignedModules;
     let finalModuleName = '';
     
-    if (assignedModules.length > 0) {
+    if (finalModuleIds.length > 0) {
         const modNames = [];
-        assignedModules.forEach(mid => {
-           // We use String comparison to avoid issues with number vs string IDs
+        finalModuleIds.forEach(mid => {
            const found = (window.promotionModules || []).find(m => String(m.id) === String(mid));
            if (found) modNames.push(found.name);
         });
         if (modNames.length > 0) {
             finalModuleName = modNames.join(', ');
-            finalModuleId = String(assignedModules[0]); // Legacy field compatibility
         }
     }
 
@@ -1380,7 +1377,7 @@ function addTeamMember() {
         role: collab.userRole || 'Formador/a',
         email: collab.email || '',
         linkedin,
-        moduleId: finalModuleId,
+        moduleIds: finalModuleIds,
         moduleName: finalModuleName
     });
     displayTeam();
@@ -1402,8 +1399,28 @@ function openEditTeamModal(index) {
     document.getElementById('edit-team-name').value = member.name || '';
     document.getElementById('edit-team-role').value = member.role || '';
     document.getElementById('edit-team-email').value = member.email || '';
-    document.getElementById('edit-team-modules').value = member.moduleName || '';
     document.getElementById('edit-team-linkedin').value = member.linkedin || '';
+
+    // Populate checklist
+    const modules = window.promotionModules || [];
+    const checklist = document.getElementById('edit-team-module-checklist');
+    checklist.innerHTML = '';
+    const selected = member.moduleIds || [];
+
+    if (modules.length === 0) {
+        checklist.innerHTML = '<span class="text-muted small">No hay módulos definidos.</span>';
+    } else {
+        modules.forEach(mod => {
+            const checked = selected.some(sm => String(sm) === String(mod.id)) ? 'checked' : '';
+            const div = document.createElement('div');
+            div.className = 'form-check';
+            div.innerHTML = `
+                <input class="form-check-input" type="checkbox" value="${mod.id}" id="edit-team-mod-${mod.id}" ${checked}>
+                <label class="form-check-label" for="edit-team-mod-${mod.id}">${escapeHtml(mod.name)}</label>
+            `;
+            checklist.appendChild(div);
+        });
+    }
 
     editTeamModal.show();
 }
@@ -1415,10 +1432,19 @@ function updateTeamMember() {
     const member = extendedInfoData.team[index];
     if (!member) return;
 
-    member.name = document.getElementById('edit-team-name').value.trim();
-    member.role = document.getElementById('edit-team-role').value.trim();
-    member.email = document.getElementById('edit-team-email').value.trim();
-    member.moduleName = document.getElementById('edit-team-modules').value.trim();
+    // Get selected modules from checklist
+    const checkboxes = document.querySelectorAll('#edit-team-module-checklist .form-check-input:checked');
+    const moduleIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    // Build module name string
+    const modNames = [];
+    moduleIds.forEach(mid => {
+        const found = (window.promotionModules || []).find(m => String(m.id) === String(mid));
+        if (found) modNames.push(found.name);
+    });
+
+    member.moduleIds = moduleIds;
+    member.moduleName = modNames.join(', ');
     member.linkedin = document.getElementById('edit-team-linkedin').value.trim();
 
     displayTeam();
@@ -5622,10 +5648,10 @@ async function displayCollaborators(collaborators) {
                 const badgeColor = roleColors[userRole] || 'secondary';
                 const ownerBadge = collab.isOwner ? '<span class="badge bg-dark ms-1">Owner</span>' : '';
                 const editModulesBtn = isOwner
-                    ? `<button class="btn btn-sm btn-outline-secondary me-1" onclick="openCollaboratorModulesModal('${collab.id}', '${escapeHtml(collab.name)}')" title="Editar módulos"><i class="bi bi-journal-bookmark"></i></button>`
+                    ? `<button class="btn btn-sm btn-outline-primary me-1" onclick="openCollaboratorModulesModal('${collab.id}')" title="Modificar"><i class="bi bi-pencil"></i></button>`
                     : '';
                 const removeBtn = (isOwner && !collab.isOwner)
-                    ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${collab.id}')" title="Quitar colaborador"><i class="bi bi-person-dash"></i></button>`
+                    ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${collab.id}')" title="Quitar colaborador"><i class="bi bi-trash"></i></button>`
                     : '';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -5651,10 +5677,10 @@ async function displayCollaborators(collaborators) {
                 const badgeColor = roleColors[userRole] || 'secondary';
                 const ownerBadge = teacher.isOwner ? '<span class="badge bg-dark ms-2">Owner</span>' : '';
                 const editModulesBtn = isOwner
-                    ? `<button class="btn btn-sm btn-outline-secondary me-1" onclick="openCollaboratorModulesModal('${teacher.id}', '${escapeHtml(teacher.name)}')" title="Editar módulos"><i class="bi bi-journal-bookmark"></i></button>`
+                    ? `<button class="btn btn-sm btn-outline-primary me-1" onclick="openCollaboratorModulesModal('${teacher.id}')" title="Modificar"><i class="bi bi-pencil"></i></button>`
                     : '';
                 const deleteBtn = (isOwner && !teacher.isOwner)
-                    ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${teacher.id}')"><i class="bi bi-trash"></i></button>`
+                    ? `<button class="btn btn-sm btn-outline-danger" onclick="removeCollaborator('${teacher.id}')" title="Quitar colaborador"><i class="bi bi-trash"></i></button>`
                     : '';
                 const div = document.createElement('div');
                 div.className = 'list-group-item d-flex justify-content-between align-items-center';
@@ -5677,21 +5703,25 @@ let collaboratorModulesModal;
 let _currentCollabModulesId = null;
 let _currentCollabModulesList = [];
 
-function openCollaboratorModulesModal(collaboratorId, collaboratorName) {
+function openCollaboratorModulesModal(collaboratorId) {
     if (!collaboratorModulesModal) {
         collaboratorModulesModal = new bootstrap.Modal(document.getElementById('collaboratorModulesModal'));
     }
     _currentCollabModulesId = collaboratorId;
 
-    document.getElementById('collab-modules-name').textContent = collaboratorName;
+    const allCollabs = _currentCollabModulesList || [];
+    const entry = allCollabs.find(c => c.id === collaboratorId);
+    
+    // Populate header info (Read-only)
+    if (entry) {
+        document.getElementById('collab-name-display').textContent = entry.name || '';
+        document.getElementById('collab-email-display').textContent = entry.email || '';
+        document.getElementById('collab-role-display').textContent = entry.userRole || 'Colaborador';
+    }
 
     const modules = window.promotionModules || [];
     const checklist = document.getElementById('collab-modules-checklist');
     checklist.innerHTML = '';
-
-    // Find current module assignments for this person
-    const allCollabs = _currentCollabModulesList;
-    const entry = allCollabs.find(c => c.id === collaboratorId);
     const selected = entry ? (entry.moduleIds || []) : [];
 
     if (modules.length === 0) {

@@ -25,7 +25,7 @@ const ExtendedInfoSchema = new mongoose.Schema({
         role: String,
         email: String,
         linkedin: String,
-        moduleId: String,
+        moduleIds: [String],
         moduleName: String
     }],
     resources: [{

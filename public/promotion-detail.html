@@ -1999,9 +1999,12 @@
                             <input type="email" class="form-control bg-light" id="edit-team-email" readonly>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Módulos (Texto visible)</label>
-                            <input type="text" class="form-control" id="edit-team-modules">
-                            <div class="form-text">Esto es lo que verán los estudiantes en la tabla.</div>
+                            <label class="form-label fw-bold">Módulos Asignados</label>
+                            <div id="edit-team-module-checklist" class="d-flex flex-column gap-2 border rounded p-2 bg-light" 
+                                style="max-height:180px; overflow-y:auto;">
+                                <span class="text-muted small">Cargando módulos...</span>
+                            </div>
+                            <div class="form-text small">Selecciona los módulos en los que el integrante participa.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">LinkedIn</label>
@@ -2130,24 +2133,41 @@
         </div>
     </div>
 
-    <!-- Collaborator Module Assignment Modal -->
+    <!-- Edit Collaborator info & Module Assignment modal -->
     <div class="modal fade" id="collaboratorModulesModal" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Asignar Módulos</h5>
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 bg-light py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-person-gear text-primary me-2"></i>Gestionar Colaborador
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <p class="text-muted small mb-3">Selecciona los módulos en los que estará presente <strong
-                            id="collab-modules-name"></strong>. Puede ser más de uno o todos.</p>
-                    <div id="collab-modules-checklist" class="d-flex flex-column gap-2">
-                        <!-- Checkboxes generated dynamically -->
+                <div class="modal-body px-4">
+                    <!-- Read-only header info -->
+                    <div class="alert alert-light border border-dashed rounded-3 p-3 mb-4">
+                        <div class="fw-bold fs-5 text-dark mb-1" id="collab-name-display"></div>
+                        <div class="text-muted small d-flex align-items-center gap-1 mb-2">
+                            <i class="bi bi-envelope"></i><span id="collab-email-display"></span>
+                        </div>
+                        <span class="badge bg-primary px-2" id="collab-role-display"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Módulos Asignados</label>
+                        <p class="text-muted extra-small mb-2">Selecciona los módulos donde el colaborador tendrá presencia:</p>
+                        <div id="collab-modules-checklist" class="d-flex flex-column gap-2 border rounded-3 p-3 bg-light" 
+                             style="max-height:220px; overflow-y:auto;">
+                            <!-- Checkboxes generated dynamically -->
+                        </div>
+                        <div class="form-text small mt-2">Los cambios se guardarán para esta promoción en curso.</div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveCollaboratorModules()">Guardar</button>
+                <div class="modal-footer border-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" onclick="saveCollaboratorModules()">
+                        <i class="bi bi-save me-1"></i>Guardar Cambios
+                    </button>
                 </div>
             </div>
         </div>
