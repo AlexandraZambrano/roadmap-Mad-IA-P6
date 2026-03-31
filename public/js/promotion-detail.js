@@ -1955,7 +1955,10 @@ async function saveExtendedInfo() {
         extendedInfoData.competences = [...compMap.values()].map(c => ({
             id: c.id, name: c.name, area: c.area, description: c.description || '',
             levels: c.levels || [], allTools: c.allTools || [],
-            selectedTools: [...c.selectedTools], evalModules: []
+            selectedTools: [...c.selectedTools],
+            toolsWithIndicators: c.toolsWithIndicators || [],
+            competenceIndicators: c.competenceIndicators || { initial: [], medio: [], advance: [] },
+            evalModules: []
         }));
     } else if (window.ProgramCompetences) {
         // Legacy fallback: if competences were defined in program tab
@@ -8106,17 +8109,101 @@ function updateVirtualClassroomCompetencesPreview() {
         return;
     }
 
-    const items = compIds.map(cid => {
-        const c = catalog.find(ec => String(ec.id) === String(cid));
-        const name = c ? c.name : `Competencia ${cid}`;
-        const area = c ? (c.area || '') : '';
-        return `<span class="badge bg-light text-dark border me-1 mb-1">
-            <i class="bi bi-award me-1 text-warning"></i>${escapeHtml(name)}
-            ${area ? `<span class="text-muted ms-1">${escapeHtml(area)}</span>` : ''}
-        </span>`;
+    const pcTools = (pcEntry && pcEntry.competenceTools) ? pcEntry.competenceTools : {};
+    
+    const items = compIds.map((cid, idx) => {
+        const cidStr = String(cid);
+        const c = catalog.find(ec => String(ec.id) === cidStr);
+        if (!c) return `<div class="list-group-item small text-muted">Competencia ${cid}</div>`;
+
+        const levelDescs = (c.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
+        const compInds = c.competenceIndicators || { initial: [], medio: [], advance: [] };
+        const selectedToolNames = pcTools[cidStr] || [];
+        const allToolObjs = c.toolsWithIndicators || [];
+        const tools = allToolObjs.filter(t => selectedToolNames.includes(t.name));
+        
+        const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
+        const LEVEL_BG = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
+        const LEVEL_NAMES = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
+        // Competence levels side-by-side
+        const compLevelCols = [1, 2, 3].map(lvl => {
+            const inds = lvl === 1 ? compInds.initial : (lvl === 2 ? compInds.medio : compInds.advance);
+            const desc = levelDescs[lvl] || LEVEL_NAMES[lvl];
+            return `
+                <div class="col-md-4">
+                    <div class="p-2 h-100 rounded border" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_COLORS[lvl]} !important;">
+                        <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.6rem; letter-spacing: 0.05em;">
+                            <i class="bi bi-award-fill me-1"></i>Nivel ${lvl} — ${LEVEL_NAMES[lvl]}
+                        </div>
+                        <div class="small fw-semibold mb-1" style="font-size: 0.75rem; line-height: 1.2;">${escapeHtml(desc)}</div>
+                        ${(inds && inds.length > 0) ? `
+                        <ul class="mb-0 ps-3 extra-small text-muted" style="font-size: 0.7rem; line-height: 1.2;">
+                            ${inds.map(ind => `<li>${escapeHtml(ind.name)}</li>`).join('')}
+                        </ul>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Tool accordion
+        const toolAccordionId = `vc-tool-acc-${idx}`;
+        const toolAccordionHtml = tools.length > 0 ? `
+            <div class="accordion accordion-flush mt-3 border rounded shadow-sm" id="${toolAccordionId}">
+                <div class="bg-light px-3 py-2 border-bottom extra-small fw-bold text-uppercase text-muted" style="font-size: 0.6rem; letter-spacing: 0.05em;">
+                    <i class="bi bi-tools me-1"></i>Herramientas y Tecnologías
+                </div>
+                ${tools.map((tool, tIdx) => {
+                    const toolByLevel = { 1: [], 2: [], 3: [] };
+                    (tool.indicators || []).forEach(ind => { if (toolByLevel[ind.levelId]) toolByLevel[ind.levelId].push(ind); });
+                    
+                    const toolLevelCols = [1, 2, 3].filter(l => toolByLevel[l].length > 0).map(lvl => `
+                        <div class="col-md-4">
+                            <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.55rem;">
+                                Nivel ${lvl} ${LEVEL_NAMES[lvl]}
+                            </div>
+                            <ul class="mb-0 ps-3 extra-small text-muted" style="font-size: 0.65rem; line-height: 1.2;">
+                                ${toolByLevel[lvl].map(ind => `<li>${escapeHtml(ind.name)}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `).join('');
+
+                    return `
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed py-2 px-3 small fw-bold" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#${toolAccordionId}-${tIdx}">
+                                    ${escapeHtml(tool.name)}
+                                </button>
+                            </h2>
+                            <div id="${toolAccordionId}-${tIdx}" class="accordion-collapse collapse" data-bs-parent="#${toolAccordionId}">
+                                <div class="accordion-body p-3">
+                                    ${tool.description ? `<p class="text-muted extra-small mb-3 italic">${escapeHtml(tool.description)}</p>` : ''}
+                                    <div class="row g-2">${toolLevelCols || '<div class="col text-muted extra-small fst-italic">Sin indicadores definidos para esta herramienta.</div>'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        ` : '';
+
+        return `
+            <div class="list-group-item p-4 ${idx % 2 === 0 ? 'bg-white' : 'bg-light-subtle'}">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="badge bg-primary px-2" style="font-size: 0.7rem;">${escapeHtml(c.area || 'General')}</span>
+                    <h5 class="mb-0 fw-bold h6">${escapeHtml(c.name)}</h5>
+                </div>
+                ${c.description ? `<p class="text-muted small mb-4" style="line-height: 1.4;">${escapeHtml(c.description)}</p>` : ''}
+                <div class="row g-3">
+                    ${compLevelCols}
+                </div>
+                ${toolAccordionHtml}
+            </div>
+        `;
     }).join('');
 
-    competencesList.innerHTML = items || '<span class="fst-italic">Sin competencias definidas.</span>';
+    competencesList.innerHTML = `<div class="list-group list-group-flush border rounded overflow-hidden">${items}</div>`;
     competencesCount.textContent = `${compIds.length} competencia${compIds.length !== 1 ? 's' : ''}`;
 }
 

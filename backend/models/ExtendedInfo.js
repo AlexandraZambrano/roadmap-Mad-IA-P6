@@ -101,6 +101,22 @@ const ExtendedInfoSchema = new mongoose.Schema({
         }],
         allTools: [String],
         selectedTools: [String],
+        toolsWithIndicators: [{
+            id: String,
+            name: String,
+            description: String,
+            indicators: [{
+                id: String,
+                name: String,
+                description: String,
+                levelId: Number
+            }]
+        }],
+        competenceIndicators: {
+            initial: [{ id: String, name: String, description: String, levelId: Number }],
+            medio: [{ id: String, name: String, description: String, levelId: Number }],
+            advance: [{ id: String, name: String, description: String, levelId: Number }]
+        },
         startModule: {
             id: String,
             name: String

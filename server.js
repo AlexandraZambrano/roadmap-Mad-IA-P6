@@ -3891,9 +3891,27 @@ app.get('/api/promotions/:promotionId/virtual-classroom', async (req, res) => {
         pc => pc.moduleId === vc.moduleId && pc.projectName === vc.projectName
       );
       const compIds = pcEntry ? (pcEntry.competenceIds || []) : [];
+      const pcTools = (pcEntry && pcEntry.competenceTools) ? pcEntry.competenceTools : {};
+
       competences = compIds.map(cid => {
-        const c = ext.competences.find(ec => String(ec.id) === String(cid));
-        return c ? { id: c.id, name: c.name, area: c.area || '' } : { id: cid, name: String(cid), area: '' };
+        const cidStr = String(cid);
+        const c = ext.competences.find(ec => String(ec.id) === cidStr);
+        if (!c) return { id: cid, name: cidStr, area: '', description: '', levels: [], selectedTools: [] };
+
+        // Pull selected tools for this COMP from the project-specific map (pcEntry.competenceTools)
+        const selectedTools = pcTools[cidStr] || [];
+
+        return {
+          id: c.id,
+          name: c.name,
+          area: c.area || '',
+          description: c.description || '',
+          levels: c.levels || [],
+          selectedTools: selectedTools,
+          // Filtering tool detail objects to only those selected in pcTools
+          toolsWithIndicators: (c.toolsWithIndicators || []).filter(ti => selectedTools.includes(ti.name)),
+          competenceIndicators: c.competenceIndicators || { initial: [], medio: [], advance: [] }
+        };
       });
     }
 

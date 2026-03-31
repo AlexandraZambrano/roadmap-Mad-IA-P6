@@ -340,9 +340,9 @@ function generateGanttChart(promotion) {
 
         // Compute the overall span of all employability sessions to show on the header row
         const allStartWeeks = employability.map(e => (e.startMonth - 1) * 4);
-        const allEndWeeks   = employability.map(e => (e.startMonth - 1) * 4 + (e.duration * 4));
+        const allEndWeeks = employability.map(e => (e.startMonth - 1) * 4 + (e.duration * 4));
         const minStart = Math.min(...allStartWeeks);
-        const maxEnd   = Math.min(Math.max(...allEndWeeks), weeks);
+        const maxEnd = Math.min(Math.max(...allEndWeeks), weeks);
 
         for (let i = 0; i < weeks; i++) {
             const cell = document.createElement('td');
@@ -387,7 +387,7 @@ function generateGanttChart(promotion) {
             itemRow.appendChild(itemLabel);
 
             const startWeek = (item.startMonth - 1) * 4;
-            const endWeek   = startWeek + (item.duration * 4);
+            const endWeek = startWeek + (item.duration * 4);
 
             for (let i = 0; i < weeks; i++) {
                 const cell = document.createElement('td');
@@ -670,10 +670,10 @@ function updateSidebar(sections) {
 
     // Note: Program Info sections will be added by updateSidebarWithExtendedInfo()
 
-    const li = document.createElement('li');
-    li.className = 'nav-item';
-    li.innerHTML = '<a class="nav-link" href="#quick-links" onclick="closeAulaVirtualPage()"><i class="bi bi-lightning-charge me-2"></i>Quick Links</a>';
-    nav.appendChild(li);
+    // const li = document.createElement('li');
+    // li.className = 'nav-item';
+    // li.innerHTML = '<a class="nav-link" href="#quick-links" onclick="closeAulaVirtualPage()"><i class="bi bi-lightning-charge me-2"></i>Quick Links</a>';
+    // nav.appendChild(li);
 }
 
 // Update sidebar with only the Program Info sections that have data
@@ -919,12 +919,95 @@ async function loadVirtualClassroom() {
             if (!comps.length) {
                 compContainer.innerHTML = '<span class="text-muted small fst-italic">Este proyecto no tiene competencias asociadas.</span>';
             } else {
-                compContainer.innerHTML = comps.map(c => `
-                    <span class="badge bg-light text-dark border me-1 mb-1">
-                        <i class="bi bi-award me-1 text-warning"></i>${escapeHtml(c.name || String(c.id))}
-                        ${c.area ? `<span class="text-muted ms-1">${escapeHtml(c.area)}</span>` : ''}
-                    </span>
-                `).join('');
+                compContainer.innerHTML = `
+                    <div class="list-group list-group-flush border rounded overflow-hidden">
+                        ${comps.map((c, idx) => {
+                            const levelDescs = (c.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
+                            const compInds = c.competenceIndicators || { initial: [], medio: [], advance: [] };
+                            const tools = c.toolsWithIndicators || [];
+                            
+                            const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
+                            const LEVEL_BG = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
+                            const LEVEL_NAMES = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
+                            // Competence levels side-by-side
+                            const compLevelCols = [1, 2, 3].map(lvl => {
+                                const inds = lvl === 1 ? compInds.initial : (lvl === 2 ? compInds.medio : compInds.advance);
+                                const desc = levelDescs[lvl] || LEVEL_NAMES[lvl];
+                                return `
+                                    <div class="col-md-4">
+                                        <div class="p-2 h-100 rounded border" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_COLORS[lvl]} !important;">
+                                            <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.6rem; letter-spacing: 0.05em;">
+                                                <i class="bi bi-award-fill me-1"></i>Nivel ${lvl} — ${LEVEL_NAMES[lvl]}
+                                            </div>
+                                            <div class="small fw-semibold mb-1" style="font-size: 0.75rem; line-height: 1.2;">${escapeHtml(desc)}</div>
+                                            ${(inds && inds.length > 0) ? `
+                                            <ul class="mb-0 ps-3 extra-small text-muted" style="font-size: 0.7rem; line-height: 1.2;">
+                                                ${inds.map(ind => `<li>${escapeHtml(ind.name)}</li>`).join('')}
+                                            </ul>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+
+                            // Tool accordion
+                            const toolAccordionId = `tool-acc-${promotionId}-${idx}`;
+                            const toolAccordionHtml = tools.length > 0 ? `
+                                <div class="accordion accordion-flush mt-3 border rounded shadow-sm" id="${toolAccordionId}">
+                                    <div class="bg-light px-3 py-2 border-bottom extra-small fw-bold text-uppercase text-muted" style="font-size: 0.6rem; letter-spacing: 0.05em;">
+                                        <i class="bi bi-tools me-1"></i>Herramientas y Tecnologías
+                                    </div>
+                                    ${tools.map((tool, tIdx) => {
+                                        const toolByLevel = { 1: [], 2: [], 3: [] };
+                                        (tool.indicators || []).forEach(ind => { if (toolByLevel[ind.levelId]) toolByLevel[ind.levelId].push(ind); });
+                                        
+                                        const toolLevelCols = [1, 2, 3].filter(l => toolByLevel[l].length > 0).map(lvl => `
+                                            <div class="col-md-4">
+                                                <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.55rem;">
+                                                    Nivel ${lvl} ${LEVEL_NAMES[lvl]}
+                                                </div>
+                                                <ul class="mb-0 ps-3 extra-small text-muted" style="font-size: 0.65rem; line-height: 1.2;">
+                                                    ${toolByLevel[lvl].map(ind => `<li>${escapeHtml(ind.name)}</li>`).join('')}
+                                                </ul>
+                                            </div>
+                                        `).join('');
+
+                                        return `
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header">
+                                                    <button class="accordion-button collapsed py-2 px-3 small fw-bold" type="button" 
+                                                        data-bs-toggle="collapse" data-bs-target="#${toolAccordionId}-${tIdx}">
+                                                        ${escapeHtml(tool.name)}
+                                                    </button>
+                                                </h2>
+                                                <div id="${toolAccordionId}-${tIdx}" class="accordion-collapse collapse" data-bs-parent="#${toolAccordionId}">
+                                                    <div class="accordion-body p-3">
+                                                        ${tool.description ? `<p class="text-muted extra-small mb-3 italic">${escapeHtml(tool.description)}</p>` : ''}
+                                                        <div class="row g-2">${toolLevelCols || '<div class="col text-muted extra-small fst-italic">Sin indicadores definidos para esta herramienta.</div>'}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : '';
+
+                            return `
+                                <div class="list-group-item p-4 ${idx % 2 === 0 ? 'bg-white' : 'bg-light-subtle'}">
+                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                        <span class="badge bg-primary px-2" style="font-size: 0.7rem;">${escapeHtml(c.area || 'General')}</span>
+                                        <h5 class="mb-0 fw-bold h6">${escapeHtml(c.name)}</h5>
+                                    </div>
+                                    ${c.description ? `<p class="text-muted small mb-4" style="line-height: 1.4;">${escapeHtml(c.description)}</p>` : ''}
+                                    <div class="row g-3">
+                                        ${compLevelCols}
+                                    </div>
+                                    ${toolAccordionHtml}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
             }
         }
     } catch (error) {
@@ -1105,7 +1188,7 @@ async function submitVirtualClassroomDelivery() {
         });
         const data = await res.json().catch(() => ({}));
         console.log('[DEBUG] Submission response:', { status: res.status, data });
-        
+
         if (!res.ok) {
             console.error('Error submitting virtual classroom delivery:', data);
             feedbackEl.textContent = data.error || 'Error al registrar la entrega.';
@@ -1418,7 +1501,7 @@ function createProgramInfoSections(info) {
 
         const maxVisible = 5;
         const showExpandButton = info.pildoras.length > maxVisible;
-        
+
         pildorasSection.innerHTML = `
             <div class="card">
                 <div class="card-body">
@@ -1592,7 +1675,7 @@ function createProgramInfoSections(info) {
                     const actionHeader = info.pildorasAssignmentOpen ? '<th style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Acción</th>' : '';
                     const maxVisible = 5;
                     const showExpandButton = currentModule.pildoras.length > maxVisible;
-                    
+
                     tableContainer.innerHTML = `
                         <table class="table table-sm table-bordered" style="border-color: #dee2e6;">
                             <thead class="table-light">
@@ -1617,14 +1700,14 @@ function createProgramInfoSections(info) {
                                 </button>
                             </div>
                         ` : ''}`
-                    ;
+                        ;
                 } else {
                     console.error('Table container not found!');
                 }
 
                 // Update navigation controls - Update button styles
                 const countBadge = pildorasSection.querySelector('.module-pildoras-count');
-                
+
                 // Update all module buttons
                 for (let i = 0; i < modulesWithPildoras.length; i++) {
                     const btn = pildorasSection.querySelector(`.module-selector-btn-${i}`);
@@ -1646,14 +1729,14 @@ function createProgramInfoSections(info) {
                         }
                     }
                 }
-                
+
                 if (countBadge) countBadge.textContent = currentModule.pildoras.length;
 
                 console.log('Navigation controls updated successfully');
             }
 
             // Navigate to specific píldoras module
-            window.navigateToPildorasModule = function(moduleIdx) {
+            window.navigateToPildorasModule = function (moduleIdx) {
                 currentModuleIndex = moduleIdx;
                 renderPildorasTable();
             };
@@ -1776,19 +1859,19 @@ function createProgramInfoSections(info) {
             };
 
             // Toggle expand/collapse for píldoras table
-            window.togglePildorasTableExpand = function(moduleId) {
+            window.togglePildorasTableExpand = function (moduleId) {
                 const hiddenRows = document.querySelectorAll('.pildora-table-row-hidden');
                 const btn = document.querySelector(`.pildora-expand-btn-${moduleId}`);
                 const text = document.querySelector(`.pildora-expand-text-${moduleId}`);
                 const icon = document.querySelector(`.pildora-expand-icon-${moduleId}`);
-                
+
                 if (!hiddenRows.length) return;
-                
+
                 const isCollapsed = hiddenRows[0].style.display !== 'table-row';
                 hiddenRows.forEach(row => {
                     row.style.display = isCollapsed ? 'table-row' : 'none';
                 });
-                
+
                 if (isCollapsed) {
                     text.textContent = 'Ver menos';
                     icon.classList.remove('bi-chevron-down');
@@ -1801,18 +1884,18 @@ function createProgramInfoSections(info) {
             };
 
             // Toggle expand/collapse for legacy píldoras table
-            window.togglePildorasTableExpandLegacy = function() {
+            window.togglePildorasTableExpandLegacy = function () {
                 const hiddenRows = document.querySelectorAll('.pildora-table-row-hidden');
                 const text = document.querySelector('.pildora-expand-text-legacy');
                 const icon = document.querySelector('.pildora-expand-icon-legacy');
-                
+
                 if (!hiddenRows.length) return;
-                
+
                 const isCollapsed = hiddenRows[0].style.display !== 'table-row';
                 hiddenRows.forEach(row => {
                     row.style.display = isCollapsed ? 'table-row' : 'none';
                 });
-                
+
                 if (isCollapsed) {
                     text.textContent = 'Ver menos';
                     icon.classList.remove('bi-chevron-down');
