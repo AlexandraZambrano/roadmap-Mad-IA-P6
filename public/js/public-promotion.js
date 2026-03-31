@@ -340,9 +340,9 @@ function generateGanttChart(promotion) {
 
         // Compute the overall span of all employability sessions to show on the header row
         const allStartWeeks = employability.map(e => (e.startMonth - 1) * 4);
-        const allEndWeeks   = employability.map(e => (e.startMonth - 1) * 4 + (e.duration * 4));
+        const allEndWeeks = employability.map(e => (e.startMonth - 1) * 4 + (e.duration * 4));
         const minStart = Math.min(...allStartWeeks);
-        const maxEnd   = Math.min(Math.max(...allEndWeeks), weeks);
+        const maxEnd = Math.min(Math.max(...allEndWeeks), weeks);
 
         for (let i = 0; i < weeks; i++) {
             const cell = document.createElement('td');
@@ -387,7 +387,7 @@ function generateGanttChart(promotion) {
             itemRow.appendChild(itemLabel);
 
             const startWeek = (item.startMonth - 1) * 4;
-            const endWeek   = startWeek + (item.duration * 4);
+            const endWeek = startWeek + (item.duration * 4);
 
             for (let i = 0; i < weeks; i++) {
                 const cell = document.createElement('td');
@@ -571,22 +571,49 @@ function displayQuickLinks(links) {
     const list = document.getElementById('quick-links-list');
     list.innerHTML = '';
 
-    if (links.length === 0) {
+    if (!links || links.length === 0) {
         document.getElementById('quick-links').classList.add('hidden');
         return;
     }
 
+    document.getElementById('quick-links').classList.remove('hidden');
+
     links.forEach(link => {
-        const col = document.createElement('div');
-        col.className = 'col-md-6 col-lg-3';
-        col.innerHTML = `
-            <div class="d-grid gap-2">
-                <a href="${escapeHtml(link.url)}" target="_blank" class="btn btn-outline-primary">
-                    <i class="bi bi-box-arrow-up-right me-2"></i> ${escapeHtml(link.name)}
-                </a>
-            </div>
+        // Determine icon and color based on platform or name
+        let icon = 'bi-box-arrow-up-right';
+        let color = 'var(--principal-1)';
+        const name = (link.name || '').toLowerCase();
+        const platform = (link.platform || '').toLowerCase();
+
+        if (platform === 'zoom' || name.includes('zoom')) {
+            icon = 'bi-camera-video';
+            color = '#2D8CFF';
+        } else if (platform === 'discord' || name.includes('discord')) {
+            icon = 'bi-discord';
+            color = '#5865F2';
+        } else if (platform === 'github' || name.includes('github')) {
+            icon = 'bi-github';
+            color = '#333';
+        } else if (name.includes('meet') || name.includes('google meet')) {
+            icon = 'bi-google';
+            color = '#ea4335';
+        }
+
+        const card = document.createElement('div');
+        card.className = 'quick-action-card';
+        card.innerHTML = `
+            <a href="${escapeHtml(link.url)}" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               title="${escapeHtml(link.name)}"
+               class="quick-action-link">
+                <div class="quick-action-icon" style="color: ${color};">
+                    <i class="bi ${icon}"></i>
+                </div>
+                <div class="quick-action-label">${escapeHtml(link.name)}</div>
+            </a>
         `;
-        list.appendChild(col);
+        list.appendChild(card);
     });
 }
 
@@ -631,22 +658,22 @@ function displaySections(sections) {
 function updateSidebar(sections) {
     const nav = document.getElementById('sidebar-nav');
     nav.innerHTML = `
-        <li class="nav-item"><a class="nav-link" href="#roadmap"><i class="bi bi-map me-2"></i>Roadmap</a></li>
+        <li class="nav-item"><a class="nav-link" href="#roadmap" onclick="closeAulaVirtualPage()"><i class="bi bi-map me-2"></i>Roadmap</a></li>
     `;
 
     sections.forEach(section => {
         const li = document.createElement('li');
         li.className = 'nav-item';
-        li.innerHTML = `<a class="nav-link" href="#${section.id}"><i class="bi bi-file-text me-2"></i>${escapeHtml(section.title)}</a>`;
+        li.innerHTML = `<a class="nav-link" href="#${section.id}" onclick="closeAulaVirtualPage()"><i class="bi bi-file-text me-2"></i>${escapeHtml(section.title)}</a>`;
         nav.appendChild(li);
     });
 
     // Note: Program Info sections will be added by updateSidebarWithExtendedInfo()
 
-    const li = document.createElement('li');
-    li.className = 'nav-item';
-    li.innerHTML = '<a class="nav-link" href="#quick-links"><i class="bi bi-lightning-charge me-2"></i>Quick Links</a>';
-    nav.appendChild(li);
+    // const li = document.createElement('li');
+    // li.className = 'nav-item';
+    // li.innerHTML = '<a class="nav-link" href="#quick-links" onclick="closeAulaVirtualPage()"><i class="bi bi-lightning-charge me-2"></i>Quick Links</a>';
+    // nav.appendChild(li);
 }
 
 // Update sidebar with only the Program Info sections that have data
@@ -695,12 +722,24 @@ function updateSidebarWithExtendedInfo(info) {
         pildorasLi.insertAdjacentElement('afterend', calendarLi);
     }
 
+    // Add Aula Virtual entry in sidebar (always visible)
+    const aulaLi = document.createElement('li');
+    aulaLi.className = 'nav-item';
+    // Usamos href="#" para evitar scroll por ancla; el comportamiento lo controla openAulaVirtualPage
+    aulaLi.innerHTML = '<a class="nav-link" href="#" onclick="openAulaVirtualPage(event)"><i class="bi bi-laptop me-2"></i>Aula Virtual</a>';
+
+    if (quickLinksItem) {
+        nav.insertBefore(aulaLi, quickLinksItem);
+    } else {
+        nav.appendChild(aulaLi);
+    }
+
     // Add other Program Info sections before Quick Links
     if (info.schedule && hasScheduleData(info.schedule)) {
         console.log('Adding schedule section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
-        li.innerHTML = '<a class="nav-link" href="#horario"><i class="bi bi-clock me-2"></i>Horario</a>';
+        li.innerHTML = '<a class="nav-link" href="#horario" onclick="closeAulaVirtualPage()"><i class="bi bi-clock me-2"></i>Horario</a>';
 
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
@@ -713,7 +752,7 @@ function updateSidebarWithExtendedInfo(info) {
         console.log('Adding team section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
-        li.innerHTML = '<a class="nav-link" href="#equipo"><i class="bi bi-people me-2"></i>Equipo</a>';
+        li.innerHTML = '<a class="nav-link" href="#equipo" onclick="closeAulaVirtualPage()"><i class="bi bi-people me-2"></i>Equipo</a>';
 
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
@@ -726,7 +765,7 @@ function updateSidebarWithExtendedInfo(info) {
         console.log('Adding evaluation section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
-        li.innerHTML = '<a class="nav-link" href="#evaluacion"><i class="bi bi-clipboard-check me-2"></i>Evaluación</a>';
+        li.innerHTML = '<a class="nav-link" href="#evaluacion" onclick="closeAulaVirtualPage()"><i class="bi bi-clipboard-check me-2"></i>Evaluación</a>';
 
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
@@ -739,7 +778,7 @@ function updateSidebarWithExtendedInfo(info) {
         console.log('Adding resources section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
-        li.innerHTML = '<a class="nav-link" href="#resources"><i class="bi bi-tools me-2"></i>Recursos</a>';
+        li.innerHTML = '<a class="nav-link" href="#resources" onclick="closeAulaVirtualPage()"><i class="bi bi-tools me-2"></i>Recursos</a>';
 
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
@@ -752,7 +791,7 @@ function updateSidebarWithExtendedInfo(info) {
         console.log('Adding competences section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
-        li.innerHTML = '<a class="nav-link" href="#competences-section"><i class="bi bi-award me-2"></i>Competencias</a>';
+        li.innerHTML = '<a class="nav-link" href="#competences-section" onclick="closeAulaVirtualPage()"><i class="bi bi-award me-2"></i>Competencias</a>';
 
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
@@ -822,12 +861,370 @@ async function loadExtendedInfo() {
             }
 
             displayExtendedInfo(info);
-            displayPublicCompetences(info.competences || []);
+            displayPublicCompetences(info);
+            await loadVirtualClassroom();
         } else {
             console.log('No extended info found or error loading:', response.status);
         }
     } catch (error) {
         console.error('Error loading extended info:', error);
+    }
+}
+
+// ==================== AULA VIRTUAL – VISTA PÚBLICA ====================
+
+let _virtualClassroomState = null;
+
+async function loadVirtualClassroom() {
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom`);
+        if (!res.ok) {
+            console.error('Error loading virtual classroom:', res.status);
+            _virtualClassroomState = null;
+            return;
+        }
+        const data = await res.json();
+        if (!data.active) {
+            _virtualClassroomState = { active: false };
+            // Mantener la tarjeta en modo "sin proyecto activo"
+            return;
+        }
+
+        _virtualClassroomState = data;
+
+        // Preparar UI base (si la página ya estuviera abierta)
+        const prefixEl = document.getElementById('aula-virtual-repo-prefix');
+        if (prefixEl) {
+            const base = data.repoBaseUrl && data.repoBaseUrl.trim()
+                ? data.repoBaseUrl.trim().replace(/\/+$/, '') + '/'
+                : 'https://github.com/';
+            prefixEl.textContent = base;
+        }
+
+        const briefingEl = document.getElementById('aula-virtual-briefing');
+        if (briefingEl) {
+            const url = data.briefingUrl;
+            if (url) {
+                briefingEl.innerHTML = `<a href="${escapeHtml(url)}" target="_blank" class="text-decoration-none">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>${escapeHtml(url)}
+                </a>`;
+            } else {
+                briefingEl.innerHTML = '<span class="text-muted small fst-italic">El formador no ha definido un briefing.</span>';
+            }
+        }
+
+        const compContainer = document.getElementById('aula-virtual-competences');
+        if (compContainer) {
+            const comps = Array.isArray(data.competences) ? data.competences : [];
+            if (!comps.length) {
+                compContainer.innerHTML = '<span class="text-muted small fst-italic">Este proyecto no tiene competencias asociadas.</span>';
+            } else {
+                const mainAccordionId = `aula-virtual-comps-acc`;
+                compContainer.innerHTML = `
+                    <div class="accordion accordion-flush border rounded overflow-hidden" id="${mainAccordionId}">
+                        ${comps.map((c, idx) => {
+                            const levelDescs = (c.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
+                            const compInds = c.competenceIndicators || { initial: [], medio: [], advance: [] };
+                            const tools = c.toolsWithIndicators || [];
+                            
+                            const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
+                            const LEVEL_BG = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
+                            const LEVEL_NAMES = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
+                            // Competence levels side-by-side
+                            const compLevelCols = [1, 2, 3].map(lvl => {
+                                const catInds = lvl === 1 ? compInds.initial : (lvl === 2 ? compInds.medio : compInds.advance);
+                                const levelObj = (c.levels || []).find(l => l.level === lvl);
+                                const finalIndNames = (catInds && catInds.length > 0) 
+                                    ? catInds.map(i => i.name || i) 
+                                    : (levelObj && levelObj.indicators ? levelObj.indicators : []);
+                                    
+                                const desc = levelDescs[lvl] || LEVEL_NAMES[lvl];
+                                return `
+                                    <div class="col-md-4">
+                                        <div class="p-2 h-100 rounded border" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_COLORS[lvl]} !important;">
+                                            <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.6rem; letter-spacing: 0.05em;">
+                                                <i class="bi bi-award-fill me-1"></i>Nivel ${lvl}
+                                            </div>
+                                            <div class="small fw-semibold mb-1" style="font-size: 0.75rem; line-height: 1.2;">${escapeHtml(desc)}</div>
+                                            ${(finalIndNames && finalIndNames.length > 0) ? `
+                                            <ul class="mb-0 ps-3 extra-small text-muted" style="font-size: 0.7rem; line-height: 1.2;">
+                                                ${finalIndNames.map(name => `<li>${escapeHtml(name)}</li>`).join('')}
+                                            </ul>` : '<div class="text-muted extra-small fst-italic">Sin indicadores definidos.</div>'}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+
+                            // Tool accordion
+                            const toolAccordionId = `tool-acc-${promotionId}-${idx}`;
+                            const toolAccordionHtml = tools.length > 0 ? `
+                                <div class="accordion accordion-flush mt-3 border rounded shadow-sm" id="${toolAccordionId}">
+                                    <div class="bg-light px-3 py-2 border-bottom extra-small fw-bold text-uppercase text-muted" style="font-size: 0.6rem; letter-spacing: 0.05em;">
+                                        <i class="bi bi-tools me-1"></i>Herramientas y Tecnologías
+                                    </div>
+                                    ${tools.map((tool, tIdx) => {
+                                        const toolByLevel = { 1: [], 2: [], 3: [] };
+                                        (tool.indicators || []).forEach(ind => { if (toolByLevel[ind.levelId]) toolByLevel[ind.levelId].push(ind); });
+                                        
+                                        const toolLevelCols = [1, 2, 3].filter(l => toolByLevel[l].length > 0).map(lvl => `
+                                            <div class="col-md-4">
+                                                <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.55rem;">
+                                                    Nivel ${lvl} ${LEVEL_NAMES[lvl]}
+                                                </div>
+                                                <ul class="mb-0 ps-3 extra-small text-muted" style="font-size: 0.65rem; line-height: 1.2;">
+                                                    ${toolByLevel[lvl].map(ind => `<li>${escapeHtml(ind.name)}</li>`).join('')}
+                                                </ul>
+                                            </div>
+                                        `).join('');
+
+                                        return `
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header">
+                                                    <button class="accordion-button collapsed py-2 px-3 small fw-bold" type="button" 
+                                                        data-bs-toggle="collapse" data-bs-target="#${toolAccordionId}-${tIdx}">
+                                                        ${escapeHtml(tool.name)}
+                                                    </button>
+                                                </h2>
+                                                <div id="${toolAccordionId}-${tIdx}" class="accordion-collapse collapse" data-bs-parent="#${toolAccordionId}">
+                                                    <div class="accordion-body p-3">
+                                                        ${tool.description ? `<p class="text-muted extra-small mb-3 italic">${escapeHtml(tool.description)}</p>` : ''}
+                                                        <div class="row g-2">${toolLevelCols || '<div class="col text-muted extra-small fst-italic">Sin indicadores definidos para esta herramienta.</div>'}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : '';
+
+                            const collapseId = `comp-collapse-${idx}`;
+                            return `
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button ${idx === 0 ? '' : 'collapsed'} py-3 px-4" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-primary px-2" style="font-size: 0.7rem;">${escapeHtml(c.area || 'General')}</span>
+                                                <strong class="h6 mb-0">${escapeHtml(c.name)}</strong>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? 'show' : ''}" data-bs-parent="#${mainAccordionId}">
+                                        <div class="accordion-body p-4">
+                                            ${c.description ? `<p class="text-muted small mb-4" style="line-height: 1.4;">${escapeHtml(c.description)}</p>` : ''}
+                                            <div class="row g-3">
+                                                ${compLevelCols}
+                                            </div>
+                                            ${toolAccordionHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading virtual classroom:', error);
+        _virtualClassroomState = null;
+    }
+}
+
+function openAulaVirtualPage(event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    const page = document.getElementById('aula-virtual-page');
+    const emptyEl = document.getElementById('aula-virtual-empty');
+    const contentEl = document.getElementById('aula-virtual-content');
+    if (!page || !emptyEl || !contentEl) return;
+
+    // Ocultar secciones normales (incluyendo píldoras y resto de bloques de contenido del programa)
+    const roadmap = document.getElementById('roadmap');
+    const calendar = document.getElementById('calendar');
+    const sectionsContainer = document.getElementById('sections-container');
+    const competencesSection = document.getElementById('competences-section');
+    const quickLinks = document.getElementById('quick-links');
+    const pildoras = document.getElementById('pildoras');
+    const horario = document.getElementById('horario');
+    const equipo = document.getElementById('equipo');
+    const resources = document.getElementById('resources');
+    const evaluacion = document.getElementById('evaluacion');
+
+    [roadmap, calendar, sectionsContainer, competencesSection, quickLinks, pildoras, horario, equipo, resources, evaluacion].forEach(el => {
+        if (el) el.classList.add('d-none');
+    });
+
+    page.classList.remove('d-none');
+
+    // Configurar contenido según estado actual
+    if (!_virtualClassroomState || !_virtualClassroomState.active) {
+        emptyEl.classList.remove('d-none');
+        contentEl.classList.add('d-none');
+    } else {
+        emptyEl.classList.add('d-none');
+        contentEl.classList.remove('d-none');
+        populateAulaVirtualTargets();
+    }
+
+    // Scroll al inicio
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeAulaVirtualPage() {
+    const page = document.getElementById('aula-virtual-page');
+    if (page) page.classList.add('d-none');
+
+    const roadmap = document.getElementById('roadmap');
+    const calendar = document.getElementById('calendar');
+    const sectionsContainer = document.getElementById('sections-container');
+    const competencesSection = document.getElementById('competences-section');
+    const quickLinks = document.getElementById('quick-links');
+    const pildoras = document.getElementById('pildoras');
+    const horario = document.getElementById('horario');
+    const equipo = document.getElementById('equipo');
+    const resources = document.getElementById('resources');
+    const evaluacion = document.getElementById('evaluacion');
+
+    [roadmap, calendar, sectionsContainer, competencesSection, quickLinks, pildoras, horario, equipo, resources, evaluacion].forEach(el => {
+        if (el) el.classList.remove('d-none');
+    });
+
+    const feedbackEl = document.getElementById('aula-virtual-feedback');
+    const suffixEl = document.getElementById('aula-virtual-repo-suffix');
+    if (feedbackEl) feedbackEl.textContent = '';
+    if (suffixEl) suffixEl.value = '';
+}
+
+async function populateAulaVirtualTargets() {
+    const select = document.getElementById('aula-virtual-target-select');
+    const label = document.getElementById('aula-virtual-target-label');
+    if (!select || !label) return;
+
+    if (!_virtualClassroomState || !_virtualClassroomState.active) {
+        select.innerHTML = '<option value="">No hay proyecto activo</option>';
+        return;
+    }
+
+    const type = _virtualClassroomState.projectType === 'grupal' ? 'grupal' : 'individual';
+
+    if (!window.publicStudents) {
+        await loadPublicStudents();
+    }
+    const students = Array.isArray(window.publicStudents) ? window.publicStudents : [];
+
+    let optionsHtml = '';
+    if (type === 'individual') {
+        label.textContent = 'Selecciona tu nombre';
+        optionsHtml = '<option value="">Selecciona tu nombre…</option>' +
+            students.map(st => `
+                <option value="student:${escapeHtml(String(st.id))}">
+                    ${escapeHtml(`${st.name || ''} ${st.lastname || ''}`.trim())}
+                </option>
+            `).join('');
+    } else {
+        label.textContent = 'Selecciona tu equipo';
+        const groups = Array.isArray(_virtualClassroomState.groups) ? _virtualClassroomState.groups : [];
+        const byId = {};
+        students.forEach(s => { byId[String(s.id)] = s; });
+
+        optionsHtml = '<option value="">Selecciona tu equipo…</option>' +
+            groups.map(g => {
+                const members = (g.studentIds || []).map(id => {
+                    const st = byId[String(id)];
+                    return st ? `${st.name || ''} ${st.lastname || ''}`.trim() : id;
+                }).filter(Boolean);
+                const membersLabel = members.slice(0, 3).join(', ') + (members.length > 3 ? '…' : '');
+                return `
+                    <option value="group:${escapeHtml(g.groupName)}">
+                        ${escapeHtml(g.groupName)}${membersLabel ? ` — ${escapeHtml(membersLabel)}` : ''}
+                    </option>
+                `;
+            }).join('');
+    }
+
+    select.innerHTML = optionsHtml;
+}
+
+async function submitVirtualClassroomDelivery() {
+    const btn = document.querySelector('#aula-virtual-page button[onclick*="submitVirtualClassroomDelivery"]');
+    const spinner = btn ? btn.querySelector('.spinner-border') : null;
+    const labelSpan = btn ? btn.querySelector('.btn-label') : null;
+    const select = document.getElementById('aula-virtual-target-select');
+    const suffixEl = document.getElementById('aula-virtual-repo-suffix');
+    const feedbackEl = document.getElementById('aula-virtual-feedback');
+
+    if (!select || !suffixEl || !feedbackEl) return;
+    if (!_virtualClassroomState || !_virtualClassroomState.active) {
+        feedbackEl.textContent = 'No hay proyecto activo para entregar.';
+        feedbackEl.className = 'small text-danger';
+        return;
+    }
+
+    const targetVal = select.value;
+    const repoName = suffixEl.value.trim();
+    console.log('[DEBUG] submitVirtualClassroomDelivery:', { targetVal, repoName });
+
+    if (!targetVal) {
+        feedbackEl.textContent = 'Selecciona tu nombre o equipo antes de enviar.';
+        feedbackEl.className = 'small text-danger';
+        return;
+    }
+
+    if (!repoName) {
+        feedbackEl.textContent = 'Escribe el nombre de tu repositorio.';
+        feedbackEl.className = 'small text-danger';
+        return;
+    }
+
+    const [kind, id] = targetVal.split(':');
+    const body = {
+        type: _virtualClassroomState.projectType === 'grupal' ? 'grupal' : 'individual',
+        repoName
+    };
+    if (body.type === 'grupal') {
+        body.groupName = id;
+    } else {
+        body.studentId = id;
+    }
+
+    if (btn && spinner && labelSpan) {
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        labelSpan.classList.add('d-none');
+    }
+    feedbackEl.textContent = '';
+
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom/submissions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        console.log('[DEBUG] Submission response:', { status: res.status, data });
+
+        if (!res.ok) {
+            console.error('Error submitting virtual classroom delivery:', data);
+            feedbackEl.textContent = data.error || 'Error al registrar la entrega.';
+            feedbackEl.className = 'small text-danger';
+            return;
+        }
+
+        feedbackEl.textContent = 'Entrega registrada correctamente.';
+        feedbackEl.className = 'small text-success';
+        suffixEl.value = '';
+    } catch (error) {
+        console.error('Error submitting virtual classroom delivery:', error);
+        feedbackEl.textContent = 'Error de conexión al enviar la entrega.';
+        feedbackEl.className = 'small text-danger';
+    } finally {
+        if (btn && spinner && labelSpan) {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            labelSpan.classList.remove('d-none');
+        }
     }
 }
 
@@ -846,8 +1243,16 @@ async function loadPublicStudents() {
 // ─── Competencias públicas ────────────────────────────────────────────────────
 let _publicCompetencesAll = [];
 
-function displayPublicCompetences(competences) {
-    _publicCompetencesAll = Array.isArray(competences) ? competences : [];
+function displayPublicCompetences(info) {
+    const usedCompIds = new Set();
+    if (Array.isArray(info.projectCompetences)) {
+        info.projectCompetences.forEach(pc => {
+            (pc.competenceIds || []).forEach(cid => usedCompIds.add(String(cid)));
+        });
+    }
+
+    const competences = info.competences || [];
+    _publicCompetencesAll = competences.filter(c => usedCompIds.has(String(c.id)));
     const section = document.getElementById('competences-section');
     if (!section) return;
 
@@ -1120,7 +1525,7 @@ function createProgramInfoSections(info) {
 
         const maxVisible = 5;
         const showExpandButton = info.pildoras.length > maxVisible;
-        
+
         pildorasSection.innerHTML = `
             <div class="card">
                 <div class="card-body">
@@ -1294,7 +1699,7 @@ function createProgramInfoSections(info) {
                     const actionHeader = info.pildorasAssignmentOpen ? '<th style="width: 15%; border: 1px solid #dee2e6; text-align: center; vertical-align: middle;">Acción</th>' : '';
                     const maxVisible = 5;
                     const showExpandButton = currentModule.pildoras.length > maxVisible;
-                    
+
                     tableContainer.innerHTML = `
                         <table class="table table-sm table-bordered" style="border-color: #dee2e6;">
                             <thead class="table-light">
@@ -1319,14 +1724,14 @@ function createProgramInfoSections(info) {
                                 </button>
                             </div>
                         ` : ''}`
-                    ;
+                        ;
                 } else {
                     console.error('Table container not found!');
                 }
 
                 // Update navigation controls - Update button styles
                 const countBadge = pildorasSection.querySelector('.module-pildoras-count');
-                
+
                 // Update all module buttons
                 for (let i = 0; i < modulesWithPildoras.length; i++) {
                     const btn = pildorasSection.querySelector(`.module-selector-btn-${i}`);
@@ -1348,14 +1753,14 @@ function createProgramInfoSections(info) {
                         }
                     }
                 }
-                
+
                 if (countBadge) countBadge.textContent = currentModule.pildoras.length;
 
                 console.log('Navigation controls updated successfully');
             }
 
             // Navigate to specific píldoras module
-            window.navigateToPildorasModule = function(moduleIdx) {
+            window.navigateToPildorasModule = function (moduleIdx) {
                 currentModuleIndex = moduleIdx;
                 renderPildorasTable();
             };
@@ -1478,19 +1883,19 @@ function createProgramInfoSections(info) {
             };
 
             // Toggle expand/collapse for píldoras table
-            window.togglePildorasTableExpand = function(moduleId) {
+            window.togglePildorasTableExpand = function (moduleId) {
                 const hiddenRows = document.querySelectorAll('.pildora-table-row-hidden');
                 const btn = document.querySelector(`.pildora-expand-btn-${moduleId}`);
                 const text = document.querySelector(`.pildora-expand-text-${moduleId}`);
                 const icon = document.querySelector(`.pildora-expand-icon-${moduleId}`);
-                
+
                 if (!hiddenRows.length) return;
-                
+
                 const isCollapsed = hiddenRows[0].style.display !== 'table-row';
                 hiddenRows.forEach(row => {
                     row.style.display = isCollapsed ? 'table-row' : 'none';
                 });
-                
+
                 if (isCollapsed) {
                     text.textContent = 'Ver menos';
                     icon.classList.remove('bi-chevron-down');
@@ -1503,18 +1908,18 @@ function createProgramInfoSections(info) {
             };
 
             // Toggle expand/collapse for legacy píldoras table
-            window.togglePildorasTableExpandLegacy = function() {
+            window.togglePildorasTableExpandLegacy = function () {
                 const hiddenRows = document.querySelectorAll('.pildora-table-row-hidden');
                 const text = document.querySelector('.pildora-expand-text-legacy');
                 const icon = document.querySelector('.pildora-expand-icon-legacy');
-                
+
                 if (!hiddenRows.length) return;
-                
+
                 const isCollapsed = hiddenRows[0].style.display !== 'table-row';
                 hiddenRows.forEach(row => {
                     row.style.display = isCollapsed ? 'table-row' : 'none';
                 });
-                
+
                 if (isCollapsed) {
                     text.textContent = 'Ver menos';
                     icon.classList.remove('bi-chevron-down');
