@@ -3885,6 +3885,11 @@ app.get('/api/promotions/:promotionId/virtual-classroom', async (req, res) => {
     const project = module ? (module.projects || []).find(p => p.name === vc.projectName) : null;
 
     // Resolve competences for this project from ExtendedInfo.projectCompetences + competences catalog
+    console.log(`[DEBUG] Resolving VC competences for ${promotionId}. ext.competences count: ${((ext || {}).competences || []).length}`);
+    if (ext && ext.competences && ext.competences.length > 0) {
+       const first = ext.competences[0];
+       console.log(`[DEBUG] First comp in DB: ${first.name}, levels: ${(first.levels || []).length}, compInds: ${!!first.competenceIndicators}`);
+    }
     let competences = [];
     if (Array.isArray(ext.projectCompetences) && Array.isArray(ext.competences)) {
       const pcEntry = ext.projectCompetences.find(

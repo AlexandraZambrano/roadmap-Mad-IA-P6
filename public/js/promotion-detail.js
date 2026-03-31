@@ -8111,10 +8111,11 @@ function updateVirtualClassroomCompetencesPreview() {
 
     const pcTools = (pcEntry && pcEntry.competenceTools) ? pcEntry.competenceTools : {};
     
+    const mainAccordionId = `vc-preview-acc`;
     const items = compIds.map((cid, idx) => {
         const cidStr = String(cid);
         const c = catalog.find(ec => String(ec.id) === cidStr);
-        if (!c) return `<div class="list-group-item small text-muted">Competencia ${cid}</div>`;
+        if (!c) return `<div class="accordion-item"><div class="accordion-header px-3 py-2 small text-muted">Competencia ${cid}</div></div>`;
 
         const levelDescs = (c.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
         const compInds = c.competenceIndicators || { initial: [], medio: [], advance: [] };
@@ -8128,19 +8129,24 @@ function updateVirtualClassroomCompetencesPreview() {
 
         // Competence levels side-by-side
         const compLevelCols = [1, 2, 3].map(lvl => {
-            const inds = lvl === 1 ? compInds.initial : (lvl === 2 ? compInds.medio : compInds.advance);
+            const catInds = lvl === 1 ? compInds.initial : (lvl === 2 ? compInds.medio : compInds.advance);
+            const levelObj = (c.levels || []).find(l => l.level === lvl);
+            const finalIndNames = (catInds && catInds.length > 0) 
+                ? catInds.map(i => i.name || i) 
+                : (levelObj && levelObj.indicators ? levelObj.indicators : []);
+
             const desc = levelDescs[lvl] || LEVEL_NAMES[lvl];
             return `
                 <div class="col-md-4">
                     <div class="p-2 h-100 rounded border" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_COLORS[lvl]} !important;">
                         <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.6rem; letter-spacing: 0.05em;">
-                            <i class="bi bi-award-fill me-1"></i>Nivel ${lvl} — ${LEVEL_NAMES[lvl]}
+                            <i class="bi bi-award-fill me-1"></i>Nivel ${lvl}
                         </div>
                         <div class="small fw-semibold mb-1" style="font-size: 0.75rem; line-height: 1.2;">${escapeHtml(desc)}</div>
-                        ${(inds && inds.length > 0) ? `
+                        ${(finalIndNames && finalIndNames.length > 0) ? `
                         <ul class="mb-0 ps-3 extra-small text-muted" style="font-size: 0.7rem; line-height: 1.2;">
-                            ${inds.map(ind => `<li>${escapeHtml(ind.name)}</li>`).join('')}
-                        </ul>` : ''}
+                            ${finalIndNames.map(name => `<li>${escapeHtml(name)}</li>`).join('')}
+                        </ul>` : '<div class="text-muted extra-small fst-italic">Sin indicadores definidos.</div>'}
                     </div>
                 </div>
             `;
@@ -8188,22 +8194,32 @@ function updateVirtualClassroomCompetencesPreview() {
             </div>
         ` : '';
 
+        const collapseId = `vc-prev-collapse-${idx}`;
         return `
-            <div class="list-group-item p-4 ${idx % 2 === 0 ? 'bg-white' : 'bg-light-subtle'}">
-                <div class="d-flex align-items-center gap-2 mb-3">
-                    <span class="badge bg-primary px-2" style="font-size: 0.7rem;">${escapeHtml(c.area || 'General')}</span>
-                    <h5 class="mb-0 fw-bold h6">${escapeHtml(c.name)}</h5>
+            <div class="accordion-item shadow-sm mb-2 border rounded overflow-hidden">
+                <h2 class="accordion-header">
+                    <button class="accordion-button ${idx === 0 ? '' : 'collapsed'} py-2 px-3" type="button" 
+                        data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary px-2" style="font-size: 0.65rem;">${escapeHtml(c.area || 'General')}</span>
+                            <strong class="small">${escapeHtml(c.name)}</strong>
+                        </div>
+                    </button>
+                </h2>
+                <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? 'show' : ''}" data-bs-parent="#${mainAccordionId}">
+                    <div class="accordion-body p-3">
+                        ${c.description ? `<p class="text-muted extra-small mb-3" style="line-height: 1.3;">${escapeHtml(c.description)}</p>` : ''}
+                        <div class="row g-2">
+                            ${compLevelCols}
+                        </div>
+                        ${toolAccordionHtml}
+                    </div>
                 </div>
-                ${c.description ? `<p class="text-muted small mb-4" style="line-height: 1.4;">${escapeHtml(c.description)}</p>` : ''}
-                <div class="row g-3">
-                    ${compLevelCols}
-                </div>
-                ${toolAccordionHtml}
             </div>
         `;
     }).join('');
 
-    competencesList.innerHTML = `<div class="list-group list-group-flush border rounded overflow-hidden">${items}</div>`;
+    competencesList.innerHTML = `<div class="accordion accordion-flush" id="${mainAccordionId}">${items}</div>`;
     competencesCount.textContent = `${compIds.length} competencia${compIds.length !== 1 ? 's' : ''}`;
 }
 
@@ -8235,7 +8251,17 @@ async function saveVirtualClassroom(isActive) {
     const existingEval = savedEvaluations.find(e => e.moduleId === moduleId && e.projectName === projectName);
     const projectType = existingEval ? (existingEval.type || 'individual') : 'individual';
 
+    // Prepare current enriched competences from _evalState to sync with DB
+    const syncComps = (window._evalState.competences || []).map(c => ({
+        id: c.id, name: c.name, area: c.area, description: c.description || '',
+        levels: c.levels || [], allTools: c.allTools || [],
+        selectedTools: Array.from(c.selectedTools || []),
+        toolsWithIndicators: c.toolsWithIndicators || [],
+        competenceIndicators: c.competenceIndicators || { initial: [], medio: [], advance: [] }
+    }));
+
     const body = {
+        competences: syncComps,
         virtualClassroom: {
             isActive: !!isActive,
             moduleId,
@@ -8273,6 +8299,9 @@ async function saveVirtualClassroom(isActive) {
         // Sync with global extendedInfoData to prevent stale overwrites on next "Guardar Todos los Cambios"
         if (typeof extendedInfoData !== 'undefined') {
             extendedInfoData.virtualClassroom = window._evalState.virtualClassroom;
+            if (updated.competences) {
+                extendedInfoData.competences = updated.competences;
+            }
         }
 
         if (body.virtualClassroom.isActive && moduleId && projectName) {
