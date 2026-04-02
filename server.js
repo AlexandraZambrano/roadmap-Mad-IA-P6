@@ -1377,6 +1377,36 @@ app.post('/api/auth3000password', verifyToken, async (req, res) => {
   }
 });
 
+// Public proxy for forgot-password (no token required) — calls external reset-password API
+// Body: { email }
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'El correo electrónico es obligatorio.' });
+
+    const extRes = await fetch(`${EXTERNAL_AUTH_BASE}/reset-password/api-request-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+
+    let data = {};
+    const text = await extRes.text();
+    try { data = JSON.parse(text); } catch { /* no JSON body */ }
+
+    if (extRes.ok) {
+      return res.json({ success: true, message: data.message || 'En breves recibirás un correo con el enlace para restablecer tu contraseña.' });
+    }
+    return res.status(extRes.status >= 400 ? extRes.status : 400).json({
+      success: false,
+      message: data.message || data.error || 'No se pudo enviar el correo. Comprueba la dirección e inténtalo de nuevo.'
+    });
+  } catch (error) {
+    console.error('[forgot-password proxy] Error:', error.message);
+    res.status(502).json({ error: 'Servidor de autenticación no disponible. Inténtalo más tarde.' });
+  }
+});
+
 // Local register is disabled — user registration is handled exclusively by admins
 // via POST /api/admin/teachers, which registers in the external auth system (users.coderf5.es).
 app.post('/api/auth/register', (req, res) => {
