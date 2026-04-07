@@ -3080,14 +3080,14 @@ function updateCourseProgressBar(promotion) {
         // Update date info (left) - start date
         const startInfo = document.getElementById('progress-start-info');
         if (startInfo) {
-            startInfo.textContent = 'Inicio: ' + new Date(promotion.startDate).toLocaleDateString('es-ES', { day: 'short', month: 'short' });
+            startInfo.textContent = 'Inicio: ' + new Date(promotion.startDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         }
 
         // Note: progress-week-info (center) is managed by updateProgressInfo() for student counts
         // Update end date info (right)
         const endInfo = document.getElementById('progress-end-info');
         if (endInfo) {
-            endInfo.textContent = 'Fin: ' + new Date(promotion.endDate).toLocaleDateString('es-ES', { day: 'short', month: 'short' });
+            endInfo.textContent = 'Fin: ' + new Date(promotion.endDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         }
     } catch (error) {
         console.error('Error updating course progress bar:', error);
@@ -3272,9 +3272,8 @@ function generateGanttChart(promotion) {
         tableContainer.style.maxWidth = '100%';
     }
 
-    function getMonthForWeek(w) { return Math.ceil(w / 4); }
-
     // ── 1. Header: month + week rows go in <thead> ────────────────────────────
+    // Group every 4 weeks into one month (Mes 1, Mes 2, ...)
     const thead = document.createElement('thead');
 
     const monthRow = document.createElement('tr');
@@ -3283,15 +3282,19 @@ function generateGanttChart(promotion) {
     monthHeaderCell.className = 'gantt-label-cell';
     monthRow.appendChild(monthHeaderCell);
 
-    let currentMonth = 0, monthSpan = 0, monthCell = null;
-    for (let i = 1; i <= weeks; i++) {
-        const m = getMonthForWeek(i);
-        if (m !== currentMonth) {
+    // Each group of 4 weeks = 1 month
+    let currentMonthKey = null, monthSpan = 0, monthCell = null;
+    for (let i = 0; i < weeks; i++) {
+        const m = Math.floor(i / 4) + 1;
+        const monthKey = `m${m}`;
+        if (monthKey !== currentMonthKey) {
             if (monthCell) monthCell.colSpan = monthSpan;
-            currentMonth = m;
+            currentMonthKey = monthKey;
             monthCell = document.createElement('th');
-            monthCell.innerHTML = `<strong>M${m}</strong>`;
+            monthCell.innerHTML = `<strong>Mes ${m}</strong>`;
             monthCell.style.textAlign = 'center';
+            monthCell.style.backgroundColor = '#e8f4f8';
+            monthCell.style.borderLeft = '2px solid #6c757d';
             monthRow.appendChild(monthCell);
             monthSpan = 1;
         } else { monthSpan++; }
@@ -3304,9 +3307,11 @@ function generateGanttChart(promotion) {
     weekHeaderCell.innerHTML = '<strong>Sem.</strong>';
     weekHeaderCell.className = 'gantt-label-cell';
     weekRow.appendChild(weekHeaderCell);
-    for (let i = 1; i <= weeks; i++) {
+    for (let i = 0; i < weeks; i++) {
         const th = document.createElement('th');
-        th.textContent = `${i}`;
+        th.textContent = `${i + 1}`;
+        th.title = `Semana ${i + 1}`;
+        if (i % 4 === 0) th.style.borderLeft = '2px solid #6c757d';
         th.className = 'gantt-week-cell text-center';
         weekRow.appendChild(th);
     }
