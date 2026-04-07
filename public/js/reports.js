@@ -285,10 +285,10 @@
 
     /** Directly download a single PDF. Returns a Promise. */
     async function _savePdf(htmlContent, filename) {
-        console.log('[Reports] _savePdf called for:', filename);
+        //console.log('[Reports] _savePdf called for:', filename);
         try {
             const pdf = await _renderToPdf(htmlContent, filename);
-            console.log('[Reports] PDF rendered, saving now...');
+            //console.log('[Reports] PDF rendered, saving now...');
             pdf.save(filename || 'informe.pdf');
         } catch (err) {
             console.error('[Reports] _savePdf error:', err);
@@ -447,13 +447,13 @@
      *   - null when the user cancels
      */
     function _askRazon(title) {
-        console.log('[Reports] Showing _askRazon modal for:', title);
+        //console.log('[Reports] Showing _askRazon modal for:', title);
         return new Promise(resolve => {
             // ── Hide any currently-open Bootstrap modal so they don't stack ──
             const openModalEl   = document.querySelector('.modal.show');
             const openModalInst = openModalEl ? (window.bootstrap?.Modal.getInstance(openModalEl) || null) : null;
             if (openModalInst) {
-                console.log('[Reports] Hiding existing modal');
+                //console.log('[Reports] Hiding existing modal');
                 openModalInst.hide();
             }
 
@@ -543,7 +543,7 @@
      * Returns Promise<number|null>: the index of the selected option, or null if cancelled.
      */
     function _askWeekSelect(title, options, collaborators = []) {
-        console.log('[Reports] Showing _askWeekSelect modal with collaborators');
+        //console.log('[Reports] Showing _askWeekSelect modal with collaborators');
         return new Promise(resolve => {
             const openModalEl   = document.querySelector('.modal.show');
             const openModalInst = openModalEl ? (window.bootstrap?.Modal.getInstance(openModalEl) || null) : null;
@@ -2452,6 +2452,6 @@ async function printActaInicio(promotionId) {
     
     // Attach to window and log availability
     window.Reports = Reports;
-    console.log('[Reports] Library initialized and attached to window.Reports');
+    //console.log('[Reports] Library initialized and attached to window.Reports');
 
 })(window);

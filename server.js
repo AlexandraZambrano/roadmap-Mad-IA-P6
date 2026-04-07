@@ -12,6 +12,15 @@ import multer from 'multer';
 import xlsx from 'xlsx';
 import 'dotenv/config';
 
+// ── Tiny logger: only prints in development, silent in production ─────────────
+const IS_DEV = process.env.NODE_ENV !== 'production';
+const log = {
+  info:  (...a) => IS_DEV && console.log(...a),
+  warn:  (...a) => console.warn(...a),      // always show warnings
+  error: (...a) => console.error(...a),     // always show errors
+  debug: (...a) => IS_DEV && console.log('[debug]', ...a),
+};
+
 // SQL Models (Sequelize)
 import {
     db,
@@ -64,7 +73,7 @@ try {
     keyPath = join(__dirname, 'backend', 'Keys', 'public.pem');
     EXTERNAL_JWT_PUBLIC_KEY = readFileSync(keyPath, 'utf8');
   }
-  console.log('[auth] Loaded external JWT public key from ' + keyPath);
+  log.debug('[auth] Loaded external JWT public key from ' + keyPath);
 } catch (e) {
   console.warn('[auth] Could not load public key — external tokens will be rejected:', e.message);
   console.warn('[auth] Make sure the file exists at backend/keys/public.pem or update EXTERNAL_AUTH_BASE in .env');
@@ -73,10 +82,10 @@ try {
 // SQL Database Connection (Sequelize)
 db.authenticate()
   .then(async () => {
-    console.log('[db] SQL connection established');
+    log.debug('[db] SQL connection established');
     // Sync all tables (create if not exist, alter to add missing columns)
     await db.sync({ alter: { drop: false } });
-    console.log('[db] All tables synced');
+    log.debug('[db] All tables synced');
     await initializeDefaultTemplates();
   })
   .catch(err => console.error('[db] SQL connection error:', err));
@@ -374,8 +383,8 @@ async function evalApiGet(path, userToken) {
   const sep = baseUrl.includes('?') ? '&' : '?';
   const url = `${baseUrl}${sep}page_size=200`;
 
-  console.log(`[evalApiGet] 🔄 Fetching: ${url}`);
-  console.log(`[evalApiGet] Token (first 20 chars): ${userToken.substring(0, 20)}...`);
+  log.debug(`[evalApiGet] 🔄 Fetching: ${url}`);
+  log.debug(`[evalApiGet] Token (first 20 chars): ${userToken.substring(0, 20)}...`);
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${userToken}`, 'Content-Type': 'application/json' }
@@ -384,13 +393,13 @@ async function evalApiGet(path, userToken) {
   if (!res.ok) {
     const errText = await res.text();
     // Log as info/debug, not error — this is expected when external API is unavailable
-    console.log(`[evalApiGet] ❌ External API ${path} returned ${res.status}`);
-    console.log(`[evalApiGet] Response body: ${errText.substring(0, 500)}`);
+    log.debug(`[evalApiGet] ❌ External API ${path} returned ${res.status}`);
+    log.debug(`[evalApiGet] Response body: ${errText.substring(0, 500)}`);
     throw new Error(`Eval API ${path} → ${res.status}`);
   }
 
   const json = await res.json();
-  console.log(`[evalApiGet] ✓ Successfully fetched ${path} from Eval API`);
+  log.debug(`[evalApiGet] ✓ Successfully fetched ${path} from Eval API`);
 
   // Handle Django REST paginated response: { count, next, results: [] }
   if (!Array.isArray(json) && json.results) {
@@ -446,7 +455,7 @@ function normaliseEvalCompetence(comp) {
 
   // tools array — extract tool objects with their indicators (for tool-based evaluation)
   const toolsRaw = comp.tools || [];
-  console.log('❌❌😉😉💜💜💜📌📌  toolsRaw:', toolsRaw);
+  log.debug('❌❌😉😉💜💜💜📌📌  toolsRaw:', toolsRaw);
   const tools = toolsRaw.map(t => ({ id: t.id, name: t.name, description: t.description, indicators: t.indicators, referents: t.referents, resources: t.resources|| '' }));
 
   // Build levels by collecting indicators from ALL tools and grouping by levelId
@@ -511,14 +520,14 @@ app.get('/api/areas', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/areas/', token);
-      console.log('[GET /api/areas] ✓ Fetched from external API:', rows.length, 'areas');
+      log.debug('[GET /api/areas] ✓ Fetched from external API:', rows.length, 'areas');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/areas] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/areas] Using local DB fallback (external API unavailable)');
     }
     // Fallback to local database
     const areas = await Area.findAll({ order: [["id","ASC"]] });
-    console.log('[GET /api/areas] ✓ Fallback returned', areas.length, 'areas from local DB');
+    log.debug('[GET /api/areas] ✓ Fallback returned', areas.length, 'areas from local DB');
     res.json(areas);
   } catch (error) {
     console.error('[GET /api/areas] Server error:', error.message);
@@ -532,13 +541,13 @@ app.get('/api/tools', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/tools/', token);
-      console.log('[GET /api/tools] ✓ Fetched from external API:', rows.length, 'tools');
+      log.debug('[GET /api/tools] ✓ Fetched from external API:', rows.length, 'tools');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/tools] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/tools] Using local DB fallback (external API unavailable)');
     }
     const tools = await Tool.findAll({ order: [["id","ASC"]] });
-    console.log('[GET /api/tools] ✓ Fallback returned', tools.length, 'tools from local DB');
+    log.debug('[GET /api/tools] ✓ Fallback returned', tools.length, 'tools from local DB');
     res.json(tools);
   } catch (error) {
     console.error('[GET /api/tools] Server error:', error.message);
@@ -552,13 +561,13 @@ app.get('/api/indicators', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/indicators/', token);
-      console.log('[GET /api/indicators] ✓ Fetched from external API:', rows.length, 'indicators');
+      log.debug('[GET /api/indicators] ✓ Fetched from external API:', rows.length, 'indicators');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/indicators] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/indicators] Using local DB fallback (external API unavailable)');
     }
     const indicators = await Indicator.findAll();
-    console.log('[GET /api/indicators] ✓ Fallback returned', indicators.length, 'indicators from local DB');
+    log.debug('[GET /api/indicators] ✓ Fallback returned', indicators.length, 'indicators from local DB');
     res.json(indicators);
   } catch (error) {
     console.error('[GET /api/indicators] Server error:', error.message);
@@ -572,13 +581,13 @@ app.get('/api/levels', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/levels/', token);
-      console.log('[GET /api/levels] ✓ Fetched from external API:', rows.length, 'levels');
+      log.debug('[GET /api/levels] ✓ Fetched from external API:', rows.length, 'levels');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/levels] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/levels] Using local DB fallback (external API unavailable)');
     }
     const levels = await Level.findAll();
-    console.log('[GET /api/levels] ✓ Fallback returned', levels.length, 'levels from local DB');
+    log.debug('[GET /api/levels] ✓ Fallback returned', levels.length, 'levels from local DB');
     res.json(levels);
   } catch (error) {
     console.error('[GET /api/levels] Server error:', error.message);
@@ -592,13 +601,13 @@ app.get('/api/resources', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/resources/', token);
-      console.log('[GET /api/resources] ✓ Fetched from external API:', rows.length, 'resources');
+      log.debug('[GET /api/resources] ✓ Fetched from external API:', rows.length, 'resources');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/resources] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/resources] Using local DB fallback (external API unavailable)');
     }
     const resources = await Resource.findAll();
-    console.log('[GET /api/resources] ✓ Fallback returned', resources.length, 'resources from local DB');
+    log.debug('[GET /api/resources] ✓ Fallback returned', resources.length, 'resources from local DB');
     res.json(resources);
   } catch (error) {
     console.error('[GET /api/resources] Server error:', error.message);
@@ -611,19 +620,13 @@ app.get('/api/competences', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     try {
-      console.log('[GET /api/competences] 🔄 Attempting to fetch from external API: https://evaluation.coderf5.es/v1/competences/');
+      log.debug('[GET /api/competences] 🔄 Attempting to fetch from external API: https://evaluation.coderf5.es/v1/competences/');
       const rows = await evalApiGet('/competences/', token);
-      console.log('[GET /api/competences] ✓ Successfully fetched', rows, 'raw competences from external API');
+      log.debug('[GET /api/competences] ✓ Successfully fetched', rows, 'raw competences from external API');
       const normalised = rows.map(normaliseEvalCompetence);
-      console.log('❌❌😉😉💜💜💜📌📌[GET /api/competences] ✓ Normalised data includes:', normalised[0].tools, 'competences with areas, tools, indicators');
+      log.debug('❌❌😉😉💜💜💜📌📌[GET /api/competences] ✓ Normalised data includes:', normalised[0].tools, 'competences with areas, tools, indicators');
       if (normalised.length > 0) {
-        console.log('[GET /api/competences] ✓ Sample competence structure:', JSON.stringify({
-          id: normalised[0].id,
-          name: normalised[0].name,
-          areas: normalised[0].areas.slice(0, 1),
-          tools: normalised[0].tools.slice(0, 1),
-          indicators: normalised[0].indicators
-        }, null, 2));
+        log.debug('[GET /api/competences] ✓ Sample competence structure:', JSON.stringify({ id: normalised[0].id, name: normalised[0].name, areas: normalised[0].areas.slice(0, 1), tools: normalised[0].tools.slice(0, 1), indicators: normalised[0].indicators }, null, 2));
       }
       return res.json(normalised);
     } catch (evalErr) {
@@ -645,7 +648,7 @@ app.get('/api/competences', verifyToken, async (req, res) => {
       CompetenceArea.findAll()
     ]);
 
-    console.log('[GET /api/competences] Local DB fallback:', competences.length, 'competences');
+    log.debug('[GET /api/competences] Local DB fallback:', competences.length, 'competences');
 
     const indicatorMap = Object.fromEntries(indicators.map(i => [i.id, i]));
     const toolMap      = Object.fromEntries(tools.map(t => [t.id, t]));
@@ -682,7 +685,7 @@ app.get('/api/competences', verifyToken, async (req, res) => {
       return { id: comp.id, name: comp.name, description: comp.description, areas: compAreasList, levels: levels_grouped, tools: compToolsList };
     });
 
-    console.log(`[GET /api/competences] Returning ${enriched.length} competences from local DB fallback`);
+    log.debug(`[GET /api/competences] Returning ${enriched.length} competences from local DB fallback`);
     res.json(enriched);
   } catch (error) {
     console.error('[GET /api/competences] Error:', error);
@@ -699,7 +702,7 @@ app.get('/api/promotions/:promotionId/access-password', verifyToken, async (req,
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    console.log('[GET access-password] Promotion found:', promotion.id, 'Password:', promotion.accessPassword);
+    log.debug('[GET access-password] Promotion found:', promotion.id, 'Password:', promotion.accessPassword);
     res.json({ accessPassword: promotion.accessPassword || null });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3234,7 +3237,7 @@ app.get('/api/promotions', async (req, res) => {
 
 app.get('/api/my-enrollments', verifyToken, async (req, res) => {
   try {
-    const enrollments = await Student.findAll({ $or: [{ id: req.user.id }, { email: req.user.email }] });
+    const enrollments = await Student.findAll({ where: { [Op.or]: [{ id: req.user.id }, { email: req.user.email }] } });
     const promotionIds = enrollments.map(e => e.promotionId).filter(id => id);
     const enrolledPromotions = await Promotion.findAll({ where: { id: { [Op.in]: promotionIds } } });
     res.json(enrolledPromotions);
@@ -3246,7 +3249,7 @@ app.get('/api/my-enrollments', verifyToken, async (req, res) => {
 app.get('/api/my-promotions', verifyToken, async (req, res) => {
   try {
     const teacherPromotions = await Promotion.findAll({
-      $or: [{ teacherId: req.user.id }, { collaborators: req.user.id }]
+      where: { [Op.or]: [{ teacherId: req.user.id }, { collaborators: { [Op.like]: `%${req.user.id}%` } }] }
     });
     res.json(teacherPromotions);
   } catch (error) {
@@ -3257,7 +3260,7 @@ app.get('/api/my-promotions', verifyToken, async (req, res) => {
 app.get('/api/my-promotions-all', verifyToken, async (req, res) => {
   try {
     const teacherPromotions = await Promotion.findAll({
-      $or: [{ teacherId: req.user.id }, { collaborators: req.user.id }]
+      where: { [Op.or]: [{ teacherId: req.user.id }, { collaborators: { [Op.like]: `%${req.user.id}%` } }] }
     });
     res.json(teacherPromotions);
   } catch (error) {
@@ -3587,9 +3590,9 @@ app.post('/api/promotions/:promotionId/calendar', verifyToken, async (req, res) 
 app.get('/api/promotions/:promotionId/extended-info', async (req, res) => {
   try {
     const extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
-    console.log(`[GET /api/promotions/${req.params.promotionId}/extended-info] Found:`, !!extendedInfo);
+    log.debug(`[GET /api/promotions/${req.params.promotionId}/extended-info] Found:`, !!extendedInfo);
     if (extendedInfo) {
-      console.log('[extended-info] Has competences:', !!extendedInfo.competences, 'count:', (extendedInfo.competences || []).length);
+      log.debug('[extended-info] Has competences:', !!extendedInfo.competences, 'count:', (extendedInfo.competences || []).length);
     }
     if (!extendedInfo) {
       return res.json({ schedule: {}, team: [], resources: [], evaluation: '', pildoras: [], pildorasAssignmentOpen: false, competences: [] });
@@ -3974,7 +3977,7 @@ app.put('/api/promotions/:promotionId/pildoras-self-assign', async (req, res) =>
 app.get('/api/promotions/:promotionId/virtual-classroom', async (req, res) => {
   try {
     const promotionId = req.params.promotionId;
-    const ext = await ExtendedInfo.findOne({ promotionId });
+    const ext = await ExtendedInfo.findOne({ where: { promotionId } });
     if (!ext || !ext.virtualClassroom || !ext.virtualClassroom.isActive) {
       return res.json({ active: false });
     }
@@ -3990,10 +3993,10 @@ app.get('/api/promotions/:promotionId/virtual-classroom', async (req, res) => {
     const project = module ? (module.projects || []).find(p => p.name === vc.projectName) : null;
 
     // Resolve competences for this project from ExtendedInfo.projectCompetences + competences catalog
-    console.log(`[DEBUG] Resolving VC competences for ${promotionId}. ext.competences count: ${((ext || {}).competences || []).length}`);
+    log.debug(`[DEBUG] Resolving VC competences for ${promotionId}. ext.competences count: ${((ext || {}).competences || []).length}`);
     if (ext && ext.competences && ext.competences.length > 0) {
        const first = ext.competences[0];
-       console.log(`[DEBUG] First comp in DB: ${first.name}, levels: ${(first.levels || []).length}, compInds: ${!!first.competenceIndicators}`);
+       log.debug(`[DEBUG] First comp in DB: ${first.name}, levels: ${(first.levels || []).length}, compInds: ${!!first.competenceIndicators}`);
     }
     let competences = [];
     if (Array.isArray(ext.projectCompetences) && Array.isArray(ext.competences)) {
@@ -4068,13 +4071,13 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
       return res.status(400).json({ error: 'Repository name is required' });
     }
 
-    const ext = await ExtendedInfo.findOne({ promotionId });
+    const ext = await ExtendedInfo.findOne({ where: { promotionId } });
     if (!ext || !ext.virtualClassroom || !ext.virtualClassroom.isActive) {
       return res.status(400).json({ error: 'No active virtual classroom project for this promotion' });
     }
 
     const vc = ext.virtualClassroom;
-    console.log('[DEBUG] Active Virtual Classroom project:', vc);
+    log.debug('[DEBUG] Active Virtual Classroom project:', vc);
     const projectType = vc.projectType || 'individual';
 
     if (projectType === 'individual') {
@@ -4096,7 +4099,7 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
     let evalEntry = ext.projectEvaluations.find(
       e => e.moduleId === moduleId && e.projectName === projectName
     );
-    console.log('[DEBUG] Found evalEntry:', !!evalEntry, { moduleId, projectName });
+    log.debug('[DEBUG] Found evalEntry:', !!evalEntry, { moduleId, projectName });
     if (!evalEntry) {
       evalEntry = {
         moduleId,
@@ -4140,13 +4143,7 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
     targetEval.submissionStatus = 'Entregado';
     targetEval.submittedAt = new Date().toISOString();
 
-    console.log('[DEBUG] Saved submission:', {
-      moduleId,
-      projectName,
-      targetId,
-      submissionLink: targetEval.submissionLink,
-      status: targetEval.submissionStatus
-    });
+    log.debug('[DEBUG] Saved submission:', { moduleId, projectName, targetId, submissionLink: targetEval.submissionLink, status: targetEval.submissionStatus });
 
     ext.changed('projectEvaluations', true);
     await sqlSave(ext);
@@ -4331,7 +4328,7 @@ app.post('/api/admin/templates-from-promotion', verifyToken, verifyAdmin, async 
     const promotion = await Promotion.findOne({ where: { id: promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
-    const extInfo = await ExtendedInfo.findOne({ promotionId });
+    const extInfo = await ExtendedInfo.findOne({ where: { promotionId } });
 
     const templateId = `custom-${uuidv4()}`;
 

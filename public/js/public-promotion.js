@@ -822,7 +822,7 @@ function updateSidebarWithExtendedInfo(info) {
         return;
     }
 
-    console.log('Updating sidebar with extended info:', info);
+    //console.log('Updating sidebar with extended info:', info);
 
     // Find roadmap item as reference point for píldoras
     const roadmapAnchor = nav.querySelector('a[href="#roadmap"]');
@@ -832,13 +832,13 @@ function updateSidebarWithExtendedInfo(info) {
     const quickLinksAnchor = nav.querySelector('a[href="#quick-links"]');
     const quickLinksItem = quickLinksAnchor ? quickLinksAnchor.parentElement : null;
 
-    console.log('Roadmap item found:', !!roadmapItem);
-    console.log('Quick links item found:', !!quickLinksItem);
+    //console.log('Roadmap item found:', !!roadmapItem);
+    //console.log('Quick links item found:', !!quickLinksItem);
 
     // Add Píldoras right after Roadmap if they exist
     if ((Array.isArray(info.pildoras) && info.pildoras.length > 0) ||
         (Array.isArray(info.modulesPildoras) && info.modulesPildoras.some(mp => Array.isArray(mp.pildoras) && mp.pildoras.length > 0))) {
-        console.log('Adding pildoras section to sidebar right after roadmap');
+        //console.log('Adding pildoras section to sidebar right after roadmap');
         const pildorasLi = document.createElement('li');
         pildorasLi.className = 'nav-item';
         pildorasLi.innerHTML = '<a class="nav-link" href="#pildoras-wrapper" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-lightbulb me-2"></i>Píldoras</a>';
@@ -852,7 +852,7 @@ function updateSidebarWithExtendedInfo(info) {
         }
 
         // Add Calendar right after Píldoras
-        console.log('Adding calendar section to sidebar right after pildoras');
+        //console.log('Adding calendar section to sidebar right after pildoras');
         const calendarLi = document.createElement('li');
         calendarLi.className = 'nav-item';
         calendarLi.innerHTML = '<a class="nav-link" href="#calendar" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-calendar me-2"></i>Calendario</a>';
@@ -874,7 +874,7 @@ function updateSidebarWithExtendedInfo(info) {
 
     // Add other Program Info sections before Quick Links
     if (info.schedule && hasScheduleData(info.schedule)) {
-        console.log('Adding schedule section to sidebar');
+        //console.log('Adding schedule section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#horario-wrapper" onclick="switchPublicTab(\'info\')"><i class="bi bi-clock me-2"></i>Horario</a>';
@@ -887,7 +887,7 @@ function updateSidebarWithExtendedInfo(info) {
     }
 
     if (info.team && info.team.length > 0) {
-        console.log('Adding team section to sidebar');
+        //console.log('Adding team section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#equipo-wrapper" onclick="switchPublicTab(\'info\')"><i class="bi bi-people me-2"></i>Equipo</a>';
@@ -900,7 +900,7 @@ function updateSidebarWithExtendedInfo(info) {
     }
 
     if (info.evaluation && info.evaluation.trim()) {
-        console.log('Adding evaluation section to sidebar');
+        //console.log('Adding evaluation section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#evaluacion-wrapper" onclick="switchPublicTab(\'info\')"><i class="bi bi-clipboard-check me-2"></i>Evaluación</a>';
@@ -913,7 +913,7 @@ function updateSidebarWithExtendedInfo(info) {
     }
 
     if (info.resources && info.resources.length > 0) {
-        console.log('Adding resources section to sidebar');
+        //console.log('Adding resources section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#recursos-wrapper" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-tools me-2"></i>Recursos</a>';
@@ -926,7 +926,7 @@ function updateSidebarWithExtendedInfo(info) {
     }
 
     if (Array.isArray(info.competences) && info.competences.length > 0) {
-        console.log('Adding competences section to sidebar');
+        //console.log('Adding competences section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#competences-section" onclick="switchPublicTab(\'info\')"><i class="bi bi-award me-2"></i>Competencias</a>';
@@ -1108,20 +1108,20 @@ function applyCellColors(cellContent, cellType) {
 // Load Program Info (Extended Info) data
 async function loadExtendedInfo() {
     try {
-        console.log('Loading extended info for promotion:', promotionId);
+        //console.log('Loading extended info for promotion:', promotionId);
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info?t=${Date.now()}`);
 
         if (response.ok) {
             const info = await response.json();
-            console.log('Extended info loaded:', info);
-            console.log('Self-assignment status:', info.pildorasAssignmentOpen);
+            //console.log('Extended info loaded:', info);
+            //console.log('Self-assignment status:', info.pildorasAssignmentOpen);
             // Students are already loaded by loadPromotionContent before this call
 
             displayExtendedInfo(info);
             displayPublicCompetences(info);
             await loadVirtualClassroom();
         } else {
-            console.log('No extended info found or error loading:', response.status);
+            //console.log('No extended info found or error loading:', response.status);
         }
     } catch (error) {
         console.error('Error loading extended info:', error);
@@ -1416,7 +1416,7 @@ async function submitVirtualClassroomDelivery() {
 
     const targetVal = select.value;
     const repoName = suffixEl.value.trim();
-    console.log('[DEBUG] submitVirtualClassroomDelivery:', { targetVal, repoName });
+    //console.log('[DEBUG] submitVirtualClassroomDelivery:', { targetVal, repoName });
 
     if (!targetVal) {
         feedbackEl.textContent = 'Selecciona tu nombre o equipo antes de enviar.';
@@ -1455,7 +1455,7 @@ async function submitVirtualClassroomDelivery() {
             body: JSON.stringify(body)
         });
         const data = await res.json().catch(() => ({}));
-        console.log('[DEBUG] Submission response:', { status: res.status, data });
+        //console.log('[DEBUG] Submission response:', { status: res.status, data });
 
         if (!res.ok) {
             console.error('Error submitting virtual classroom delivery:', data);
@@ -1485,7 +1485,7 @@ async function loadPublicStudents() {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/public-students`);
         if (response.ok) {
             window.publicStudents = await response.json();
-            console.log('Public students loaded:', window.publicStudents.length);
+            //console.log('Public students loaded:', window.publicStudents.length);
         }
     } catch (error) {
         console.error('Error loading public students:', error);
@@ -1687,7 +1687,7 @@ function displayExtendedInfo(info) {
     // Populate next-pildora notice card
     _renderNextPildoraNotice(info);
 
-    console.log('Extended info sections displayed:', programInfoSections.length);
+    //console.log('Extended info sections displayed:', programInfoSections.length);
 }
 
 // Create Program Info sections HTML
@@ -1700,7 +1700,7 @@ function createProgramInfoSections(info) {
 
     // Píldoras Section (Legacy format) - Show if legacy exists AND (no module data exists OR modules are empty)
     if (Array.isArray(info.pildoras) && info.pildoras.length > 0 && modulesWithActualPildoras.length === 0) {
-        console.log('Creating Legacy píldoras section (no module-based píldoras found)');
+        //console.log('Creating Legacy píldoras section (no module-based píldoras found)');
         const pildorasSection = document.createElement('div');
         pildorasSection.className = 'col-md-12';
         pildorasSection.id = 'pildoras';
@@ -1842,12 +1842,12 @@ function createProgramInfoSections(info) {
 
     // Píldoras Section (Module-based format) - MOVED TO FIRST POSITION
     if (modulesWithActualPildoras.length > 0) {
-        console.log('Creating Module-based píldoras section with navigation arrows');
-        console.log('Modules with píldoras:', modulesWithActualPildoras);
+        //console.log('Creating Module-based píldoras section with navigation arrows');
+        //console.log('Modules with píldoras:', modulesWithActualPildoras);
 
         // Get promotion modules to match with module names
         const promotionModulesData = window.publicPromotionData?.modules || [];
-        console.log('Promotion modules:', promotionModulesData);
+        //console.log('Promotion modules:', promotionModulesData);
 
         // enrich with promotion module data
         const modulesWithPildoras = modulesWithActualPildoras
@@ -1860,7 +1860,7 @@ function createProgramInfoSections(info) {
                 };
             });
 
-        console.log('Filtered modules with píldoras:', modulesWithPildoras);
+        //console.log('Filtered modules with píldoras:', modulesWithPildoras);
 
         if (modulesWithPildoras.length > 0) {
             const pildorasSection = document.createElement('div');
@@ -1871,8 +1871,8 @@ function createProgramInfoSections(info) {
             let currentModuleIndex = 0;
 
             function renderPildorasTable() {
-                console.log('Rendering píldoras table. Assignment open:', info.pildorasAssignmentOpen);
-                console.log('Public students available:', window.publicStudents?.length);
+                //console.log('Rendering píldoras table. Assignment open:', info.pildorasAssignmentOpen);
+                //console.log('Public students available:', window.publicStudents?.length);
                 const currentModule = modulesWithPildoras[currentModuleIndex];
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -2027,7 +2027,7 @@ function createProgramInfoSections(info) {
 
                 if (countBadge) countBadge.textContent = currentModule.pildoras.length;
 
-                console.log('Navigation controls updated successfully');
+                //console.log('Navigation controls updated successfully');
             }
 
             // Navigate to specific píldoras module
@@ -2069,14 +2069,14 @@ function createProgramInfoSections(info) {
                 </div>
             `;
 
-            console.log('HTML structure created for module navigation');
+            //console.log('HTML structure created for module navigation');
 
             // Add navigation functions to window object to ensure global access
             window.navigatePildorasPrevious = function () {
-                console.log('Navigate previous clicked, current index:', currentModuleIndex);
+                //console.log('Navigate previous clicked, current index:', currentModuleIndex);
                 if (currentModuleIndex > 0) {
                     currentModuleIndex--;
-                    console.log('Moving to module index:', currentModuleIndex);
+                    //console.log('Moving to module index:', currentModuleIndex);
                     renderPildorasTable();
                 }
             };
@@ -2145,10 +2145,10 @@ function createProgramInfoSections(info) {
             };
 
             window.navigatePildorasNext = function () {
-                console.log('Navigate next clicked, current index:', currentModuleIndex);
+                //console.log('Navigate next clicked, current index:', currentModuleIndex);
                 if (currentModuleIndex < modulesWithPildoras.length - 1) {
                     currentModuleIndex++;
-                    console.log('Moving to module index:', currentModuleIndex);
+                    //console.log('Moving to module index:', currentModuleIndex);
                     renderPildorasTable();
                 }
             };
@@ -2208,12 +2208,12 @@ function createProgramInfoSections(info) {
             pildorasSection._renderTable = renderPildorasTable;
             pildorasSection._modulesData = modulesWithPildoras;
 
-            console.log('Navigation functions assigned');
+            //console.log('Navigation functions assigned');
 
             // Initial render
             renderPildorasTable();
 
-            console.log('Initial table rendered');
+            //console.log('Initial table rendered');
             sections.push(pildorasSection);
         }
     }

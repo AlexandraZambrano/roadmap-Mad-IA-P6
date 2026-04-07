@@ -24,7 +24,7 @@
         .then(cfg => {
             window.APP_CONFIG.EXTERNAL_AUTH_URL = cfg.externalAuthUrl || EXTERNAL_AUTH_URL;
             window.APP_CONFIG.env = cfg.env || 'production';
-            console.log('[config] Runtime config loaded:', window.APP_CONFIG);
+            //console.log('[config] Runtime config loaded:', window.APP_CONFIG);
         })
         .catch(err => {
             console.warn('[config] Could not load /api/config, using defaults:', err.message);

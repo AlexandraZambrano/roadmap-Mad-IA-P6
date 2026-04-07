@@ -245,7 +245,7 @@ class NotesUI {
 
     showToast(message, type = 'info') {
         if (window.showToast) window.showToast(message, type);
-        else console.log(`[Notes] ${type}: ${message}`);
+        //else console.log(`[Notes] ${type}: ${message}`);
     }
 }
 

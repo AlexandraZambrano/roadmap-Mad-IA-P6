@@ -7,3 +7,4 @@ node_modules
 backend/keys/public.pem
 # keep .env.example tracked
 !.env.example
+./backend/utils/email.js

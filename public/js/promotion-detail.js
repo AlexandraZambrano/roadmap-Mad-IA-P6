@@ -954,7 +954,7 @@ function updatePildoraField(pildoraIndex, field, value) {
     if (!modulePildoras || !modulePildoras.pildoras || !modulePildoras.pildoras[pildoraIndex]) return;
 
     modulePildoras.pildoras[pildoraIndex][field] = value;
-    console.log(`Updated píldora ${pildoraIndex} field ${field} to:`, value);
+    //console.log(`Updated píldora ${pildoraIndex} field ${field} to:`, value);
 }
 
 function applyPildorasColorCoding() {
@@ -1077,7 +1077,7 @@ async function savePildorasToServer(module) {
             throw new Error(`Failed to save píldoras: ${response.statusText}`);
         }
 
-        console.log('Píldoras saved successfully');
+        //console.log('Píldoras saved successfully');
     } catch (error) {
         console.error('Error saving píldoras:', error);
         alert('Error saving changes to server');
@@ -2026,8 +2026,8 @@ async function saveExtendedInfo() {
         extendedInfoData.virtualClassroom = window._evalState.virtualClassroom;
     }
 
-    console.log('Saving extended info for promotion:', promotionId);
-    console.log('Data to save:', extendedInfoData);
+    //console.log('Saving extended info for promotion:', promotionId);
+    //console.log('Data to save:', extendedInfoData);
 
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
@@ -2039,11 +2039,11 @@ async function saveExtendedInfo() {
             body: JSON.stringify(extendedInfoData)
         });
 
-        console.log('Save response status:', response.status);
+        //console.log('Save response status:', response.status);
 
         if (response.ok) {
             const savedData = await response.json();
-            console.log('Data saved successfully:', savedData);
+            //console.log('Data saved successfully:', savedData);
 
             // ── Auto-sync competences → roadmap module projects ───────────────
             if (window.ProgramCompetences && window.ProgramCompetences.getEvalModulesSyncData) {
@@ -2122,7 +2122,7 @@ async function _syncCompetencesToRoadmap() {
         },
         body: JSON.stringify({ modules })
     });
-    console.log('[Sync] Competencias sincronizadas al roadmap correctamente.');
+    //console.log('[Sync] Competencias sincronizadas al roadmap correctamente.');
 }
 
 // ── Acta de Inicio modal ─────────────────────────────────────────────────────
@@ -2434,7 +2434,7 @@ async function saveActaData() {
 
 async function togglePildorasAssignment(isOpen) {
     extendedInfoData.pildorasAssignmentOpen = isOpen;
-    console.log('Toggling píldoras self-assignment:', isOpen);
+    //console.log('Toggling píldoras self-assignment:', isOpen);
 
     const token = localStorage.getItem('token');
     try {
@@ -4435,7 +4435,7 @@ async function loadOverviewCalendarId() {
             const calendar = await response.json();
             // Store the calendar ID in the global variable
             currentCalendarId = calendar.googleCalendarId || '';
-            console.log('[loadOverviewCalendarId] Calendar ID loaded from backend:', currentCalendarId);
+            //console.log('[loadOverviewCalendarId] Calendar ID loaded from backend:', currentCalendarId);
 
             // Setup the calendar preview with the new ID
             if (window.setupCalendarPreview) {
@@ -4443,7 +4443,7 @@ async function loadOverviewCalendarId() {
             }
         } else {
             currentCalendarId = '';
-            console.log('[loadOverviewCalendarId] No calendar found for this promotion');
+            //console.log('[loadOverviewCalendarId] No calendar found for this promotion');
         }
     } catch (error) {
         console.error('[loadOverviewCalendarId] Error loading calendar:', error);
@@ -4657,14 +4657,14 @@ async function loadOverviewAttendanceAlert() {
             }
         });
 
-        console.log('[loadOverviewAttendanceAlert] Absences per student:', absencesPerStudent);
-        console.log('[loadOverviewAttendanceAlert] Total attendance records:', allAttendanceData.length);
+        //console.log('[loadOverviewAttendanceAlert] Absences per student:', absencesPerStudent);
+        //console.log('[loadOverviewAttendanceAlert] Total attendance records:', allAttendanceData.length);
 
         // Sort students by total absences (descending)
         const sortedStudents = Object.values(absencesPerStudent)
             .sort((a, b) => b.absences - a.absences);
 
-        console.log('[loadOverviewAttendanceAlert] Sorted students:', sortedStudents);
+        //console.log('[loadOverviewAttendanceAlert] Sorted students:', sortedStudents);
 
         // Calculate attendance rate using CURRENT MONTH data (matching the Attendance tab)
         let present = 0, absent = 0, late = 0, justified = 0, earlyLeave = 0;
@@ -4739,7 +4739,7 @@ async function loadCalendar() {
             const calendar = await response.json();
             // Store in global variable for use across the application
             currentCalendarId = calendar.googleCalendarId || '';
-            console.log('[loadCalendar] Calendar ID stored globally:', currentCalendarId);
+            //console.log('[loadCalendar] Calendar ID stored globally:', currentCalendarId);
 
             // Also store in the HTML field if it exists (for the calendar configuration tab)
             const calendarIdInput = document.getElementById('google-calendar-id');
@@ -5265,7 +5265,7 @@ function setupForms() {
             email
         };
 
-        console.log('Sending student data:', studentData);
+        //console.log('Sending student data:', studentData);
 
         try {
             let response;
@@ -5405,39 +5405,30 @@ function downloadStudentsExcelTemplate() {
 
 // Debug function to test student endpoints
 async function debugStudentEndpoints() {
-    console.log('=== TESTING STUDENT ENDPOINTS ===');
+    //console.log('=== TESTING STUDENT ENDPOINTS ===');
     const token = localStorage.getItem('token');
 
     if (!window.currentStudents || window.currentStudents.length === 0) {
-        console.log('No students available for testing');
+        //console.log('No students available for testing');
         return;
     }
 
     const student = window.currentStudents[0];
-    console.log('Testing with student:', student);
-    console.log('Student fields present:', {
-        id: !!student.id,
-        name: !!student.name,
-        lastname: !!student.lastname,
-        email: !!student.email,
-        age: !!student.age,
-        nationality: !!student.nationality,
-        profession: !!student.profession,
-        address: !!student.address
-    });
+    //console.log('Testing with student:', student);
+    //console.log('Student fields present:', { id: !!student.id, name: !!student.name, lastname: !!student.lastname, email: !!student.email, age: !!student.age, nationality: !!student.nationality, profession: !!student.profession, address: !!student.address });
 
     // Test GET endpoint
     try {
         const getResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${student.id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        console.log('GET /students/:id status:', getResponse.status);
+        //console.log('GET /students/:id status:', getResponse.status);
         if (getResponse.ok) {
             const studentData = await getResponse.json();
-            console.log('GET student data:', studentData);
+            //console.log('GET student data:', studentData);
         }
     } catch (error) {
-        console.log('GET /students/:id error:', error.message);
+        //console.log('GET /students/:id error:', error.message);
     }
 
     // Test PUT /profile endpoint
@@ -5452,7 +5443,7 @@ async function debugStudentEndpoints() {
             address: student.address || 'Test Address'
         };
 
-        console.log('Testing PUT with data:', testData);
+        //console.log('Testing PUT with data:', testData);
 
         const putResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${student.id}/profile`, {
             method: 'PUT',
@@ -5463,17 +5454,17 @@ async function debugStudentEndpoints() {
             body: JSON.stringify(testData)
         });
 
-        console.log('PUT /students/:id/profile status:', putResponse.status);
+        //console.log('PUT /students/:id/profile status:', putResponse.status);
         if (putResponse.ok) {
             const updatedData = await putResponse.json();
-            console.log('✓ Profile endpoint works!');
-            console.log('Updated student data:', updatedData);
+            //console.log('✓ Profile endpoint works!');
+            //console.log('Updated student data:', updatedData);
         } else {
             const errorText = await putResponse.text();
-            console.log('PUT error response:', errorText);
+            //console.log('PUT error response:', errorText);
         }
     } catch (error) {
-        console.log('PUT /students/:id/profile error:', error.message);
+        //console.log('PUT /students/:id/profile error:', error.message);
     }
 }
 
@@ -5501,7 +5492,7 @@ async function loadStudents(retryCount = 0) {
         }
 
         const students = await response.json();
-        console.log('Loaded students:', students);
+        //console.log('Loaded students:', students);
 
         // Store students data globally for multi-select operations
         // Backend already normalizes the ID field, so we can use it directly
@@ -6334,8 +6325,8 @@ async function addCollaboratorById() {
     }
     const checked = document.querySelectorAll('#collaborator-module-checklist .form-check-input:checked');
     const moduleIds = Array.from(checked).map(cb => cb.value);
-    console.log('[addCollaboratorById] teacherId:', teacherId, 'moduleIds:', moduleIds, 'checked count:', checked.length);
-    console.log('[addCollaboratorById] all checkboxes in list:', document.querySelectorAll('#collaborator-module-checklist .form-check-input').length);
+    //console.log('[addCollaboratorById] teacherId:', teacherId, 'moduleIds:', moduleIds, 'checked count:', checked.length);
+    //console.log('[addCollaboratorById] all checkboxes in list:', document.querySelectorAll('#collaborator-module-checklist .form-check-input').length);
 
     const token = localStorage.getItem('token');
     try {
@@ -7069,9 +7060,9 @@ function _getSelectedStudentIds() {
 }
 
 window._bulkReportTechnical = function () {
-    console.log('[Reports] _bulkReportTechnical triggered');
+    //console.log('[Reports] _bulkReportTechnical triggered');
     const ids = _getSelectedStudentIds();
-    console.log('[Reports] Selected student IDs:', ids);
+    //console.log('[Reports] Selected student IDs:', ids);
     if (!ids.length) {
         alert('Selecciona al menos un estudiante.');
         return;
@@ -7085,7 +7076,7 @@ window._bulkReportTechnical = function () {
 }
 
 window._bulkReportTransversal = function () {
-    console.log('[Reports] _bulkReportTransversal triggered');
+    //console.log('[Reports] _bulkReportTransversal triggered');
     const ids = _getSelectedStudentIds();
     if (!ids.length) { alert('Selecciona al menos un estudiante.'); return; }
     if (!window.Reports) {
@@ -8314,22 +8305,22 @@ async function loadEvaluation() {
 
         const promo = promoRes.ok ? await promoRes.json() : {};
         const ext = extRes.ok ? await extRes.json() : {};
-        console.log('[DEBUG] Full ext data:', ext);
+        //console.log('[DEBUG] Full ext data:', ext);
         const studentsData = studentsRes.ok ? await studentsRes.json() : [];
         const catalogRaw = catalogRes.ok ? await catalogRes.json() : [];
 
-        console.log('✅ [VERIFICATION] Competences received from API https://evaluation.coderf5.es/v1/competences');
+        //console.log('✅ [VERIFICATION] Competences received from API https://evaluation.coderf5.es/v1/competences');
         // DEBUG: log first catalog entry to verify structure
         if (catalogRaw.length > 0) {
-            console.log('[Eval] catalogRaw.length:', catalogRaw.length, 'competences');
-            console.log('[Eval] catalogRaw[0].id:', catalogRaw[0].id);
-            console.log('[Eval] catalogRaw[0].name:', catalogRaw[0].name);
-            console.log('[Eval] catalogRaw[0].areas:', JSON.stringify(catalogRaw[0].areas));
-            console.log('😎 [Eval] catalogRaw[0].tools count:', (catalogRaw[0].tools || []).length, '(from API)');
+            //console.log('[Eval] catalogRaw.length:', catalogRaw.length, 'competences');
+            //console.log('[Eval] catalogRaw[0].id:', catalogRaw[0].id);
+            //console.log('[Eval] catalogRaw[0].name:', catalogRaw[0].name);
+            //console.log('[Eval] catalogRaw[0].areas:', JSON.stringify(catalogRaw[0].areas));
+            //console.log('😎 [Eval] catalogRaw[0].tools count:', (catalogRaw[0].tools || []).length, '(from API)');
             if (catalogRaw[0].tools && catalogRaw[0].tools[0]) {
-                console.log('[Eval] catalogRaw[0].tools[0]:', JSON.stringify(catalogRaw[0].tools[0], null, 2).substring(0, 300));
+                //console.log('[Eval] catalogRaw[0].tools[0]:', JSON.stringify(catalogRaw[0].tools[0], null, 2).substring(0, 300));
             }
-            console.log('[Eval] catalogRaw[0].indicators (COMPETENCE INDICATORS):', JSON.stringify(catalogRaw[0].indicators, null, 2));
+            //console.log('[Eval] catalogRaw[0].indicators (COMPETENCE INDICATORS):', JSON.stringify(catalogRaw[0].indicators, null, 2));
         }
 
         // Normalize the full catalog: id, name, area, description, levels, allTools, toolsWithIndicators, competenceIndicators
@@ -8377,7 +8368,7 @@ async function loadEvaluation() {
             };
         });
 
-        // console.log(`🎈 ${(let i = 0; i < catalog.length; i++) catalog[i].name}`)
+        // //console.log(`🎈 ${(let i = 0; i < catalog.length; i++) catalog[i].name}`)
         // Also keep catalog entries that might be referenced by project competenceIds but not in extComps
         const extIds = new Set(extComps.map(c => String(c.id)));
         catalog.forEach(c => { if (!extIds.has(String(c.id))) enrichedCompetences.push(c); });
@@ -8389,7 +8380,7 @@ async function loadEvaluation() {
         window._evalState.allStudents = studentsData;
         window._evalState.students = studentsData.filter(s => !s.isWithdrawn);
         window._evalState.savedEvaluations = ext.projectEvaluations || [];
-        console.log('[DEBUG] Loaded evaluations:', window._evalState.savedEvaluations);
+        //console.log('[DEBUG] Loaded evaluations:', window._evalState.savedEvaluations);
         window._evalState.projectCompetences = ext.projectCompetences || []; // per-project competence definitions
         window._evalState.virtualClassroom = ext.virtualClassroom || null;
 
@@ -8867,7 +8858,7 @@ function renderEvaluationTab() {
             const evals = saved ? (saved.evaluations || []) : [];
             const evalCount = evals.filter(e => e.evaluatedAt).length; // Only counts those with a date (graded)
             const submissionCount = evals.filter(e => e.submissionLink).length; // Counts those with a link
-            console.log(`[DEBUG] Project "${proj.name}": evalCount=${evalCount}, submissionCount=${submissionCount}`, evals);
+            //console.log(`[DEBUG] Project "${proj.name}": evalCount=${evalCount}, submissionCount=${submissionCount}`, evals);
             const hasEval = evalCount > 0;
             const hasSubmission = submissionCount > 0;
             const groupCount = (saved && saved.groups) ? saved.groups.length : 0;
@@ -10201,7 +10192,7 @@ function selectEvalTarget(targetId) {
 
     const isGrupal = saved.type === 'grupal';
     const savedEval = (saved.evaluations || []).find(e => String(e.targetId) === String(targetId));
-    console.log('[DEBUG] selectEvalTarget:', { targetId, isGrupal, savedEval });
+    //console.log('[DEBUG] selectEvalTarget:', { targetId, isGrupal, savedEval });
 
     // Resolve display name
     let displayName = String(targetId);
@@ -10222,7 +10213,7 @@ function selectEvalTarget(targetId) {
     const isDone = !!(savedEval && savedEval.evaluatedAt);
     const savedFeedback = savedEval ? (savedEval.feedback || '') : '';
     const hasLink = !!(savedEval && savedEval.submissionLink);
-    console.log('[DEBUG] selectEvalTarget state:', { isDone, hasLink, savedEval });
+    //console.log('[DEBUG] selectEvalTarget state:', { isDone, hasLink, savedEval });
 
     // Build competences HTML using existing buildCompetencesHtml logic
     const projCompetences = window._evalCurrentProjectCompetences || [];
@@ -10307,7 +10298,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
     }
     const removedCompIds = window._evalRemovedComps?.[String(targetId)] || [];
     const visibleComps = projCompetences.filter(c => !removedCompIds.includes(String(c.id)));
-    console.log(`📌 ${visibleComps}`)
+    //console.log(`📌 ${visibleComps}`)
     if (!visibleComps.length) {
         return `<p class="text-muted small fst-italic">Todas las competencias han sido eliminadas de esta evaluación.</p>`;
     }
@@ -10692,15 +10683,7 @@ function openEvaluationModal(mIdx, pIdx) {
     })();
 
     // DEBUG: log competence tool data
-    console.log('[Eval] projCompetences:', projCompetences.map(c => ({
-        id: c.id, name: c.name,
-        toolsWithIndicators_count: (c.toolsWithIndicators || []).length,
-        first_tool: (c.toolsWithIndicators || [])[0] ? {
-            name: (c.toolsWithIndicators || [])[0].name,
-            indicators_count: ((c.toolsWithIndicators || [])[0].indicators || []).length,
-            first_indicator: ((c.toolsWithIndicators || [])[0].indicators || [])[0]
-        } : null
-    })));
+    //console.log('[Eval] projCompetences:', projCompetences.map(c => ({ id: c.id, name: c.name, toolsWithIndicators_count: (c.toolsWithIndicators || []).length, first_tool: (c.toolsWithIndicators || [])[0] ? { name: (c.toolsWithIndicators || [])[0].name, indicators_count: ((c.toolsWithIndicators || [])[0].indicators || []).length, first_indicator: ((c.toolsWithIndicators || [])[0].indicators || [])[0] } : null })));
 
     document.getElementById('eval-modal-title').textContent = `${escapeHtml(proj.name)} — ${escapeHtml(mod.name || `Módulo ${mIdx + 1}`)}`;
 

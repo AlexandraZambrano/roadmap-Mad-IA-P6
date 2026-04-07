@@ -42,7 +42,7 @@ function setLoading(isLoading) {
 
 // Expose to window for direct onclick access
 window.handleLogin = async function () {
-    console.log('handleLogin called');
+    //console.log('handleLogin called');
 
     var email = document.getElementById('email').value;
     var password = document.getElementById('password').value;
@@ -54,7 +54,7 @@ window.handleLogin = async function () {
 
     hideAlerts();
     setLoading(true);
-    console.log('Attempting login for:', email);
+    //console.log('Attempting login for:', email);
 
     try {
         var response = await fetch(getLoginUrl(), {
@@ -64,8 +64,8 @@ window.handleLogin = async function () {
         });
 
         var data = await response.json();
-        console.log('Login response status:', response.status);
-        console.log('Login response data:', JSON.stringify(data));
+        //console.log('Login response status:', response.status);
+        //console.log('Login response data:', JSON.stringify(data));
 
         // Support multiple response shapes:
         // Shape A (external API): { success: true, data: { token, userId, roles, name, email } }
@@ -76,7 +76,7 @@ window.handleLogin = async function () {
 
         if (loginOk && token) {
             var roles = Array.isArray(payload.roles) ? payload.roles : [];
-            console.log('roles:', roles);
+            //console.log('roles:', roles);
 
             // Role mapping from external API:
             // ROLE_USER + ROLE_ADMIN together = superadmin (full platform admin)
@@ -90,7 +90,7 @@ window.handleLogin = async function () {
             } else if (roles.includes('ROLE_ADMIN')) {
                 role = 'teacher';
             }
-            console.log('Mapped role:', role);
+            //console.log('Mapped role:', role);
 
             // The JWT uses 'username' (email) as identifier — server sets req.user.id = email (from decoded.username)
             // We store email as id so promotions filter (teacherId === req.user.id) works correctly
@@ -106,7 +106,7 @@ window.handleLogin = async function () {
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));
             localStorage.setItem('role', role);
-            console.log('Saved user to localStorage:', JSON.stringify(user));
+            //console.log('Saved user to localStorage:', JSON.stringify(user));
 
             showAlert('Login successful! Redirecting...', 'success');
             setTimeout(function() {
