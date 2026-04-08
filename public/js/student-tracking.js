@@ -1791,8 +1791,8 @@
         const container = document.getElementById('ficha-pildoras-list');
         if (!container) return;
 
-        console.log('[StudentTracking] _modulesPildarasExtended:', JSON.stringify(_modulesPildarasExtended));
-        console.log('[StudentTracking] _currentStudentId:', _currentStudentId);
+        //console.log('[StudentTracking] _modulesPildarasExtended:', JSON.stringify(_modulesPildarasExtended));
+        //console.log('[StudentTracking] _currentStudentId:', _currentStudentId);
 
         const presented = [];
         const pending   = [];

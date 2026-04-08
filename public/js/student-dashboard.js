@@ -25,25 +25,25 @@ function checkAuth() {
 async function loadDashboard() {
     try {
         const token = localStorage.getItem('token');
-        console.log('Loading dashboard with token:', !!token);
+        //console.log('Loading dashboard with token:', !!token);
 
         const response = await fetch(`${API_URL}/api/my-enrollments`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        console.log('Enrollments response status:', response.status);
+        //console.log('Enrollments response status:', response.status);
         
         if (response.ok) {
             const promotions = await response.json();
-            console.log('Loaded promotions:', promotions);
+            //console.log('Loaded promotions:', promotions);
             
             if (promotions.length > 0) {
                 // Load the first promotion found for the student view
                 const promotion = promotions[0];
-                console.log('Selected promotion:', promotion);
+                //console.log('Selected promotion:', promotion);
                 populateDashboard(promotion);
             } else {
-                console.log('No enrollments found');
+                //console.log('No enrollments found');
                 showNoEnrollments();
             }
         } else {
@@ -64,7 +64,7 @@ function showNoEnrollments() {
 }
 
 function populateDashboard(promotion) {
-    console.log('Populating dashboard with promotion:', promotion);
+    //console.log('Populating dashboard with promotion:', promotion);
     
     // 1. Description
     if (promotion.description) {
@@ -88,10 +88,10 @@ function populateDashboard(promotion) {
     // 6. Extended Info (Schedule, Team, Resources, Evaluation)
     // Try both promotion.id and promotion._id to ensure compatibility
     const promotionId = promotion.id || promotion._id;
-    console.log('Using promotion ID for extended info:', promotionId);
+    //console.log('Using promotion ID for extended info:', promotionId);
     
     // Force show sections to test visibility
-    console.log('Testing section visibility...');
+    //console.log('Testing section visibility...');
     testSectionVisibility();
     
     loadExtendedInfo(promotionId);
@@ -104,7 +104,7 @@ function testSectionVisibility() {
     sections.forEach(sectionId => {
         const section = document.getElementById(sectionId);
         if (section) {
-            console.log(`Section ${sectionId} found and visible`);
+            //console.log(`Section ${sectionId} found and visible`);
             
             // Add a temporary test indicator
             const existing = section.querySelector('.test-indicator');
@@ -127,7 +127,7 @@ function testSectionVisibility() {
     });
     
     // Also add test data to see if rendering works
-    console.log('Adding test data to verify rendering functions...');
+    //console.log('Adding test data to verify rendering functions...');
     
     // Test schedule rendering with sample data
     setTimeout(() => {
@@ -135,7 +135,7 @@ function testSectionVisibility() {
             online: { entry: 'TEST: 08:20', finish: 'TEST: 15:20' },
             notes: 'TEST: This is test schedule data'
         };
-        console.log('Testing schedule render with:', testSchedule);
+        //console.log('Testing schedule render with:', testSchedule);
         renderSchedule(testSchedule);
     }, 1000);
     
@@ -144,21 +144,21 @@ function testSectionVisibility() {
         const testTeam = [
             { name: 'TEST: Ana Aragón', role: 'TEST: Formadora', email: 'test@test.com' }
         ];
-        console.log('Testing team render with:', testTeam);
+        //console.log('Testing team render with:', testTeam);
         renderTeam(testTeam);
     }, 1500);
     
     // Test evaluation rendering
     setTimeout(() => {
         const testEvaluation = 'TEST: This is test evaluation data to verify rendering works';
-        console.log('Testing evaluation render with:', testEvaluation);
+        //console.log('Testing evaluation render with:', testEvaluation);
         renderEvaluation(testEvaluation);
     }, 2000);
 }
 
 async function loadExtendedInfo(promotionId) {
     try {
-        console.log('Loading extended info for promotion:', promotionId);
+        //console.log('Loading extended info for promotion:', promotionId);
         
         // Make sure we have a valid promotion ID
         if (!promotionId) {
@@ -167,23 +167,23 @@ async function loadExtendedInfo(promotionId) {
         }
         
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`);
-        console.log('Extended info response status:', response.status);
+        //console.log('Extended info response status:', response.status);
         
         if (response.ok) {
             const info = await response.json();
-            console.log('Extended info loaded:', info);
+            //console.log('Extended info loaded:', info);
             
             // Render each section with additional debugging
-            console.log('Rendering schedule...');
+            //console.log('Rendering schedule...');
             renderSchedule(info.schedule);
             
-            console.log('Rendering team...');
+            //console.log('Rendering team...');
             renderTeam(info.team);
             
-            console.log('Rendering resources...');
+            //console.log('Rendering resources...');
             renderResources(info.resources);
             
-            console.log('Rendering evaluation...');
+            //console.log('Rendering evaluation...');
             renderEvaluation(info.evaluation);
         } else {
             console.error('Failed to load extended info:', response.status, response.statusText);
@@ -196,7 +196,7 @@ async function loadExtendedInfo(promotionId) {
 }
 
 function renderSchedule(schedule) {
-    console.log('renderSchedule called with:', schedule);
+    //console.log('renderSchedule called with:', schedule);
     
     const container = document.getElementById('horario');
     if (!container) {
@@ -217,7 +217,7 @@ function renderSchedule(schedule) {
     }
     
     if (!schedule) {
-        console.log('No schedule data provided');
+        //console.log('No schedule data provided');
         return;
     }
     
@@ -226,10 +226,10 @@ function renderSchedule(schedule) {
     const hasPresentialData = schedule.presential && Object.values(schedule.presential).some(v => v);
     const hasNotes = schedule.notes;
     
-    console.log('Schedule validation:', { hasOnlineData, hasPresentialData, hasNotes });
+    //console.log('Schedule validation:', { hasOnlineData, hasPresentialData, hasNotes });
     
     if (!hasOnlineData && !hasPresentialData && !hasNotes) {
-        console.log('Schedule data is empty - showing placeholder');
+        //console.log('Schedule data is empty - showing placeholder');
         // Show a placeholder instead of nothing
         const placeholderDiv = document.createElement('div');
         placeholderDiv.className = 'dynamic-schedule mt-4 p-3 bg-light rounded';
@@ -243,7 +243,7 @@ function renderSchedule(schedule) {
         return;
     }
     
-    console.log('Rendering schedule data...');
+    //console.log('Rendering schedule data...');
     
     // Clear existing dynamic content but preserve the original content
     let existingDynamic = scheduleDiv.querySelector('.dynamic-schedule');
@@ -293,11 +293,11 @@ function renderSchedule(schedule) {
     dynamicDiv.innerHTML = html;
     scheduleDiv.appendChild(dynamicDiv);
     
-    console.log('Schedule rendered successfully');
+    //console.log('Schedule rendered successfully');
 }
 
 function renderTeam(team) {
-    console.log('renderTeam called with:', team);
+    //console.log('renderTeam called with:', team);
     
     const container = document.getElementById('team-list'); // UL element
     if (!container) {
@@ -315,11 +315,11 @@ function renderTeam(team) {
     }
     
     if (!team || !Array.isArray(team) || team.length === 0) {
-        console.log('No team data provided or team array is empty');
+        //console.log('No team data provided or team array is empty');
         return;
     }
 
-    console.log('Rendering team data...');
+    //console.log('Rendering team data...');
     
     // Clear only the dynamic content, preserve any static content
     const existingDynamicItems = container.querySelectorAll('.dynamic-team-member');
@@ -347,11 +347,11 @@ function renderTeam(team) {
         container.appendChild(li);
     });
     
-    console.log('Team rendered successfully');
+    //console.log('Team rendered successfully');
 }
 
 function renderResources(resources) {
-    console.log('renderResources called with:', resources);
+    //console.log('renderResources called with:', resources);
     
     const container = document.getElementById('resources');
     if (!container) {
@@ -372,11 +372,11 @@ function renderResources(resources) {
     }
     
     if (!resources || !Array.isArray(resources) || resources.length === 0) {
-        console.log('No resources data provided or resources array is empty');
+        //console.log('No resources data provided or resources array is empty');
         return;
     }
     
-    console.log('Rendering resources data...');
+    //console.log('Rendering resources data...');
     
     // Clear existing dynamic content but keep the title
     const existingDynamic = resourcesDiv.querySelector('.dynamic-resources');
@@ -407,11 +407,11 @@ function renderResources(resources) {
     dynamicDiv.innerHTML = html;
     resourcesDiv.appendChild(dynamicDiv);
     
-    console.log('Resources rendered successfully');
+    //console.log('Resources rendered successfully');
 }
 
 function renderEvaluation(evaluation) {
-    console.log('renderEvaluation called with:', evaluation);
+    //console.log('renderEvaluation called with:', evaluation);
     
     const container = document.getElementById('evaluacion');
     if (!container) {
@@ -432,7 +432,7 @@ function renderEvaluation(evaluation) {
     }
     
     if (!evaluation) {
-        console.log('No evaluation data provided');
+        //console.log('No evaluation data provided');
         // Show placeholder instead of nothing
         const placeholderDiv = document.createElement('div');
         placeholderDiv.className = 'dynamic-evaluation mt-4 p-3 bg-light rounded';
@@ -446,7 +446,7 @@ function renderEvaluation(evaluation) {
         return;
     }
     
-    console.log('Rendering evaluation data...');
+    //console.log('Rendering evaluation data...');
     
     // Clear existing dynamic content but preserve the original content
     let existingDynamic = evaluationDiv.querySelector('.dynamic-evaluation');
@@ -466,7 +466,7 @@ function renderEvaluation(evaluation) {
     
     evaluationDiv.appendChild(dynamicDiv);
     
-    console.log('Evaluation rendered successfully');
+    //console.log('Evaluation rendered successfully');
 }
 
 function generateGantt(promotion) {

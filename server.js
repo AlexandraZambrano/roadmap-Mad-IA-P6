@@ -7,34 +7,41 @@ import { readFileSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import mongoose from 'mongoose';
+import { Op } from 'sequelize';
 import multer from 'multer';
 import xlsx from 'xlsx';
 import 'dotenv/config';
 
-// Models
-import Teacher from './backend/models/Teacher.js';
-import Admin from './backend/models/Admin.js';
-import Student from './backend/models/Student.js';
-import Promotion from './backend/models/Promotion.js';
-import QuickLink from './backend/models/QuickLink.js';
-import Section from './backend/models/Section.js';
-import ExtendedInfo from './backend/models/ExtendedInfo.js';
-import Calendar from './backend/models/Calendar.js';
-import Attendance from './backend/models/Attendance.js';
-import BootcampTemplate from './backend/models/BootcampTemplate.js';
-import Competence from './backend/models/Competence.js';
-import Indicator from './backend/models/Indicator.js';
-import Tool from './backend/models/Tool.js';
-import Area from './backend/models/Area.js';
-import Level from './backend/models/Level.js';
-import Resource from './backend/models/Resource.js';
-import Referent from './backend/models/Referent.js';
-import ResourceType from './backend/models/ResourceType.js';
-import CompetenceIndicator from './backend/models/CompetenceIndicator.js';
-import CompetenceTool from './backend/models/CompetenceTool.js';
-import CompetenceArea from './backend/models/CompetenceArea.js';
-import CompetenceResource from './backend/models/CompetenceResource.js';
+// ── Tiny logger: only prints in development, silent in production ─────────────
+const IS_DEV = process.env.NODE_ENV !== 'production';
+const log = {
+  info:  (...a) => IS_DEV && console.log(...a),
+  warn:  (...a) => console.warn(...a),      // always show warnings
+  error: (...a) => console.error(...a),     // always show errors
+  debug: (...a) => IS_DEV && console.log('[debug]', ...a),
+};
+
+// SQL Models (Sequelize)
+import {
+    db,
+    Teacher,
+    Student,
+    Promotion,
+    QuickLink,
+    Section,
+    ExtendedInfo,
+    Attendance,
+    BootcampTemplate,
+    Competence,
+    Indicator,
+    Tool,
+    Area,
+    Level,
+    Resource,
+    CompetenceIndicator,
+    CompetenceTool,
+    CompetenceArea
+} from './backend/models/sql/index.js';
 import { sendPasswordEmail, sendReportEmail } from './backend/utils/email.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -43,7 +50,6 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/bootcamp-manager';
 
 // External auth base URL — driven by NODE_ENV in .env
 // NODE_ENV=development → uses EXTERNAL_AUTH_URL_DEV (local Symfony)
@@ -64,7 +70,6 @@ if (process.env.EXTERNAL_JWT_PUBLIC_KEY) {
   console.log('[auth] Loaded external JWT public key from env var EXTERNAL_JWT_PUBLIC_KEY');
 } else {
   try {
-    // Fallback: try both lowercase and uppercase paths for cross-platform compatibility
     let keyPath = join(__dirname, 'backend', 'keys', 'public.pem');
     try {
       EXTERNAL_JWT_PUBLIC_KEY = readFileSync(keyPath, 'utf8');
@@ -79,13 +84,16 @@ if (process.env.EXTERNAL_JWT_PUBLIC_KEY) {
   }
 }
 
-// MongoDB Connection
-mongoose.connect(MONGO_URI)
+// SQL Database Connection (Sequelize)
+db.authenticate()
   .then(async () => {
-    // Initialize default templates
+    log.debug('[db] SQL connection established');
+    // Sync all tables (create if not exist, alter to add missing columns)
+    await db.sync({ alter: { drop: false } });
+    log.debug('[db] All tables synced');
     await initializeDefaultTemplates();
   })
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => console.error('[db] SQL connection error:', err));
 
 // Middleware
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -185,34 +193,34 @@ app.get('/auth.html', (req, res) => {
 
 // --- Initialization ---
 
-async function initializeTestAccounts() {
-  const accounts = [
-    { name: 'Alex', email: 'alex@gmail.com', password: 'aA12345678910*', role: 'teacher' },
-    { name: 'Celia', email: 'celia@gmail.com', password: 'celia123456', role: 'teacher' },
-    { name: 'Test Student', email: 'student@test.com', password: 'student123', role: 'student' },
-    { name: 'System Admin', email: 'admin@test.com', password: 'admin123', role: 'admin' }
-  ];
+/**
+ * Teacher accounts are created exclusively via POST /api/admin/teachers which
+ * registers in the external auth system (users.coderf5.es) first.
+ * Students are not authenticated in this platform.
+ * Local admin accounts have been removed — superadmin access is granted via
+ * ROLE_SUPER_ADMIN on the external JWT.
+ * No local test accounts are initialised.
+ */
 
-  for (const acc of accounts) {
-    let Model;
-    if (acc.role === 'teacher') Model = Teacher;
-    else if (acc.role === 'student') Model = Student;
-    else if (acc.role === 'admin') Model = Admin;
-
-    const existing = await Model.findOne({ email: acc.email });
-    if (!existing) {
-      const hashedPassword = await bcrypt.hash(acc.password, 10);
-      await Model.create({
-        id: uuidv4(),
-        name: acc.name,
-        email: acc.email,
-        password: hashedPassword
-      });
+/**
+ * sqlSave(instance) — wraps Sequelize's .save() and marks all JSON columns as changed.
+ * Sequelize does NOT detect mutations to nested JSON objects automatically,
+ * so we must call instance.changed('field', true) for every JSON column before saving.
+ */
+const JSON_COLUMNS = {
+    Promotion:       ['modules','employability','ownerModules','collaborators','collaboratorModules','passwordChangeHistory','holidays'],
+    Student:         ['progress','projectsAssignments','withdrawal','accessLog','technicalTracking','transversalTracking','extendedInfo'],
+    ExtendedInfo:    ['schedule','team','resources','pildoras','modulesPildoras','competences','projectCompetences','projectEvaluations','virtualClassroom','sharedNotes','promotionResources'],
+    BootcampTemplate:['modules','resources','employability','competences','schedule','modulesPildoras'],
+};
+async function sqlSave(instance) {
+    const modelName = instance.constructor.name;
+    const jsonCols  = JSON_COLUMNS[modelName] || [];
+    for (const col of jsonCols) {
+        instance.changed(col, true);
     }
-  }
+    return instance.save();
 }
-
-initializeTestAccounts();
 
 // --- Auth Middleware ---
 
@@ -242,15 +250,13 @@ const verifyToken = async (req, res, next) => {
       try {
         if (!externalEmail) throw new Error(`No email field found in token. Token keys: ${JSON.stringify(Object.keys(decoded))}`);
 
-        let localTeacher = await Teacher.findOne({ email: externalEmail.toLowerCase() });
+        let localTeacher = await Teacher.findOne({ where: { email: externalEmail.toLowerCase(), deletedAt: null } });
         if (!localTeacher) {
           // Auto-provision: create a minimal teacher record so the user can see/create promotions
-          const tempPw = await bcrypt.hash(uuidv4(), 10); // random unusable password
           localTeacher = await Teacher.create({
             id: uuidv4(),
             name: decoded.name || decoded.username || externalEmail.split('@')[0],
-            email: externalEmail.toLowerCase(),
-            password: tempPw
+            email: externalEmail.toLowerCase()
           });
         }
         req.user = {
@@ -277,7 +283,8 @@ const verifyToken = async (req, res, next) => {
     console.warn('[verifyToken] EXTERNAL_JWT_PUBLIC_KEY not loaded, skipping external token verification');
   }
 
-  // 2. Try verifying with our internal HS256 secret (admin / student local accounts)
+  // 2. Try verifying with our internal HS256 secret (legacy fallback only)
+  // No local admin or student accounts exist anymore — all authentication is external.
   try {
     req.user = jwt.verify(token, JWT_SECRET);
     next();
@@ -381,8 +388,8 @@ async function evalApiGet(path, userToken) {
   const sep = baseUrl.includes('?') ? '&' : '?';
   const url = `${baseUrl}${sep}page_size=200`;
 
-  console.log(`[evalApiGet] 🔄 Fetching: ${url}`);
-  console.log(`[evalApiGet] Token (first 20 chars): ${userToken.substring(0, 20)}...`);
+  log.debug(`[evalApiGet] 🔄 Fetching: ${url}`);
+  log.debug(`[evalApiGet] Token (first 20 chars): ${userToken.substring(0, 20)}...`);
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${userToken}`, 'Content-Type': 'application/json' }
@@ -391,13 +398,13 @@ async function evalApiGet(path, userToken) {
   if (!res.ok) {
     const errText = await res.text();
     // Log as info/debug, not error — this is expected when external API is unavailable
-    console.log(`[evalApiGet] ❌ External API ${path} returned ${res.status}`);
-    console.log(`[evalApiGet] Response body: ${errText.substring(0, 500)}`);
+    log.debug(`[evalApiGet] ❌ External API ${path} returned ${res.status}`);
+    log.debug(`[evalApiGet] Response body: ${errText.substring(0, 500)}`);
     throw new Error(`Eval API ${path} → ${res.status}`);
   }
 
   const json = await res.json();
-  console.log(`[evalApiGet] ✓ Successfully fetched ${path} from Eval API`);
+  log.debug(`[evalApiGet] ✓ Successfully fetched ${path} from Eval API`);
 
   // Handle Django REST paginated response: { count, next, results: [] }
   if (!Array.isArray(json) && json.results) {
@@ -453,7 +460,7 @@ function normaliseEvalCompetence(comp) {
 
   // tools array — extract tool objects with their indicators (for tool-based evaluation)
   const toolsRaw = comp.tools || [];
-  console.log('❌❌😉😉💜💜💜📌📌  toolsRaw:', toolsRaw);
+  log.debug('❌❌😉😉💜💜💜📌📌  toolsRaw:', toolsRaw);
   const tools = toolsRaw.map(t => ({ id: t.id, name: t.name, description: t.description, indicators: t.indicators, referents: t.referents, resources: t.resources|| '' }));
 
   // Build levels by collecting indicators from ALL tools and grouping by levelId
@@ -518,14 +525,14 @@ app.get('/api/areas', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/areas/', token);
-      console.log('[GET /api/areas] ✓ Fetched from external API:', rows.length, 'areas');
+      log.debug('[GET /api/areas] ✓ Fetched from external API:', rows.length, 'areas');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/areas] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/areas] Using local DB fallback (external API unavailable)');
     }
     // Fallback to local database
-    const areas = await Area.find({}).sort({ id: 1 }).lean();
-    console.log('[GET /api/areas] ✓ Fallback returned', areas.length, 'areas from local DB');
+    const areas = await Area.findAll({ order: [["id","ASC"]] });
+    log.debug('[GET /api/areas] ✓ Fallback returned', areas.length, 'areas from local DB');
     res.json(areas);
   } catch (error) {
     console.error('[GET /api/areas] Server error:', error.message);
@@ -539,13 +546,13 @@ app.get('/api/tools', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/tools/', token);
-      console.log('[GET /api/tools] ✓ Fetched from external API:', rows.length, 'tools');
+      log.debug('[GET /api/tools] ✓ Fetched from external API:', rows.length, 'tools');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/tools] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/tools] Using local DB fallback (external API unavailable)');
     }
-    const tools = await Tool.find({}).sort({ id: 1 }).lean();
-    console.log('[GET /api/tools] ✓ Fallback returned', tools.length, 'tools from local DB');
+    const tools = await Tool.findAll({ order: [["id","ASC"]] });
+    log.debug('[GET /api/tools] ✓ Fallback returned', tools.length, 'tools from local DB');
     res.json(tools);
   } catch (error) {
     console.error('[GET /api/tools] Server error:', error.message);
@@ -559,13 +566,13 @@ app.get('/api/indicators', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/indicators/', token);
-      console.log('[GET /api/indicators] ✓ Fetched from external API:', rows.length, 'indicators');
+      log.debug('[GET /api/indicators] ✓ Fetched from external API:', rows.length, 'indicators');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/indicators] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/indicators] Using local DB fallback (external API unavailable)');
     }
-    const indicators = await Indicator.find({}).lean();
-    console.log('[GET /api/indicators] ✓ Fallback returned', indicators.length, 'indicators from local DB');
+    const indicators = await Indicator.findAll();
+    log.debug('[GET /api/indicators] ✓ Fallback returned', indicators.length, 'indicators from local DB');
     res.json(indicators);
   } catch (error) {
     console.error('[GET /api/indicators] Server error:', error.message);
@@ -579,13 +586,13 @@ app.get('/api/levels', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/levels/', token);
-      console.log('[GET /api/levels] ✓ Fetched from external API:', rows.length, 'levels');
+      log.debug('[GET /api/levels] ✓ Fetched from external API:', rows.length, 'levels');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/levels] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/levels] Using local DB fallback (external API unavailable)');
     }
-    const levels = await Level.find({}).lean();
-    console.log('[GET /api/levels] ✓ Fallback returned', levels.length, 'levels from local DB');
+    const levels = await Level.findAll();
+    log.debug('[GET /api/levels] ✓ Fallback returned', levels.length, 'levels from local DB');
     res.json(levels);
   } catch (error) {
     console.error('[GET /api/levels] Server error:', error.message);
@@ -599,13 +606,13 @@ app.get('/api/resources', verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     try {
       const rows = await evalApiGet('/resources/', token);
-      console.log('[GET /api/resources] ✓ Fetched from external API:', rows.length, 'resources');
+      log.debug('[GET /api/resources] ✓ Fetched from external API:', rows.length, 'resources');
       return res.json(rows);
     } catch (evalErr) {
-      console.log('[GET /api/resources] Using local DB fallback (external API unavailable)');
+      log.debug('[GET /api/resources] Using local DB fallback (external API unavailable)');
     }
-    const resources = await Resource.find({}).lean();
-    console.log('[GET /api/resources] ✓ Fallback returned', resources.length, 'resources from local DB');
+    const resources = await Resource.findAll();
+    log.debug('[GET /api/resources] ✓ Fallback returned', resources.length, 'resources from local DB');
     res.json(resources);
   } catch (error) {
     console.error('[GET /api/resources] Server error:', error.message);
@@ -618,19 +625,13 @@ app.get('/api/competences', verifyToken, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     try {
-      console.log('[GET /api/competences] 🔄 Attempting to fetch from external API: https://evaluation.coderf5.es/v1/competences/');
+      log.debug('[GET /api/competences] 🔄 Attempting to fetch from external API: https://evaluation.coderf5.es/v1/competences/');
       const rows = await evalApiGet('/competences/', token);
-      console.log('[GET /api/competences] ✓ Successfully fetched', rows, 'raw competences from external API');
+      log.debug('[GET /api/competences] ✓ Successfully fetched', rows, 'raw competences from external API');
       const normalised = rows.map(normaliseEvalCompetence);
-      console.log('❌❌😉😉💜💜💜📌📌[GET /api/competences] ✓ Normalised data includes:', normalised[0].tools, 'competences with areas, tools, indicators');
+      log.debug('❌❌😉😉💜💜💜📌📌[GET /api/competences] ✓ Normalised data includes:', normalised[0].tools, 'competences with areas, tools, indicators');
       if (normalised.length > 0) {
-        console.log('[GET /api/competences] ✓ Sample competence structure:', JSON.stringify({
-          id: normalised[0].id,
-          name: normalised[0].name,
-          areas: normalised[0].areas.slice(0, 1),
-          tools: normalised[0].tools.slice(0, 1),
-          indicators: normalised[0].indicators
-        }, null, 2));
+        log.debug('[GET /api/competences] ✓ Sample competence structure:', JSON.stringify({ id: normalised[0].id, name: normalised[0].name, areas: normalised[0].areas.slice(0, 1), tools: normalised[0].tools.slice(0, 1), indicators: normalised[0].indicators }, null, 2));
       }
       return res.json(normalised);
     } catch (evalErr) {
@@ -642,17 +643,17 @@ app.get('/api/competences', verifyToken, async (req, res) => {
       competences, indicators, tools, areas, levels,
       compIndicators, compTools, compAreas
     ] = await Promise.all([
-      Competence.find({}).sort({ id: 1 }).lean(),
-      Indicator.find({}).lean(),
-      Tool.find({}).lean(),
-      Area.find({}).lean(),
-      Level.find({}).lean(),
-      CompetenceIndicator.find({}).lean(),
-      CompetenceTool.find({}).lean(),
-      CompetenceArea.find({}).lean()
+      Competence.findAll({ order: [["id","ASC"]] }),
+      Indicator.findAll(),
+      Tool.findAll(),
+      Area.findAll(),
+      Level.findAll(),
+      CompetenceIndicator.findAll(),
+      CompetenceTool.findAll(),
+      CompetenceArea.findAll()
     ]);
 
-    console.log('[GET /api/competences] Local DB fallback:', competences.length, 'competences');
+    log.debug('[GET /api/competences] Local DB fallback:', competences.length, 'competences');
 
     const indicatorMap = Object.fromEntries(indicators.map(i => [i.id, i]));
     const toolMap      = Object.fromEntries(tools.map(t => [t.id, t]));
@@ -689,7 +690,7 @@ app.get('/api/competences', verifyToken, async (req, res) => {
       return { id: comp.id, name: comp.name, description: comp.description, areas: compAreasList, levels: levels_grouped, tools: compToolsList };
     });
 
-    console.log(`[GET /api/competences] Returning ${enriched.length} competences from local DB fallback`);
+    log.debug(`[GET /api/competences] Returning ${enriched.length} competences from local DB fallback`);
     res.json(enriched);
   } catch (error) {
     console.error('[GET /api/competences] Error:', error);
@@ -702,11 +703,11 @@ app.get('/api/competences', verifyToken, async (req, res) => {
 // Get promotion access password (teacher only)
 app.get('/api/promotions/:promotionId/access-password', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    console.log('[GET access-password] Promotion found:', promotion.id, 'Password:', promotion.accessPassword);
+    log.debug('[GET access-password] Promotion found:', promotion.id, 'Password:', promotion.accessPassword);
     res.json({ accessPassword: promotion.accessPassword || null });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -719,7 +720,7 @@ app.post('/api/promotions/:promotionId/verify-password', async (req, res) => {
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: 'Password is required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
     if (promotion.accessPassword !== password) {
@@ -745,7 +746,7 @@ app.post('/api/promotions/:promotionId/access-password', verifyToken, async (req
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: 'Password is required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -760,7 +761,7 @@ app.post('/api/promotions/:promotionId/access-password', verifyToken, async (req
     }
 
     promotion.accessPassword = password;
-    await promotion.save();
+    await sqlSave(promotion);
 
     res.json({ message: 'Access password updated', accessPassword: password });
   } catch (error) {
@@ -771,7 +772,7 @@ app.post('/api/promotions/:promotionId/access-password', verifyToken, async (req
 // Remove promotion access password (teacher only)
 app.delete('/api/promotions/:promotionId/access-password', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -786,7 +787,7 @@ app.delete('/api/promotions/:promotionId/access-password', verifyToken, async (r
     }
 
     promotion.accessPassword = undefined;
-    await promotion.save();
+    await sqlSave(promotion);
 
     res.json({ message: 'Access password removed' });
   } catch (error) {
@@ -799,7 +800,7 @@ app.delete('/api/promotions/:promotionId/access-password', verifyToken, async (r
 // Get teaching content URL (teacher only)
 app.get('/api/promotions/:promotionId/teaching-content', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -815,12 +816,12 @@ app.post('/api/promotions/:promotionId/teaching-content', verifyToken, async (re
     const { teachingContentUrl } = req.body;
     if (!teachingContentUrl) return res.status(400).json({ error: 'Teaching content URL is required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     promotion.teachingContentUrl = teachingContentUrl;
-    await promotion.save();
+    await sqlSave(promotion);
 
     res.json({ message: 'Teaching content URL updated', teachingContentUrl });
   } catch (error) {
@@ -831,12 +832,12 @@ app.post('/api/promotions/:promotionId/teaching-content', verifyToken, async (re
 // Remove teaching content URL (teacher only)
 app.delete('/api/promotions/:promotionId/teaching-content', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     promotion.teachingContentUrl = undefined;
-    await promotion.save();
+    await sqlSave(promotion);
 
     res.json({ message: 'Teaching content URL removed' });
   } catch (error) {
@@ -850,7 +851,7 @@ app.delete('/api/promotions/:promotionId/teaching-content', verifyToken, async (
 // Get Asana workspace URL for this promotion
 app.get('/api/promotions/:promotionId/asana-workspace', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -866,12 +867,12 @@ app.post('/api/promotions/:promotionId/asana-workspace', verifyToken, async (req
     const { asanaWorkspaceUrl } = req.body;
     if (!asanaWorkspaceUrl) return res.status(400).json({ error: 'Asana workspace URL is required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     promotion.asanaWorkspaceUrl = asanaWorkspaceUrl;
-    await promotion.save();
+    await sqlSave(promotion);
 
     res.json({ message: 'Asana workspace URL updated', asanaWorkspaceUrl });
   } catch (error) {
@@ -882,12 +883,12 @@ app.post('/api/promotions/:promotionId/asana-workspace', verifyToken, async (req
 // Remove Asana workspace URL (teacher only)
 app.delete('/api/promotions/:promotionId/asana-workspace', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     promotion.asanaWorkspaceUrl = undefined;
-    await promotion.save();
+    await sqlSave(promotion);
 
     res.json({ message: 'Asana workspace URL removed' });
   } catch (error) {
@@ -1167,18 +1168,27 @@ async function initializeDefaultTemplates() {
   ];
 
   for (const template of defaultTemplates) {
-    const result = await BootcampTemplate.findOneAndUpdate(
-      { id: template.id },
-      { $set: template },
-      { upsert: true, strict: false, runValidators: false, returnDocument: 'after' }
-    );
+    await BootcampTemplate.upsert({
+      id:              template.id,
+      name:            template.name,
+      description:     template.description || '',
+      type:            template.type || 'bootcamp',
+      language:        template.language || 'es',
+      modules:         template.modules || [],
+      resources:       template.resources || [],
+      employability:   template.employability || [],
+      competences:     template.competences || [],
+      schedule:        template.schedule || {},
+      modulesPildoras: template.modulesPildoras || [],
+      isDefault:       true,
+    });
   }
 }
 
 // Get all templates (system + custom)
 app.get('/api/bootcamp-templates', verifyToken, async (req, res) => {
   try {
-    const templates = await BootcampTemplate.find({});
+    const templates = await BootcampTemplate.findAll();
     res.json(templates);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1188,24 +1198,25 @@ app.get('/api/bootcamp-templates', verifyToken, async (req, res) => {
 // Create custom template
 app.post('/api/bootcamp-templates', verifyToken, async (req, res) => {
   try {
-    const { name, description, weeks, hours, hoursPerWeek, modules, evaluation, schedule } = req.body;
+    const { name, description, type, language, modules, schedule, resources, employability, competences, modulesPildoras } = req.body;
 
-    if (!name || !weeks) {
-      return res.status(400).json({ error: 'Name and weeks are required' });
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
     }
 
     const template = await BootcampTemplate.create({
-      id: `custom-${uuidv4()}`,
+      id:              `custom-${uuidv4()}`,
       name,
-      description,
-      weeks,
-      hours: hours || weeks * (hoursPerWeek || 35),
-      hoursPerWeek: hoursPerWeek || 35,
-      modules: modules || [],
-      evaluation: evaluation || '',
-      schedule: schedule || {},
-      isCustom: true,
-      createdBy: req.user.id
+      description:     description || '',
+      type:            type || 'bootcamp',
+      language:        language || 'es',
+      modules:         modules || [],
+      schedule:        schedule || {},
+      resources:       resources || [],
+      employability:   employability || [],
+      competences:     competences || [],
+      modulesPildoras: modulesPildoras || [],
+      isDefault:       false,
     });
 
     res.status(201).json(template);
@@ -1217,7 +1228,7 @@ app.post('/api/bootcamp-templates', verifyToken, async (req, res) => {
 // Get template by ID
 app.get('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => {
   try {
-    const template = await BootcampTemplate.findOne({ id: req.params.templateId });
+    const template = await BootcampTemplate.findOne({ where: { id: req.params.templateId } });
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
     }
@@ -1230,13 +1241,13 @@ app.get('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => 
 // Delete custom template
 app.delete('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => {
   try {
-    const template = await BootcampTemplate.findOne({ id: req.params.templateId });
+    const template = await BootcampTemplate.findOne({ where: { id: req.params.templateId } });
 
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
     }
 
-    const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+    const isAdmin = req.user.role === 'superadmin';
 
     if (!template.isCustom && !isAdmin) {
       return res.status(403).json({ error: 'Cannot delete system templates' });
@@ -1246,7 +1257,7 @@ app.delete('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) 
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    await BootcampTemplate.deleteOne({ id: req.params.templateId });
+    await BootcampTemplate.destroy({ where: { id: req.params.templateId } });
     res.json({ message: 'Template deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1256,13 +1267,13 @@ app.delete('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) 
 // Update custom template
 app.put('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => {
   try {
-    const template = await BootcampTemplate.findOne({ id: req.params.templateId });
+    const template = await BootcampTemplate.findOne({ where: { id: req.params.templateId } });
 
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
     }
 
-    const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+    const isAdmin = req.user.role === 'superadmin';
 
     if (!template.isCustom && !isAdmin) {
       return res.status(403).json({ error: 'Cannot edit system templates' });
@@ -1272,23 +1283,21 @@ app.put('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => 
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const { name, description, weeks, hours, hoursPerWeek, modules, evaluation, schedule,
-      resources, employability, competences, school, projectType, totalHours, modality,
-      materials, internships, funders, funderDeadlines, okrKpis, funderKpis,
-      projectMeetings, teamMeetings, trainerDayOff, cotrainerDayOff } = req.body;
+    const { name, description, type, language, modules, resources, employability,
+            competences, schedule, modulesPildoras } = req.body;
 
-    const updated = await BootcampTemplate.findOneAndUpdate(
-      { id: req.params.templateId },
-      {
-        $set: {
-          name, description, weeks, hours, hoursPerWeek, modules, evaluation, schedule,
-          resources, employability, competences, school, projectType, totalHours, modality,
-          materials, internships, funders, funderDeadlines, okrKpis, funderKpis,
-          projectMeetings, teamMeetings, trainerDayOff, cotrainerDayOff
-        }
-      },
-      { returnDocument: 'after' }
-    );
+    if (name !== undefined) template.name = name;
+    if (description !== undefined) template.description = description;
+    if (type !== undefined) template.type = type;
+    if (language !== undefined) template.language = language;
+    if (modules !== undefined) template.modules = modules;
+    if (resources !== undefined) template.resources = resources;
+    if (employability !== undefined) template.employability = employability;
+    if (competences !== undefined) template.competences = competences;
+    if (schedule !== undefined) template.schedule = schedule;
+    if (modulesPildoras !== undefined) template.modulesPildoras = modulesPildoras;
+    await sqlSave(template);
+    const updated = template;
 
     res.json(updated);
   } catch (error) {
@@ -1442,34 +1451,27 @@ app.post('/api/auth/login', (req, res) => {
 // Get current user profile
 app.get('/api/profile', verifyToken, async (req, res) => {
   try {
-    let user = null;
     const { role } = req.user;
 
-    if (role === 'teacher' || role === 'superadmin') {
-      user = await Teacher.findOne({ id: req.user.id });
-    } else if (role === 'admin') {
-      user = await Admin.findOne({ id: req.user.id });
-    } else if (role === 'student') {
-      user = await Student.findOne({ id: req.user.id });
+    // Only teachers and superadmins have a local profile record.
+    // Students are not authenticated in this platform.
+    if (role !== 'teacher' && role !== 'superadmin') {
+      return res.status(403).json({ error: 'Profile not available for this role' });
     }
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = await Teacher.findOne({ where: { id: req.user.id, deletedAt: null } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Return profile without password
-    const profile = {
+    res.json({
       id: user.id,
       name: user.name,
       lastName: user.lastName || '',
       email: user.email,
       location: user.location || '',
-      role: role,
-      userRole: role === 'teacher' ? (user.userRole || 'Formador/a') : undefined,
+      role,
+      userRole: user.userRole || 'Formador/a',
       createdAt: user.createdAt
-    };
-
-    res.json(profile);
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1481,125 +1483,67 @@ app.put('/api/profile', verifyToken, async (req, res) => {
     const { name, lastName, location } = req.body;
     const { role } = req.user;
 
-    let user = null;
-
-    if (role === 'teacher' || role === 'superadmin') {
-      user = await Teacher.findOneAndUpdate(
-        { id: req.user.id },
-        {
-          name: name || undefined,
-          lastName: lastName || undefined,
-          location: location || undefined
-        },
-        { returnDocument: 'after' }
-      );
-    } else if (role === 'admin') {
-      user = await Admin.findOneAndUpdate(
-        { id: req.user.id },
-        {
-          name: name || undefined,
-          lastName: lastName || undefined,
-          location: location || undefined
-        },
-        { returnDocument: 'after' }
-      );
-    } else if (role === 'student') {
-      user = await Student.findOneAndUpdate(
-        { id: req.user.id },
-        {
-          name: name || undefined,
-          lastName: lastName || undefined
-        },
-        { returnDocument: 'after' }
-      );
+    if (role !== 'teacher' && role !== 'superadmin') {
+      return res.status(403).json({ error: 'Profile update not available for this role' });
     }
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = await Teacher.findOne({ where: { id: req.user.id, deletedAt: null } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const profile = {
-      id: user.id,
-      name: user.name,
-      lastName: user.lastName || '',
-      email: user.email,
-      location: user.location || '',
-      role: role,
-      createdAt: user.createdAt
-    };
+    if (name !== undefined) user.name = name;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (location !== undefined) user.location = location;
+    await sqlSave(user);
 
-    res.json({ message: 'Profile updated successfully', profile });
+    res.json({
+      message: 'Profile updated successfully',
+      profile: {
+        id: user.id,
+        name: user.name,
+        lastName: user.lastName || '',
+        email: user.email,
+        location: user.location || '',
+        role,
+        createdAt: user.createdAt
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Change password
+// Change password — proxied entirely to the external auth API.
+// Students don't authenticate; admins are superadmins from external JWT.
 app.post('/api/change-password', verifyToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const { role } = req.user;
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'Current and new password are required' });
     }
-
     if (newPassword.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    let user = null;
+    const teacher = await Teacher.findOne({ where: { id: req.user.id, deletedAt: null } });
+    if (!teacher) return res.status(404).json({ error: 'User not found' });
 
-    if (role === 'teacher') {
-      user = await Teacher.findOne({ id: req.user.id });
-    } else if (role === 'admin') {
-      user = await Admin.findOne({ id: req.user.id });
-    } else if (role === 'student') {
-      user = await Student.findOne({ id: req.user.id });
+    try {
+      const extRes = await fetch(`${EXTERNAL_AUTH_BASE}/reset-password/api-request-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: teacher.email, currentPassword, newPassword })
+      });
+      const extData = await extRes.json().catch(() => ({}));
+      if (extRes.ok && extData.success !== false) {
+        return res.json({ message: 'Password changed successfully' });
+      }
+      return res.status(extRes.status >= 400 ? extRes.status : 400).json({
+        error: extData.message || extData.error || 'Error al cambiar la contraseña en el servidor externo'
+      });
+    } catch (extErr) {
+      return res.status(502).json({ error: 'External auth server unreachable' });
     }
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Verify current password
-    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!passwordMatch) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
-    }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    if (role === 'teacher') {
-      user = await Teacher.findOneAndUpdate(
-        { id: req.user.id },
-        {
-          password: hashedPassword,
-          passwordChangedAt: new Date()
-        },
-        { returnDocument: 'after' }
-      );
-    } else if (role === 'admin') {
-      user = await Admin.findOneAndUpdate(
-        { id: req.user.id },
-        {
-          password: hashedPassword,
-          passwordChangedAt: new Date()
-        },
-        { returnDocument: 'after' }
-      );
-    } else if (role === 'student') {
-      user = await Student.findOneAndUpdate(
-        { id: req.user.id },
-        {
-          password: hashedPassword
-        },
-        { returnDocument: 'after' }
-      );
-    }
-
-    res.json({ message: 'Password changed successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1609,16 +1553,16 @@ app.post('/api/change-password', verifyToken, async (req, res) => {
 
 app.get('/api/promotions/:promotionId/students', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const students = await Student.find({ promotionId: req.params.promotionId });
+    const students = await Student.findAll({ where: { promotionId: req.params.promotionId } });
 
     // Normalize the response to ensure consistent ID field
     const normalizedStudents = students.map(student => ({
-      id: student.id || student._id.toString(), // Prefer custom id, fallback to string version of _id
-      _id: student._id, // Keep _id for internal operations
+      id: student.id || student.id.toString(), // Prefer custom id, fallback to string version of _id
+      _id: student.id, // Keep _id for internal operations
       name: student.name,
       lastname: student.lastname,
       email: student.email,
@@ -1644,14 +1588,16 @@ app.get('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
     const { month } = req.query; // Format: YYYY-MM
     if (!month) return res.status(400).json({ error: 'Month is required (YYYY-MM)' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    // Fetch all attendance for this promotion in the given month using regex
-    const attendance = await Attendance.find({
-      promotionId: req.params.promotionId,
-      date: { $regex: new RegExp(`^${month}-`) }
+    // Fetch all attendance for this promotion in the given month
+    const attendance = await Attendance.findAll({
+      where: {
+        promotionId: req.params.promotionId,
+        date: { [Op.like]: `${month}-%` }
+      }
     });
 
     res.json(attendance);
@@ -1666,7 +1612,7 @@ app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
     const { studentId, date, status, note } = req.body;
     if (!studentId || !date) return res.status(400).json({ error: 'studentId and date are required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -1674,11 +1620,13 @@ app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
     const updateData = { status };
     if (note !== undefined && note !== null) updateData.note = note;
 
-    const attendance = await Attendance.findOneAndUpdate(
-      { promotionId: req.params.promotionId, studentId, date },
-      updateData,
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    let attendance = await Attendance.findOne({ where: { promotionId: req.params.promotionId, studentId, date } });
+    if (attendance) {
+      Object.assign(attendance, updateData);
+      await sqlSave(attendance);
+    } else {
+      attendance = await Attendance.create({ promotionId: req.params.promotionId, studentId, date, ...updateData });
+    }
 
     res.json(attendance);
   } catch (error) {
@@ -1690,19 +1638,22 @@ app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
 // Export students to Excel
 app.get('/api/promotions/:promotionId/students/export', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    let query = { promotionId: req.params.promotionId };
+    let whereClause = { promotionId: req.params.promotionId };
     
     // Filter by IDs if provided (comma-separated list)
     if (req.query.ids) {
       const ids = req.query.ids.split(',');
-      query.id = { $in: ids };
+      whereClause.id = { [Op.in]: ids };
     }
 
-    const students = await Student.find(query).sort({ isWithdrawn: 1, name: 1, lastname: 1 });
+    const students = await Student.findAll({
+      where: whereClause,
+      order: [['isWithdrawn', 'ASC'], ['name', 'ASC'], ['lastname', 'ASC']]
+    });
 
     if (students.length === 0) {
       return res.status(400).json({ error: 'No se encontraron estudiantes para exportar' });
@@ -1761,7 +1712,7 @@ app.get('/api/promotions/:promotionId/students/export', verifyToken, async (req,
 
 app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -1774,20 +1725,23 @@ app.get('/api/promotions/:promotionId/attendance/export', verifyToken, async (re
 
 
     // Get all students for this promotion
-    const students = await Student.find({ promotionId: req.params.promotionId }).sort({ name: 1, lastname: 1 });
-
+    const students = await Student.findAll({
+      where: { promotionId: req.params.promotionId },
+      order: [['name', 'ASC'], ['lastname', 'ASC']]
+    });
+    
     if (students.length === 0) {
       return res.status(400).json({ error: 'No se encontraron estudiantes en esta promoción' });
     }
 
     // Get all attendance records for the entire promotion period
-    const attendance = await Attendance.find({
-      promotionId: req.params.promotionId,
-      date: {
-        $gte: startDate,
-        $lte: endDate
-      }
-    }).sort({ date: 1 });
+    const attendance = await Attendance.findAll({
+      where: {
+        promotionId: req.params.promotionId,
+        date: { [Op.between]: [startDate, endDate] }
+      },
+      order: [['date', 'ASC']]
+    });
 
 
     // Generate all dates between start and end date
@@ -1955,7 +1909,7 @@ app.post('/api/reports/send-email', verifyToken, async (req, res) => {
 // GET — return the holiday list for the promotion
 app.get('/api/promotions/:promotionId/holidays', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     res.json({ holidays: promotion.holidays || [] });
   } catch (error) {
@@ -1966,12 +1920,13 @@ app.get('/api/promotions/:promotionId/holidays', verifyToken, async (req, res) =
 // PUT — replace the full holiday list for the promotion
 app.put('/api/promotions/:promotionId/holidays', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
     const { holidays } = req.body; // array of YYYY-MM-DD strings
     if (!Array.isArray(holidays)) return res.status(400).json({ error: 'holidays must be an array' });
-    await Promotion.findOneAndUpdate({ id: req.params.promotionId }, { holidays });
+    const _promo = await Promotion.findOne({ where: { id: req.params.promotionId } });
+    if (_promo) { _promo.holidays = holidays; await sqlSave(_promo); }
     res.json({ holidays });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1981,7 +1936,7 @@ app.put('/api/promotions/:promotionId/holidays', verifyToken, async (req, res) =
 // Add student manually (teacher adds student for tracking)
 app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -2049,7 +2004,7 @@ app.post('/api/promotions/:promotionId/students', verifyToken, async (req, res) 
 // (* = required)
 app.post('/api/promotions/:promotionId/students/upload-excel', verifyToken, upload.single('excelFile'), async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -2164,7 +2119,7 @@ app.post('/api/promotions/:promotionId/students/upload-excel', verifyToken, uplo
 app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (req, res) => {
   try {
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) {
       return res.status(404).json({ error: 'Promotion not found' });
     }
@@ -2179,7 +2134,7 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
     if (!email || !name || !lastname) return res.status(400).json({ error: 'Email, name, and lastname are required' });
 
     // First, let's find the student to see what we're working with
-    let existingStudent = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
+    let existingStudent = await Student.findOne({ where: { id: req.params.studentId, promotionId: req.params.promotionId } });
 
     if (!existingStudent) {
       // Try by MongoDB _id
@@ -2198,7 +2153,7 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
       email,
       promotionId: req.params.promotionId,
       $and: [
-        { _id: { $ne: existingStudent._id } }
+        { _id: { [Op.ne]: existingStudent.id } }
       ]
     });
 
@@ -2207,32 +2162,30 @@ app.put('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
     }
 
     // Update the student using the _id (which is always available)
-    const student = await Student.findByIdAndUpdate(
-      existingStudent._id,
-      {
-        name,
-        lastname,
-        email,
-        phone: phone || '',
-        age: age || null,
-        administrativeSituation: administrativeSituation || '',
-        nationality: nationality || '',
-        identificationDocument: identificationDocument || '',
-        gender: gender || '',
-        englishLevel: englishLevel || '',
-        educationLevel: educationLevel || '',
-        profession: profession || '',
-        community: community || ''
-      },
-      { returnDocument: 'after' }
-    );
+    Object.assign(existingStudent, {
+      name,
+      lastname,
+      email,
+      phone: phone || '',
+      age: age || null,
+      administrativeSituation: administrativeSituation || '',
+      nationality: nationality || '',
+      identificationDocument: identificationDocument || '',
+      gender: gender || '',
+      englishLevel: englishLevel || '',
+      educationLevel: educationLevel || '',
+      profession: profession || '',
+      community: community || ''
+    });
+    await sqlSave(existingStudent);
+    const student = existingStudent;
 
     if (!student) return res.status(404).json({ error: 'Failed to update student' });
 
     res.json({
       message: 'Student updated successfully',
       student: {
-        id: student.id || student._id,
+        id: student.id || student.id,
         name: student.name,
         lastname: student.lastname,
         email: student.email,
@@ -2261,11 +2214,11 @@ app.post('/api/promotions/:promotionId/track-student', async (req, res) => {
     // Email is optional for first access
     const tempEmail = email || `guest-${uuidv4()}@promotion.local`;
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
     // Check if student already exists
-    let student = await Student.findOne({ email: tempEmail, promotionId: req.params.promotionId });
+    let student = await Student.findOne({ where: { email: tempEmail, promotionId: req.params.promotionId } });
 
     if (!student) {
       // Create new tracked student
@@ -2287,7 +2240,7 @@ app.post('/api/promotions/:promotionId/track-student', async (req, res) => {
       userAgent: req.headers['user-agent']
     });
 
-    await student.save();
+    await sqlSave(student);
 
     res.json({ message: 'Student tracked', student: { id: student.id, email: student.email, name: student.name } });
   } catch (error) {
@@ -2300,15 +2253,12 @@ app.put('/api/promotions/:promotionId/students/:studentId/notes', verifyToken, a
   try {
     const { notes } = req.body;
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const student = await Student.findOneAndUpdate(
-      { id: req.params.studentId, promotionId: req.params.promotionId },
-      { notes: notes || '' },
-      { returnDocument: 'after' }
-    );
+    const student = await Student.findOne({ where: { id: req.params.studentId, promotionId: req.params.promotionId } });
+    if (student) { student.notes = notes || ''; await sqlSave(student); }
 
     if (!student) return res.status(404).json({ error: 'Student not found' });
     res.json({ message: 'Student notes updated', student });
@@ -2323,11 +2273,11 @@ app.put('/api/promotions/:promotionId/students/:studentId/progress', verifyToken
 
     const { modulesViewed, sectionsCompleted, modulesCompleted, lastAccessed } = req.body;
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const student = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
+    const student = await Student.findOne({ where: { id: req.params.studentId, promotionId: req.params.promotionId } });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
     // Update modules completed if provided
@@ -2348,7 +2298,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/progress', verifyToken
     // Update last accessed time
     student.progress.lastAccessed = lastAccessed ? new Date(lastAccessed) : new Date();
 
-    await student.save();
+    await sqlSave(student);
 
     res.json({
       id: student.id,
@@ -2379,7 +2329,7 @@ app.post('/api/promotions/:promotionId/projects/assign', verifyToken, async (req
       return res.status(400).json({ error: 'moduleId, projectName and studentIds are required' });
     }
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -2400,7 +2350,7 @@ app.post('/api/promotions/:promotionId/projects/assign', verifyToken, async (req
     // For each student, add the assignment (including teammates minus self)
     const results = [];
     for (const studentId of studentIds) {
-      const student = await Student.findOne({ id: studentId, promotionId: req.params.promotionId });
+      const student = await Student.findOne({ where: { id: studentId, promotionId: req.params.promotionId } });
       if (!student) {
         results.push({ studentId, ok: false, error: 'Student not found' });
         continue;
@@ -2410,7 +2360,7 @@ app.post('/api/promotions/:promotionId/projects/assign', verifyToken, async (req
       const studentAssignment = { ...assignment, teammates };
       student.projectsAssignments = student.projectsAssignments || [];
       student.projectsAssignments.push(studentAssignment);
-      await student.save();
+      await sqlSave(student);
       results.push({ studentId, ok: true });
     }
 
@@ -2423,11 +2373,11 @@ app.post('/api/promotions/:promotionId/projects/assign', verifyToken, async (req
 // List student project assignments
 app.get('/api/promotions/:promotionId/students/:studentId/projects', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const student = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
+    const student = await Student.findOne({ where: { id: req.params.studentId, promotionId: req.params.promotionId } });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
     res.json(student.projectsAssignments || []);
@@ -2441,11 +2391,11 @@ app.put('/api/promotions/:promotionId/students/:studentId/projects/:assignmentId
   try {
     const { done, groupName } = req.body;
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const student = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
+    const student = await Student.findOne({ where: { id: req.params.studentId, promotionId: req.params.promotionId } });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
     student.projectsAssignments = student.projectsAssignments || [];
@@ -2455,7 +2405,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/projects/:assignmentId
     if (typeof done === 'boolean') student.projectsAssignments[idx].done = done;
     if (typeof groupName === 'string') student.projectsAssignments[idx].groupName = groupName;
 
-    await student.save();
+    await sqlSave(student);
     res.json(student.projectsAssignments[idx]);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -2486,7 +2436,7 @@ function excelDateToJSDate(serial) {
 // Download Excel template for importing píldoras into a module
 app.get('/api/promotions/:promotionId/modules/:moduleId/pildoras/template-excel', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -2528,7 +2478,7 @@ app.get('/api/promotions/:promotionId/modules/:moduleId/pildoras/template-excel'
 // Upload Excel file for píldoras to a specific module
 app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel', verifyToken, upload.single('excelFile'), async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -2550,7 +2500,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
     }
 
     // Get current students for validation
-    const students = await Student.find({ promotionId: req.params.promotionId });
+    const students = await Student.findAll({ where: { promotionId: req.params.promotionId } });
     // Build lookup maps: exact "name lastname", name-only, and lastname-only (all lowercased)
     const studentByFullName = new Map();
     const studentByFirstName = new Map();
@@ -2643,7 +2593,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
     }
 
     // Get current extended info and update píldoras for this module
-    let extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    let extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo) {
       extendedInfo = await ExtendedInfo.create({
         promotionId: req.params.promotionId,
@@ -2675,7 +2625,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
     // Add imported píldoras to the module (append to existing ones)
     modulePildoras.pildoras.push(...pildoras);
 
-    await extendedInfo.save();
+    await sqlSave(extendedInfo);
 
     res.json({
       message: `Successfully imported ${pildoras.length} píldoras to module "${module.name}"`,
@@ -2699,7 +2649,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
 // Upload Excel file for píldoras (legacy endpoint - will add to first module)
 app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, upload.single('excelFile'), async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -2718,7 +2668,7 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
     }
 
     // Get current students for validation
-    const students = await Student.find({ promotionId: req.params.promotionId });
+    const students = await Student.findAll({ where: { promotionId: req.params.promotionId } });
     // Build lookup maps: exact "name lastname", name-only, and lastname-only (all lowercased)
     const studentByFullName2 = new Map();
     const studentByFirstName2 = new Map();
@@ -2802,7 +2752,7 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
     }
 
     // Get current extended info and update píldoras
-    let extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    let extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo) {
       extendedInfo = await ExtendedInfo.create({
         promotionId: req.params.promotionId,
@@ -2814,7 +2764,7 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
       });
     } else {
       extendedInfo.pildoras = pildoras;
-      await extendedInfo.save();
+      await sqlSave(extendedInfo);
     }
 
     res.json({
@@ -2835,11 +2785,11 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
 // Get module-based píldoras for a promotion
 app.get('/api/promotions/:promotionId/modules-pildoras', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    let extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    let extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo) {
       extendedInfo = await ExtendedInfo.create({
         promotionId: req.params.promotionId,
@@ -2884,7 +2834,7 @@ app.get('/api/promotions/:promotionId/modules-pildoras', verifyToken, async (req
           };
         });
 
-        await extendedInfo.save();
+        await sqlSave(extendedInfo);
       }
     }
 
@@ -2903,7 +2853,7 @@ app.get('/api/promotions/:promotionId/modules-pildoras', verifyToken, async (req
           existingModulePildoras.moduleName = module.name;
         }
       }
-      await extendedInfo.save();
+      await sqlSave(extendedInfo);
     }
 
     res.json({
@@ -2924,14 +2874,14 @@ app.put('/api/promotions/:promotionId/modules/:moduleId/pildoras', verifyToken, 
       return res.status(400).json({ error: 'pildoras array is required' });
     }
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     const module = promotion.modules.find(m => m.id === req.params.moduleId);
     if (!module) return res.status(404).json({ error: 'Module not found' });
 
-    let extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    let extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo) {
       extendedInfo = await ExtendedInfo.create({
         promotionId: req.params.promotionId,
@@ -2973,7 +2923,7 @@ app.put('/api/promotions/:promotionId/modules/:moduleId/pildoras', verifyToken, 
     });
     extendedInfo.pildoras = allPildoras;
 
-    await extendedInfo.save();
+    await sqlSave(extendedInfo);
 
     res.json({
       message: 'Module píldoras updated successfully',
@@ -2988,7 +2938,7 @@ app.put('/api/promotions/:promotionId/modules/:moduleId/pildoras', verifyToken, 
 // Get pildoras for a module
 app.get('/api/promotions/:promotionId/modules/:moduleId/pildoras', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -3010,7 +2960,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/:pildoraId/ass
       return res.status(400).json({ error: 'studentIds array is required' });
     }
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -3022,7 +2972,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/:pildoraId/ass
     const currentAssigned = new Set(mod.pildoras[pIndex].assignedStudentIds || []);
     studentIds.forEach(id => currentAssigned.add(id));
     mod.pildoras[pIndex].assignedStudentIds = Array.from(currentAssigned);
-    await promotion.save();
+    await sqlSave(promotion);
     res.json(mod.pildoras[pIndex]);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3031,11 +2981,11 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/:pildoraId/ass
 // Get student details
 app.get('/api/promotions/:promotionId/students/:studentId', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const student = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
+    const student = await Student.findOne({ where: { id: req.params.studentId, promotionId: req.params.promotionId } });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
     res.json(student);
@@ -3048,7 +2998,7 @@ app.get('/api/promotions/:promotionId/students/:studentId', verifyToken, async (
 
 // Helper: buscar estudiante por id custom o _id
 async function findStudentByIdOrObjectId(studentId, promotionId) {
-  let student = await Student.findOne({ id: studentId, promotionId });
+  let student = await Student.findOne({ where: { id: studentId, promotionId } });
   if (!student) {
     try { student = await Student.findOne({ _id: studentId, promotionId }); } catch (_) { }
   }
@@ -3058,7 +3008,7 @@ async function findStudentByIdOrObjectId(studentId, promotionId) {
 // PUT /api/promotions/:promotionId/students/:studentId/ficha/personal
 app.put('/api/promotions/:promotionId/students/:studentId/ficha/personal', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -3074,12 +3024,10 @@ app.put('/api/promotions/:promotionId/students/:studentId/ficha/personal', verif
 
     // Withdrawal-only update (no personal fields sent)
     if ((isWithdrawn !== undefined || withdrawal !== undefined) && !name) {
-      const updated = await Student.findByIdAndUpdate(
-        student._id,
-        { $set: { isWithdrawn: !!isWithdrawn, withdrawal: withdrawal || null } },
-        { new: true }
-      );
-      return res.json({ message: 'Estado de baja actualizado', student: updated });
+      student.isWithdrawn = !!isWithdrawn;
+      student.withdrawal = withdrawal || null;
+      await sqlSave(student);
+      return res.json({ message: 'Estado de baja actualizado', student });
     }
 
     // Validar obligatorios (solo nombre, apellido y email son imprescindibles)
@@ -3087,58 +3035,13 @@ app.put('/api/promotions/:promotionId/students/:studentId/ficha/personal', verif
       return res.status(400).json({ error: 'Faltan campos obligatorios: nombre, apellido y email' });
     }
 
-    const updated = await Student.findByIdAndUpdate(
-      student._id,
-      {
-        $set: {
-          name, lastname, email,
-          phone: phone || '',
-          age: (age && !isNaN(Number(age))) ? Number(age) : null,
-          administrativeSituation: administrativeSituation || '',
-          nationality: nationality || '',
-          identificationDocument: identificationDocument || '',
-          gender: gender || '',
-          englishLevel: englishLevel || '',
-          educationLevel: educationLevel || '',
-          profession: profession || '',
-          community: community || '',
-          ...(isWithdrawn !== undefined ? { isWithdrawn: !!isWithdrawn } : {}),
-          ...(withdrawal !== undefined ? { withdrawal } : {})
-        }
-      },
-      { new: true, runValidators: false }
-    );
-
-    res.json({ message: 'Datos personales actualizados', student: updated });
-  } catch (error) {
-    console.error('Error PUT ficha/personal:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// PUT /api/promotions/:promotionId/students/:studentId/ficha/technical
-app.put('/api/promotions/:promotionId/students/:studentId/ficha/technical', verifyToken, async (req, res) => {
-  try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
-    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
-    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
-
-    const student = await findStudentByIdOrObjectId(req.params.studentId, req.params.promotionId);
-    if (!student) return res.status(404).json({ error: 'Student not found' });
-
-    const { teacherNotes, teams, competences, completedModules, completedPildoras } = req.body;
-
-    const updated = await Student.findByIdAndUpdate(
-      student._id,
-      {
-        'technicalTracking.teacherNotes': Array.isArray(teacherNotes) ? teacherNotes : student.technicalTracking?.teacherNotes || [],
-        'technicalTracking.teams': Array.isArray(teams) ? teams : student.technicalTracking?.teams || [],
-        'technicalTracking.competences': Array.isArray(competences) ? competences : student.technicalTracking?.competences || [],
-        'technicalTracking.completedModules': Array.isArray(completedModules) ? completedModules : student.technicalTracking?.completedModules || [],
-        'technicalTracking.completedPildoras': Array.isArray(completedPildoras) ? completedPildoras : student.technicalTracking?.completedPildoras || [],
-      },
-      { new: true }
-    );
+    student.technicalTracking = { ...(student.technicalTracking || {}), teacherNotes: Array.isArray(teacherNotes) ? teacherNotes : student.technicalTracking?.teacherNotes || [] };
+    student.technicalTracking = { ...(student.technicalTracking || {}), teams: Array.isArray(teams) ? teams : student.technicalTracking?.teams || [] };
+    student.technicalTracking = { ...(student.technicalTracking || {}), competences: Array.isArray(competences) ? competences : student.technicalTracking?.competences || [] };
+    student.technicalTracking = { ...(student.technicalTracking || {}), completedModules: Array.isArray(completedModules) ? completedModules : student.technicalTracking?.completedModules || [] };
+    student.technicalTracking = { ...(student.technicalTracking || {}), completedPildoras: Array.isArray(completedPildoras) ? completedPildoras : student.technicalTracking?.completedPildoras || [] };
+    await sqlSave(student);
+    const updated = student;
 
     res.json({ message: 'Seguimiento técnico actualizado', student: updated });
   } catch (error) {
@@ -3150,7 +3053,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/ficha/technical', veri
 // POST /api/promotions/:promotionId/teams — Adds a team entry and propagates to all member students
 app.post('/api/promotions/:promotionId/teams', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -3180,9 +3083,7 @@ app.post('/api/promotions/:promotionId/teams', verifyToken, async (req, res) => 
       );
       if (!alreadyExists) {
         existingTeams.push(entryForThisStudent);
-        await Student.findByIdAndUpdate(student._id, {
-          'technicalTracking.teams': existingTeams
-        });
+        await (async () => { student.technicalTracking = { ...(student.technicalTracking || {}), teams: existingTeams }; student.changed('technicalTracking', true); await sqlSave(student); })();
         results.push({ studentId, status: 'updated' });
       } else {
         results.push({ studentId, status: 'already_exists' });
@@ -3199,7 +3100,7 @@ app.post('/api/promotions/:promotionId/teams', verifyToken, async (req, res) => 
 // PUT /api/promotions/:promotionId/students/:studentId/ficha/transversal
 app.put('/api/promotions/:promotionId/students/:studentId/ficha/transversal', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -3208,15 +3109,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/ficha/transversal', ve
 
     const { employabilitySessions, individualSessions, incidents } = req.body;
 
-    const updated = await Student.findByIdAndUpdate(
-      student._id,
-      {
-        'transversalTracking.employabilitySessions': Array.isArray(employabilitySessions) ? employabilitySessions : student.transversalTracking?.employabilitySessions || [],
-        'transversalTracking.individualSessions': Array.isArray(individualSessions) ? individualSessions : student.transversalTracking?.individualSessions || [],
-        'transversalTracking.incidents': Array.isArray(incidents) ? incidents : student.transversalTracking?.incidents || [],
-      },
-      { new: true }
-    );
+    (async () => { student.transversalTracking = { ...(student.transversalTracking || {}), employabilitySessions: Array.isArray(employabilitySessions) ? employabilitySessions : student.transversalTracking?.employabilitySessions || [] }; student.changed('transversalTracking', true); student.transversalTracking = { ...(student.transversalTracking || {}), individualSessions: Array.isArray(individualSessions) ? individualSessions : student.transversalTracking?.individualSessions || [] }; student.changed('transversalTracking', true); student.transversalTracking = { ...(student.transversalTracking || {}), incidents: Array.isArray(incidents) ? incidents : student.transversalTracking?.incidents || [] }; student.changed('transversalTracking', true); await sqlSave(student); return student; })(); const updated = student;
 
     res.json({ message: 'Seguimiento transversal actualizado', student: updated });
   } catch (error) {
@@ -3230,7 +3123,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/ficha/transversal', ve
 // Update student detailed information
 app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) {
       return res.status(404).json({ error: 'Promotion not found' });
     }
@@ -3256,7 +3149,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
     const finalLastname = lastname || lastName;
 
     // First try to find by custom id
-    let student = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
+    let student = await Student.findOne({ where: { id: req.params.studentId, promotionId: req.params.promotionId } });
 
     if (!student) {
       // Try by MongoDB _id
@@ -3272,9 +3165,7 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
     }
 
     // Update the student using findByIdAndUpdate for reliability
-    const updatedStudent = await Student.findByIdAndUpdate(
-      student._id,
-      {
+    (() => { Object.assign(student, {
         name: name || student.name,
         lastname: finalLastname || student.lastname || '',  // Provide default if field doesn't exist
         age: age !== undefined ? age : (student.age || null),
@@ -3285,14 +3176,12 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
         description: description || student.description,
         workBackground: workBackground || student.workBackground,
         email: email || student.email
-      },
-      { returnDocument: 'after' }
-    );
+      }); sqlSave(student); return student; })(); const updatedStudent = student;
 
     res.json({
       message: 'Student profile updated',
       student: {
-        id: updatedStudent.id || updatedStudent._id,
+        id: updatedStudent.id || updatedStudent.id,
         name: updatedStudent.name,
         lastname: updatedStudent.lastname,
         email: updatedStudent.email,
@@ -3311,12 +3200,12 @@ app.put('/api/promotions/:promotionId/students/:studentId/profile', verifyToken,
 app.delete('/api/promotions/:promotionId/students/:studentId', verifyToken, async (req, res) => {
   try {
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     // First, let's find the student to see what we're working with
-    let existingStudent = await Student.findOne({ id: req.params.studentId, promotionId: req.params.promotionId });
+    let existingStudent = await Student.findOne({ where: { id: req.params.studentId, promotionId: req.params.promotionId } });
 
     if (!existingStudent) {
       // Try by MongoDB _id
@@ -3331,9 +3220,7 @@ app.delete('/api/promotions/:promotionId/students/:studentId', verifyToken, asyn
     }
 
     // Delete the student using the _id (which is always available)
-    const student = await Student.findByIdAndDelete(existingStudent._id);
-
-    if (!student) return res.status(404).json({ error: 'Failed to delete student' });
+    await Student.destroy({ where: { id: existingStudent.id } });
 
     res.json({ message: 'Student deleted successfully' });
   } catch (error) {
@@ -3346,7 +3233,7 @@ app.delete('/api/promotions/:promotionId/students/:studentId', verifyToken, asyn
 
 app.get('/api/promotions', async (req, res) => {
   try {
-    const promotions = await Promotion.find({});
+    const promotions = await Promotion.findAll();
     res.json(promotions);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3355,9 +3242,9 @@ app.get('/api/promotions', async (req, res) => {
 
 app.get('/api/my-enrollments', verifyToken, async (req, res) => {
   try {
-    const enrollments = await Student.find({ $or: [{ id: req.user.id }, { email: req.user.email }] });
+    const enrollments = await Student.findAll({ where: { [Op.or]: [{ id: req.user.id }, { email: req.user.email }] } });
     const promotionIds = enrollments.map(e => e.promotionId).filter(id => id);
-    const enrolledPromotions = await Promotion.find({ id: { $in: promotionIds } });
+    const enrolledPromotions = await Promotion.findAll({ where: { id: { [Op.in]: promotionIds } } });
     res.json(enrolledPromotions);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3366,8 +3253,8 @@ app.get('/api/my-enrollments', verifyToken, async (req, res) => {
 
 app.get('/api/my-promotions', verifyToken, async (req, res) => {
   try {
-    const teacherPromotions = await Promotion.find({
-      $or: [{ teacherId: req.user.id }, { collaborators: req.user.id }]
+    const teacherPromotions = await Promotion.findAll({
+      where: { [Op.or]: [{ teacherId: req.user.id }, { collaborators: { [Op.like]: `%${req.user.id}%` } }] }
     });
     res.json(teacherPromotions);
   } catch (error) {
@@ -3377,8 +3264,8 @@ app.get('/api/my-promotions', verifyToken, async (req, res) => {
 
 app.get('/api/my-promotions-all', verifyToken, async (req, res) => {
   try {
-    const teacherPromotions = await Promotion.find({
-      $or: [{ teacherId: req.user.id }, { collaborators: req.user.id }]
+    const teacherPromotions = await Promotion.findAll({
+      where: { [Op.or]: [{ teacherId: req.user.id }, { collaborators: { [Op.like]: `%${req.user.id}%` } }] }
     });
     res.json(teacherPromotions);
   } catch (error) {
@@ -3388,7 +3275,7 @@ app.get('/api/my-promotions-all', verifyToken, async (req, res) => {
 
 app.get('/api/promotions/:id', async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.id });
+    const promotion = await Promotion.findOne({ where: { id: req.params.id } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     res.json(promotion);
   } catch (error) {
@@ -3407,7 +3294,7 @@ app.post('/api/promotions', verifyToken, async (req, res) => {
 
     if (templateId) {
       // Use lean() to get plain JS objects — no Mongoose _id complications
-      template = await BootcampTemplate.findOne({ id: templateId }).lean();
+      template = await BootcampTemplate.findOne({ where: { id: templateId } });
       if (template && template.modules && template.modules.length > 0 && promotionModules.length === 0) {
         promotionModules = template.modules.map(m => ({
           id: uuidv4(),
@@ -3477,10 +3364,8 @@ app.post('/api/promotions', verifyToken, async (req, res) => {
         };
       });
 
-      await ExtendedInfo.findOneAndUpdate(
-        { promotionId: promotion.id },
-        {
-          $set: {
+      await (async () => {
+      const _fields = {
             schedule,
             evaluation: template.evaluation || '',
             resources: mappedResources,
@@ -3502,10 +3387,16 @@ app.post('/api/promotions', verifyToken, async (req, res) => {
             team: [],
             pildoras: [],
             modulesPildoras: mappedModulesPildoras.length > 0 ? mappedModulesPildoras : []
-          }
-        },
-        { upsert: true, strict: false }
-      );
+          };
+      let _ei = await ExtendedInfo.findOne({ where: { promotionId: promotion.id } });
+      if (_ei) {
+        Object.assign(_ei, _fields);
+        for (const k of Object.keys(_fields)) _ei.changed(k, true);
+        await _ei.save();
+      } else {
+        await ExtendedInfo.create({ promotionId: promotion.id, ..._fields });
+      }
+    })();
     }
 
     res.status(201).json(promotion);
@@ -3517,13 +3408,14 @@ app.post('/api/promotions', verifyToken, async (req, res) => {
 
 app.put('/api/promotions/:id', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOneAndUpdate(
-      { id: req.params.id },
-      { ...req.body },
-      { returnDocument: 'after' }
-    );
+    const promotion = await Promotion.findOne({ where: { id: req.params.id } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+    const allowed = ['name','description','startDate','endDate','weeks','modules','employability','teachingContentUrl','asanaWorkspaceUrl','accessPassword','holidays','collaborators','ownerModules','collaboratorModules'];
+    for (const key of allowed) {
+      if (req.body.hasOwnProperty(key)) promotion[key] = req.body[key];
+    }
+    await sqlSave(promotion);
     res.json(promotion);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3532,16 +3424,16 @@ app.put('/api/promotions/:id', verifyToken, async (req, res) => {
 
 app.delete('/api/promotions/:id', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.id });
+    const promotion = await Promotion.findOne({ where: { id: req.params.id } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    await Promotion.deleteOne({ id: req.params.id });
-    await Student.deleteMany({ promotionId: req.params.id });
-    await QuickLink.deleteMany({ promotionId: req.params.id });
-    await Section.deleteMany({ promotionId: req.params.id });
-    await ExtendedInfo.deleteOne({ promotionId: req.params.id });
-    await Calendar.deleteOne({ promotionId: req.params.id });
+    await Promotion.destroy({ where: { id: req.params.id } });
+    await Student.destroy({ where: { promotionId: req.params.id } });
+    await QuickLink.destroy({ where: { promotionId: req.params.id } });
+    await Section.destroy({ where: { promotionId: req.params.id } });
+    await ExtendedInfo.destroy({ where: { promotionId: req.params.id } });
+    // googleCalendarId is now a column on promotions — no separate table to delete
 
     res.json({ message: 'Promotion deleted' });
   } catch (error) {
@@ -3556,13 +3448,13 @@ app.post('/api/promotions/:promotionId/modules', verifyToken, async (req, res) =
     const { name, duration, courses, projects } = req.body;
     if (!name || !duration) return res.status(400).json({ error: 'Name and duration are required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     const module = { id: uuidv4(), name, duration, courses: courses || [], projects: projects || [] };
     promotion.modules.push(module);
-    await promotion.save();
+    await sqlSave(promotion);
     res.status(201).json(module);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3573,7 +3465,7 @@ app.post('/api/promotions/:promotionId/modules', verifyToken, async (req, res) =
 
 app.get('/api/promotions/:promotionId/quick-links', async (req, res) => {
   try {
-    const quickLinks = await QuickLink.find({ promotionId: req.params.promotionId });
+    const quickLinks = await QuickLink.findAll({ where: { promotionId: req.params.promotionId } });
     res.json(quickLinks);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3585,7 +3477,7 @@ app.post('/api/promotions/:promotionId/quick-links', verifyToken, async (req, re
     const { name, url, platform } = req.body;
     if (!name || !url) return res.status(400).json({ error: 'Name and URL are required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -3598,12 +3490,12 @@ app.post('/api/promotions/:promotionId/quick-links', verifyToken, async (req, re
 
 app.delete('/api/promotions/:promotionId/quick-links/:linkId', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const result = await QuickLink.deleteOne({ id: req.params.linkId, promotionId: req.params.promotionId });
-    if (result.deletedCount === 0) return res.status(404).json({ error: 'Quick link not found' });
+    const result = await QuickLink.destroy({ where: { id: req.params.linkId, promotionId: req.params.promotionId } });
+    if (result === 0) return res.status(404).json({ error: 'Quick link not found' });
     res.json({ message: 'Quick link deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3614,7 +3506,7 @@ app.delete('/api/promotions/:promotionId/quick-links/:linkId', verifyToken, asyn
 
 app.get('/api/promotions/:promotionId/sections', async (req, res) => {
   try {
-    const sections = await Section.find({ promotionId: req.params.promotionId });
+    const sections = await Section.findAll({ where: { promotionId: req.params.promotionId } });
     res.json(sections);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3626,7 +3518,7 @@ app.post('/api/promotions/:promotionId/sections', verifyToken, async (req, res) 
     const { title, content } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -3639,16 +3531,16 @@ app.post('/api/promotions/:promotionId/sections', verifyToken, async (req, res) 
 
 app.put('/api/promotions/:promotionId/sections/:sectionId', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const section = await Section.findOneAndUpdate(
-      { id: req.params.sectionId, promotionId: req.params.promotionId },
-      { ...req.body },
-      { returnDocument: 'after' }
-    );
+    const section = await Section.findOne({ where: { id: req.params.sectionId, promotionId: req.params.promotionId } });
     if (!section) return res.status(404).json({ error: 'Section not found' });
+    const { title, content } = req.body;
+    if (title !== undefined) section.title = title;
+    if (content !== undefined) section.content = content;
+    await sqlSave(section);
     res.json(section);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3657,25 +3549,25 @@ app.put('/api/promotions/:promotionId/sections/:sectionId', verifyToken, async (
 
 app.delete('/api/promotions/:promotionId/sections/:sectionId', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const result = await Section.deleteOne({ id: req.params.sectionId, promotionId: req.params.promotionId });
-    if (result.deletedCount === 0) return res.status(404).json({ error: 'Section not found' });
+    const result = await Section.destroy({ where: { id: req.params.sectionId, promotionId: req.params.promotionId } });
+    if (result === 0) return res.status(404).json({ error: 'Section not found' });
     res.json({ message: 'Section deleted' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// ==================== CALENDAR ====================
+// ==================== CALENDAR (googleCalendarId stored on promotion) ====================
 
 app.get('/api/promotions/:promotionId/calendar', async (req, res) => {
   try {
-    const calendar = await Calendar.findOne({ promotionId: req.params.promotionId });
-    if (!calendar) return res.status(404).json({ error: 'Calendar not found' });
-    res.json(calendar);
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
+    if (!promotion || !promotion.googleCalendarId) return res.status(404).json({ error: 'Calendar not found' });
+    res.json({ promotionId: promotion.id, googleCalendarId: promotion.googleCalendarId });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -3686,16 +3578,13 @@ app.post('/api/promotions/:promotionId/calendar', verifyToken, async (req, res) 
     const { googleCalendarId } = req.body;
     if (!googleCalendarId) return res.status(400).json({ error: 'Google Calendar ID is required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    const calendar = await Calendar.findOneAndUpdate(
-      { promotionId: req.params.promotionId },
-      { googleCalendarId },
-      { upsert: true, returnDocument: 'after' }
-    );
-    res.json(calendar);
+    promotion.googleCalendarId = googleCalendarId;
+    await sqlSave(promotion);
+    res.json({ promotionId: promotion.id, googleCalendarId: promotion.googleCalendarId });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -3705,10 +3594,10 @@ app.post('/api/promotions/:promotionId/calendar', verifyToken, async (req, res) 
 
 app.get('/api/promotions/:promotionId/extended-info', async (req, res) => {
   try {
-    const extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
-    console.log(`[GET /api/promotions/${req.params.promotionId}/extended-info] Found:`, !!extendedInfo);
+    const extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+    log.debug(`[GET /api/promotions/${req.params.promotionId}/extended-info] Found:`, !!extendedInfo);
     if (extendedInfo) {
-      console.log('[extended-info] Has competences:', !!extendedInfo.competences, 'count:', (extendedInfo.competences || []).length);
+      log.debug('[extended-info] Has competences:', !!extendedInfo.competences, 'count:', (extendedInfo.competences || []).length);
     }
     if (!extendedInfo) {
       return res.json({ schedule: {}, team: [], resources: [], evaluation: '', pildoras: [], pildorasAssignmentOpen: false, competences: [] });
@@ -3721,7 +3610,7 @@ app.get('/api/promotions/:promotionId/extended-info', async (req, res) => {
 
 app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
@@ -3771,25 +3660,171 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
     if (Array.isArray(projectCompetences))             $setFields.projectCompetences = projectCompetences;
     if (body.hasOwnProperty('virtualClassroom'))       $setFields.virtualClassroom = virtualClassroom || {};
     // Final Update
-    const newInfo = await ExtendedInfo.findOneAndUpdate(
-      { promotionId: req.params.promotionId },
-      { $set: $setFields },
-      { upsert: true, returnDocument: 'after', strict: false }
-    );
+    (async () => {
+      let newInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+      if (newInfo) {
+        Object.assign(newInfo, $setFields);
+        for (const k of Object.keys($setFields)) newInfo.changed(k, true);
+        await newInfo.save();
+      } else {
+        newInfo = await ExtendedInfo.create({ promotionId: req.params.promotionId, ...$setFields });
+      }
+      return newInfo;
+    })(); const newInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
 
     // Mongoose "Mixed" type fields (like projectEvaluations, schedule, etc if defined as such)
     // sometimes need explicit marking if we are deeply Nesting objects, but findOneAndUpdate $set usually handles it.
     // However, to be extra safe for future saves:
-    if ($setFields.projectEvaluations) newInfo.markModified('projectEvaluations');
-    if ($setFields.projectCompetences)  newInfo.markModified('projectCompetences');
-    if ($setFields.virtualClassroom)   newInfo.markModified('virtualClassroom');
-    if ($setFields.schedule)           newInfo.markModified('schedule');
+    if ($setFields.projectEvaluations) newInfo.changed('projectEvaluations', true);
+    if ($setFields.projectCompetences)  newInfo.changed('projectCompetences', true);
+    if ($setFields.virtualClassroom)   newInfo.changed('virtualClassroom', true);
+    if ($setFields.schedule)           newInfo.changed('schedule', true);
     
-    await newInfo.save();
+    await sqlSave(newInfo);
 
     res.json(newInfo);
   } catch (error) {
     console.error('Error saving extended info:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== PROMOTION RESOURCES ====================
+// Resources created by teachers for a promotion: videos, repos, canva/ppt presentations.
+// Each resource has: id, title, description, module, type, url, status (draft|published), publishAt.
+// Public endpoint only returns published resources (or ones whose publishAt has passed).
+
+// GET — public access (only published)
+app.get('/api/promotions/:promotionId/promotion-resources', async (req, res) => {
+  try {
+    const extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+    const all = extendedInfo?.promotionResources || [];
+    const now = new Date();
+    // Return only resources that are published or whose scheduled publishAt has passed
+    const visible = all.filter(r => {
+      if (r.status === 'published') return true;
+      if (r.status === 'draft' && r.publishAt) {
+        return new Date(r.publishAt) <= now;
+      }
+      return false;
+    });
+    res.json(visible);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET all (including drafts) — teacher only
+app.get('/api/promotions/:promotionId/promotion-resources/all', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+    const extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+    res.json(extendedInfo?.promotionResources || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST — create a new resource (draft by default)
+app.post('/api/promotions/:promotionId/promotion-resources', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const { title, description, module: moduleName, type, url, status, publishAt } = req.body;
+    if (!title || !url) return res.status(400).json({ error: 'title and url are required' });
+
+    const validTypes = ['video', 'repository', 'canva', 'powerpoint', 'other'];
+    const validStatuses = ['draft', 'published'];
+
+    const newResource = {
+      id: uuidv4(),
+      title: title.trim(),
+      description: description?.trim() || '',
+      module: moduleName?.trim() || '',
+      type: validTypes.includes(type) ? type : 'other',
+      url: url.trim(),
+      status: validStatuses.includes(status) ? status : 'draft',
+      publishAt: publishAt || null,
+      createdAt: new Date().toISOString()
+    };
+
+    let extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+    if (!extendedInfo) {
+      extendedInfo = await ExtendedInfo.create({ id: uuidv4(), promotionId: req.params.promotionId, promotionResources: [newResource] });
+    } else {
+      const list = extendedInfo.promotionResources || [];
+      list.push(newResource);
+      extendedInfo.promotionResources = list;
+      await sqlSave(extendedInfo);
+    }
+
+    res.status(201).json(newResource);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT — update a resource (including publish/unpublish/schedule)
+app.put('/api/promotions/:promotionId/promotion-resources/:resourceId', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+    if (!extendedInfo) return res.status(404).json({ error: 'Extended info not found' });
+
+    const list = extendedInfo.promotionResources || [];
+    const idx = list.findIndex(r => r.id === req.params.resourceId);
+    if (idx === -1) return res.status(404).json({ error: 'Resource not found' });
+
+    const validTypes = ['video', 'repository', 'canva', 'powerpoint', 'other'];
+    const validStatuses = ['draft', 'published'];
+    const { title, description, module: moduleName, type, url, status, publishAt } = req.body;
+
+    const updated = { ...list[idx] };
+    if (title !== undefined)       updated.title = title.trim();
+    if (description !== undefined) updated.description = description.trim();
+    if (moduleName !== undefined)  updated.module = moduleName.trim();
+    if (type !== undefined)        updated.type = validTypes.includes(type) ? type : updated.type;
+    if (url !== undefined)         updated.url = url.trim();
+    if (status !== undefined)      updated.status = validStatuses.includes(status) ? status : updated.status;
+    if (publishAt !== undefined)   updated.publishAt = publishAt || null;
+    updated.updatedAt = new Date().toISOString();
+
+    list[idx] = updated;
+    extendedInfo.promotionResources = list;
+    await sqlSave(extendedInfo);
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE — remove a resource
+app.delete('/api/promotions/:promotionId/promotion-resources/:resourceId', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+    if (!extendedInfo) return res.status(404).json({ error: 'Extended info not found' });
+
+    const list = extendedInfo.promotionResources || [];
+    const filtered = list.filter(r => r.id !== req.params.resourceId);
+    if (filtered.length === list.length) return res.status(404).json({ error: 'Resource not found' });
+
+    extendedInfo.promotionResources = filtered;
+    await sqlSave(extendedInfo);
+
+    res.json({ message: 'Resource deleted' });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -3799,7 +3834,7 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
 // GET asana content URL
 app.get('/api/promotions/:promotionId/asana-content', async (req, res) => {
   try {
-    const extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    const extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo) {
       return res.json({ asanaContentUrl: '' });
     }
@@ -3812,17 +3847,50 @@ app.get('/api/promotions/:promotionId/asana-content', async (req, res) => {
 // POST/UPDATE asana content URL
 app.post('/api/promotions/:promotionId/asana-content', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
     const { asanaContentUrl } = req.body;
-    const updatedInfo = await ExtendedInfo.findOneAndUpdate(
-      { promotionId: req.params.promotionId },
-      { $set: { asanaContentUrl: asanaContentUrl || '' } },
-      { upsert: true, returnDocument: 'after' }
-    );
+    (async () => {
+      let _ei = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+      if (_ei) { _ei.asanaContentUrl = asanaContentUrl || ''; _ei.changed('asanaContentUrl', true); await _ei.save(); }
+      else { _ei = await ExtendedInfo.create({ promotionId: req.params.promotionId, asanaContentUrl: asanaContentUrl || '' }); }
+      return _ei;
+    })(); const updatedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     res.json({ asanaContentUrl: updatedInfo.asanaContentUrl });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== SHARED NOTES ====================
+
+// GET shared notes for a promotion
+app.get('/api/promotions/:promotionId/shared-notes', verifyToken, async (req, res) => {
+  try {
+    const extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+    res.json({ sharedNotes: extendedInfo?.sharedNotes || [] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT shared notes — replaces the full array (client sends the whole list)
+app.put('/api/promotions/:promotionId/shared-notes', verifyToken, async (req, res) => {
+  try {
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
+    if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
+    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
+
+    const notes = Array.isArray(req.body.sharedNotes) ? req.body.sharedNotes : [];
+    (async () => {
+      let _ei = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+      if (_ei) { _ei.sharedNotes = notes; _ei.changed('sharedNotes', true); await _ei.save(); }
+      else { _ei = await ExtendedInfo.create({ promotionId: req.params.promotionId, sharedNotes: notes }); }
+      return _ei;
+    })(); const updated = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+    res.json({ sharedNotes: updated.sharedNotes || [] });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -3831,15 +3899,14 @@ app.post('/api/promotions/:promotionId/asana-content', verifyToken, async (req, 
 // DELETE asana content URL
 app.delete('/api/promotions/:promotionId/asana-content', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
 
-    await ExtendedInfo.findOneAndUpdate(
-      { promotionId: req.params.promotionId },
-      { $set: { asanaContentUrl: '' } },
-      { upsert: true }
-    );
+    await (async () => {
+      const _ei = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
+      if (_ei) { _ei.asanaContentUrl = ''; _ei.changed('asanaContentUrl', true); await _ei.save(); }
+    })();
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3851,7 +3918,7 @@ app.delete('/api/promotions/:promotionId/asana-content', verifyToken, async (req
 // Public students list (minimal info for dropdowns)
 app.get('/api/promotions/:promotionId/public-students', async (req, res) => {
   try {
-    const students = await Student.find({ promotionId: req.params.promotionId }, 'id name lastname');
+    const students = await Student.findAll({ where: { promotionId: req.params.promotionId } });
     res.json(students);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3866,12 +3933,12 @@ app.put('/api/promotions/:promotionId/pildoras-self-assign', async (req, res) =>
       return res.status(400).json({ error: 'pildoraIndex and studentId are required' });
     }
 
-    const extendedInfo = await ExtendedInfo.findOne({ promotionId: req.params.promotionId });
+    const extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo || !extendedInfo.pildorasAssignmentOpen) {
       return res.status(403).json({ error: 'Self-assignment is currently closed by the teacher' });
     }
 
-    const student = await Student.findOne({ id: studentId, promotionId: req.params.promotionId });
+    const student = await Student.findOne({ where: { id: studentId, promotionId: req.params.promotionId } });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
     let pildora;
@@ -3902,7 +3969,7 @@ app.put('/api/promotions/:promotionId/pildoras-self-assign', async (req, res) =>
       pildora.students = pildora.students.filter(s => s.id !== studentId);
     }
 
-    await extendedInfo.save();
+    await sqlSave(extendedInfo);
     res.json({ message: 'Assignment updated successfully', pildora });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3915,13 +3982,13 @@ app.put('/api/promotions/:promotionId/pildoras-self-assign', async (req, res) =>
 app.get('/api/promotions/:promotionId/virtual-classroom', async (req, res) => {
   try {
     const promotionId = req.params.promotionId;
-    const ext = await ExtendedInfo.findOne({ promotionId }).lean();
+    const ext = await ExtendedInfo.findOne({ where: { promotionId } });
     if (!ext || !ext.virtualClassroom || !ext.virtualClassroom.isActive) {
       return res.json({ active: false });
     }
 
     const vc = ext.virtualClassroom || {};
-    const promotion = await Promotion.findOne({ id: promotionId }).lean();
+    const promotion = await Promotion.findOne({ where: { id: promotionId } });
     if (!promotion) {
       return res.status(404).json({ error: 'Promotion not found' });
     }
@@ -3931,10 +3998,10 @@ app.get('/api/promotions/:promotionId/virtual-classroom', async (req, res) => {
     const project = module ? (module.projects || []).find(p => p.name === vc.projectName) : null;
 
     // Resolve competences for this project from ExtendedInfo.projectCompetences + competences catalog
-    console.log(`[DEBUG] Resolving VC competences for ${promotionId}. ext.competences count: ${((ext || {}).competences || []).length}`);
+    log.debug(`[DEBUG] Resolving VC competences for ${promotionId}. ext.competences count: ${((ext || {}).competences || []).length}`);
     if (ext && ext.competences && ext.competences.length > 0) {
        const first = ext.competences[0];
-       console.log(`[DEBUG] First comp in DB: ${first.name}, levels: ${(first.levels || []).length}, compInds: ${!!first.competenceIndicators}`);
+       log.debug(`[DEBUG] First comp in DB: ${first.name}, levels: ${(first.levels || []).length}, compInds: ${!!first.competenceIndicators}`);
     }
     let competences = [];
     if (Array.isArray(ext.projectCompetences) && Array.isArray(ext.competences)) {
@@ -4009,13 +4076,13 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
       return res.status(400).json({ error: 'Repository name is required' });
     }
 
-    const ext = await ExtendedInfo.findOne({ promotionId });
+    const ext = await ExtendedInfo.findOne({ where: { promotionId } });
     if (!ext || !ext.virtualClassroom || !ext.virtualClassroom.isActive) {
       return res.status(400).json({ error: 'No active virtual classroom project for this promotion' });
     }
 
     const vc = ext.virtualClassroom;
-    console.log('[DEBUG] Active Virtual Classroom project:', vc);
+    log.debug('[DEBUG] Active Virtual Classroom project:', vc);
     const projectType = vc.projectType || 'individual';
 
     if (projectType === 'individual') {
@@ -4037,7 +4104,7 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
     let evalEntry = ext.projectEvaluations.find(
       e => e.moduleId === moduleId && e.projectName === projectName
     );
-    console.log('[DEBUG] Found evalEntry:', !!evalEntry, { moduleId, projectName });
+    log.debug('[DEBUG] Found evalEntry:', !!evalEntry, { moduleId, projectName });
     if (!evalEntry) {
       evalEntry = {
         moduleId,
@@ -4081,16 +4148,10 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
     targetEval.submissionStatus = 'Entregado';
     targetEval.submittedAt = new Date().toISOString();
 
-    console.log('[DEBUG] Saved submission:', {
-      moduleId,
-      projectName,
-      targetId,
-      submissionLink: targetEval.submissionLink,
-      status: targetEval.submissionStatus
-    });
+    log.debug('[DEBUG] Saved submission:', { moduleId, projectName, targetId, submissionLink: targetEval.submissionLink, status: targetEval.submissionStatus });
 
-    ext.markModified('projectEvaluations');
-    await ext.save();
+    ext.changed('projectEvaluations', true);
+    await sqlSave(ext);
 
     res.json({ message: 'Entrega registrada correctamente', submissionLink: fullUrl });
   } catch (error) {
@@ -4103,7 +4164,7 @@ app.post('/api/promotions/:promotionId/virtual-classroom/submissions', async (re
 
 app.get('/api/teachers', verifyToken, async (req, res) => {
   try {
-    const teachers = await Teacher.find({}, 'id name email userRole');
+    const teachers = await Teacher.findAll();
     const result = teachers.map(t => ({
       id: t.id,
       name: t.name,
@@ -4120,15 +4181,15 @@ app.put('/api/teachers/:id', verifyToken, async (req, res) => {
   try {
     const { name, email, userRole } = req.body;
     if (email) {
-      const existing = await Teacher.findOne({ email, id: { $ne: req.params.id } });
+      const existing = await Teacher.findOne({ where: { email, id: { [Op.ne]: req.params.id } } });
       if (existing) return res.status(400).json({ error: 'Email already in use' });
     }
-    const teacher = await Teacher.findOneAndUpdate(
-      { id: req.params.id },
-      { name, email, userRole },
-      { new: true, runValidators: true }
-    );
+    const teacher = await Teacher.findOne({ where: { id: req.params.id } });
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+    if (name !== undefined) teacher.name = name;
+    if (email !== undefined) teacher.email = email;
+    if (userRole !== undefined) teacher.userRole = userRole;
+    await sqlSave(teacher);
     res.json(teacher);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -4137,12 +4198,12 @@ app.put('/api/teachers/:id', verifyToken, async (req, res) => {
 
 app.get('/api/promotions/:promotionId/collaborators', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
     const collaboratorIds = promotion.collaborators || [];
-    const collaborators = await Teacher.find({ id: { $in: collaboratorIds } }, 'id name email userRole');
-    const owner = await Teacher.findOne({ id: promotion.teacherId }, 'id name email userRole');
+    const collaborators = await Teacher.findAll({ where: { id: { [Op.in]: collaboratorIds } } });
+    const owner = await Teacher.findOne({ where: { id: promotion.teacherId } });
 
     const result = [];
     if (owner) {
@@ -4173,7 +4234,7 @@ app.post('/api/promotions/:promotionId/collaborators', verifyToken, async (req, 
     const { teacherId, moduleIds } = req.body;
     if (!teacherId) return res.status(400).json({ error: 'Teacher ID is required' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
     if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Only owner can add collaborators' });
@@ -4187,11 +4248,11 @@ app.post('/api/promotions/:promotionId/collaborators', verifyToken, async (req, 
     if (!promotion.collaboratorModules) promotion.collaboratorModules = [];
     const resolvedModuleIds = Array.isArray(moduleIds) ? moduleIds : [];
     promotion.collaboratorModules.push({ teacherId, moduleIds: resolvedModuleIds });
-    promotion.markModified('collaborators');
-    promotion.markModified('collaboratorModules');
+    promotion.changed('collaborators', true);
+    promotion.changed('collaboratorModules', true);
 
-    await promotion.save();
-    const teacher = await Teacher.findOne({ id: teacherId }, 'id name email userRole');
+    await sqlSave(promotion);
+    const teacher = await Teacher.findOne({ where: { id: teacherId } });
     res.status(201).json({ message: 'Collaborator added', collaborator: teacher });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -4204,7 +4265,7 @@ app.put('/api/promotions/:promotionId/collaborators/:teacherId/modules', verifyT
     const { moduleIds } = req.body;
     if (!Array.isArray(moduleIds)) return res.status(400).json({ error: 'moduleIds must be an array' });
 
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
     const isOwner = promotion.teacherId === req.user.id;
     const isCollab = (promotion.collaborators || []).includes(req.user.id);
@@ -4213,7 +4274,7 @@ app.put('/api/promotions/:promotionId/collaborators/:teacherId/modules', verifyT
 
     if (req.params.teacherId === promotion.teacherId) {
       promotion.ownerModules = moduleIds;
-      promotion.markModified('ownerModules');
+      promotion.changed('ownerModules', true);
     } else {
       if (!promotion.collaboratorModules) promotion.collaboratorModules = [];
       const entry = promotion.collaboratorModules.find(m => m.teacherId === req.params.teacherId);
@@ -4222,9 +4283,9 @@ app.put('/api/promotions/:promotionId/collaborators/:teacherId/modules', verifyT
       } else {
         promotion.collaboratorModules.push({ teacherId: req.params.teacherId, moduleIds });
       }
-      promotion.markModified('collaboratorModules');
+      promotion.changed('collaboratorModules', true);
     }
-    await promotion.save();
+    await sqlSave(promotion);
     res.json({ message: 'Module assignments updated' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -4233,7 +4294,7 @@ app.put('/api/promotions/:promotionId/collaborators/:teacherId/modules', verifyT
 
 app.delete('/api/promotions/:promotionId/collaborators/:teacherId', verifyToken, async (req, res) => {
   try {
-    const promotion = await Promotion.findOne({ id: req.params.promotionId });
+    const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
     const isOwner = promotion.teacherId === req.user.id;
@@ -4243,9 +4304,9 @@ app.delete('/api/promotions/:promotionId/collaborators/:teacherId', verifyToken,
 
     promotion.collaborators = (promotion.collaborators || []).filter(id => id !== req.params.teacherId);
     promotion.collaboratorModules = (promotion.collaboratorModules || []).filter(m => m.teacherId !== req.params.teacherId);
-    promotion.markModified('collaborators');
-    promotion.markModified('collaboratorModules');
-    await promotion.save();
+    promotion.changed('collaborators', true);
+    promotion.changed('collaboratorModules', true);
+    await sqlSave(promotion);
     res.json({ message: 'Collaborator removed' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -4255,8 +4316,10 @@ app.delete('/api/promotions/:promotionId/collaborators/:teacherId', verifyToken,
 // ==================== ADMIN ====================
 
 const verifyAdmin = (req, res, next) => {
-  if (req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) next();
-  else res.status(403).json({ error: 'Admin role required' });
+  // Only ROLE_SUPER_ADMIN from the external JWT maps to 'superadmin'.
+  // The local 'admin' role no longer exists.
+  if (req.user && req.user.role === 'superadmin') next();
+  else res.status(403).json({ error: 'Superadmin role required' });
 };
 
 // Create a template from an existing promotion
@@ -4267,10 +4330,10 @@ app.post('/api/admin/templates-from-promotion', verifyToken, verifyAdmin, async 
       return res.status(400).json({ error: 'promotionId and templateName are required' });
     }
 
-    const promotion = await Promotion.findOne({ id: promotionId }).lean();
+    const promotion = await Promotion.findOne({ where: { id: promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
-    const extInfo = await ExtendedInfo.findOne({ promotionId }).lean();
+    const extInfo = await ExtendedInfo.findOne({ where: { promotionId } });
 
     const templateId = `custom-${uuidv4()}`;
 
@@ -4326,11 +4389,10 @@ app.post('/api/admin/templates-from-promotion', verifyToken, verifyAdmin, async 
       cotrainerDayOff: extInfo?.cotrainerDayOff || ''
     };
 
-    const template = await BootcampTemplate.findOneAndUpdate(
-      { id: templateId },
-      { $set: templateData },
-      { upsert: true, strict: false, runValidators: false, returnDocument: 'after' }
-    );
+    (async () => {
+      const [_bt] = await BootcampTemplate.upsert({ id: templateId, ...templateData });
+      return _bt;
+    })(); const template = await BootcampTemplate.findOne({ where: { id: templateId } });
 
     res.status(201).json(template);
   } catch (error) {
@@ -4342,7 +4404,7 @@ app.post('/api/admin/templates-from-promotion', verifyToken, verifyAdmin, async 
 // Get all promotions (admin view, with names)
 app.get('/api/admin/all-promotions', verifyToken, verifyAdmin, async (req, res) => {
   try {
-    const promotions = await Promotion.find({}, 'id name weeks hours description teacherId').lean();
+    const promotions = await Promotion.findAll();
     res.json(promotions);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -4351,7 +4413,8 @@ app.get('/api/admin/all-promotions', verifyToken, verifyAdmin, async (req, res) 
 
 app.get('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
   try {
-    const teachers = await Teacher.find({}, '-password');
+    // Exclude soft-deleted teachers from the listing
+    const teachers = await Teacher.findAll({ where: { deletedAt: null } });
     res.json(teachers);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -4363,57 +4426,60 @@ app.post('/api/admin/teachers', verifyToken, verifyAdmin, async (req, res) => {
     const { email, name, userRole } = req.body;
     if (!email || !name) return res.status(400).json({ error: 'Email and name are required' });
 
-    const existing = await Teacher.findOne({ email });
+    const existing = await Teacher.findOne({ where: { email } });
     if (existing) return res.status(400).json({ error: 'Email already registered' });
 
     const provisionalPassword = Math.random().toString(36).slice(-10) + 'A1!';
 
-    // ── Register user in the external auth API ──────────────────────────────
-    let externalRegistered = false;
-    let externalError = null;
+    // ── Register user in the external auth API first (mandatory) ────────────
+    // If external registration fails the local record is NOT created.
+    let extRegData = {};
     try {
       const extRegRes = await fetch(`${EXTERNAL_AUTH_BASE}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: provisionalPassword, name })
       });
-      const extRegData = await extRegRes.json();
-      if (extRegRes.ok && (extRegData.success !== false)) {
-        externalRegistered = true;
-      } else {
-        externalError = extRegData.message || extRegData.error || `External API returned ${extRegRes.status}`;
+      extRegData = await extRegRes.json().catch(() => ({}));
+      if (!extRegRes.ok || extRegData.success === false) {
+        const errMsg = extRegData.message || extRegData.error || `External API returned ${extRegRes.status}`;
+        return res.status(422).json({
+          error: 'External registration failed — local account NOT created.',
+          detail: errMsg
+        });
       }
     } catch (extErr) {
-      console.warn('[admin/teachers POST] External register unreachable:', extErr.message);
-      externalError = 'External auth server unreachable';
+      console.error('[admin/teachers POST] External register unreachable:', extErr.message);
+      return res.status(502).json({
+        error: 'External auth server unreachable — local account NOT created.',
+        detail: extErr.message
+      });
     }
 
-    // Create local teacher record regardless (local system still needs the user)
-    const hashedPassword = await bcrypt.hash(provisionalPassword, 10);
+    // ── External registration succeeded — persist only platform data ────────
+    // No password is stored locally; authentication is fully external.
     const validUserRoles = ['Formador/a', 'CoFormador/a', 'Coordinador/a'];
     const resolvedUserRole = validUserRoles.includes(userRole) ? userRole : 'Formador/a';
-    const teacher = await Teacher.create({ id: uuidv4(), name, email, password: hashedPassword, provisional: true, userRole: resolvedUserRole });
+    const teacher = await Teacher.create({
+      id: uuidv4(),
+      name,
+      email,
+      userRole: resolvedUserRole
+    });
 
     // Send welcome email with provisional password
     const emailSent = await sendPasswordEmail(email, name, provisionalPassword);
 
     const responsePayload = {
       teacher: { id: teacher.id, name: teacher.name, email: teacher.email },
-      externalRegistered,
       provisionalPassword
     };
-
-    if (!externalRegistered) {
-      responsePayload.warning = `Local account created but external registration failed: ${externalError}. The user may need to register separately in the auth system.`;
-    }
     if (!emailSent) {
       responsePayload.emailWarning = 'Password email could not be sent. Please share the provisional password manually.';
     }
 
     res.status(201).json({
-      message: externalRegistered
-        ? 'User registered in auth system and local account created.'
-        : 'Local account created (external registration failed — see warning).',
+      message: 'User registered in auth system and local account created.',
       ...responsePayload
     });
   } catch (error) {
@@ -4429,11 +4495,11 @@ app.put('/api/admin/teachers/:id', verifyToken, verifyAdmin, async (req, res) =>
     if (name) updates.name = name;
     if (email) updates.email = email;
     if (userRole && validUserRoles.includes(userRole)) updates.userRole = userRole;
-    const teacher = await Teacher.findOneAndUpdate(
-      { id: req.params.id },
-      { $set: updates },
-      { new: true, runValidators: true }
-    );
+    (async () => {
+      const _t = await Teacher.findOne({ where: { id: req.params.id } });
+      if (_t) { Object.assign(_t, updates); await sqlSave(_t); return _t; }
+      return null;
+    })(); const teacher = await Teacher.findOne({ where: { id: req.params.id } });
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
     res.json(teacher);
   } catch (error) {
@@ -4443,9 +4509,13 @@ app.put('/api/admin/teachers/:id', verifyToken, verifyAdmin, async (req, res) =>
 
 app.delete('/api/admin/teachers/:id', verifyToken, verifyAdmin, async (req, res) => {
   try {
-    const result = await Teacher.deleteOne({ id: req.params.id });
-    if (result.deletedCount === 0) return res.status(404).json({ error: 'Teacher not found' });
-    res.json({ message: 'Teacher deleted' });
+    // Soft-delete: set deletedAt instead of destroying the row so that
+    // historical references in promotions.teacherId remain valid.
+    const teacher = await Teacher.findOne({ where: { id: req.params.id, deletedAt: null } });
+    if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+    teacher.deletedAt = new Date();
+    await teacher.save();
+    res.json({ message: 'Teacher deactivated (soft-deleted)' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

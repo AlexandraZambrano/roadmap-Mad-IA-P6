@@ -419,6 +419,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const editTeamModalEl = document.getElementById('editTeamModal');
         if (editTeamModalEl) editTeamModal = new bootstrap.Modal(editTeamModalEl);
 
+        // Promo Resources modal
+        const promoResourceModalEl = document.getElementById('promoResourceModal');
+        if (promoResourceModalEl) {
+            window._promoResourceModal = new bootstrap.Modal(promoResourceModalEl);
+            document.getElementById('promo-resource-form').addEventListener('submit', submitPromoResource);
+        }
+
         initEmployabilityModal();
         initProfileModal();
 
@@ -456,12 +463,13 @@ document.addEventListener('DOMContentLoaded', () => {
         loadQuickLinks();
         loadQuickActions();
         loadSections();
+        loadPromoResources();
 
         // 4. Feature modules
         if (typeof NotesManager !== 'undefined' && typeof NotesUI !== 'undefined') {
             const notesManager = new NotesManager('promotionNotes', promotionId);
             const notesUI = new NotesUI(notesManager, 'notes-container');
-            notesUI.render();
+            notesUI.init(); // async: loads shared notes from server then renders
             window.notesManager = notesManager;
             window.notesUI = notesUI;
         }
@@ -946,7 +954,7 @@ function updatePildoraField(pildoraIndex, field, value) {
     if (!modulePildoras || !modulePildoras.pildoras || !modulePildoras.pildoras[pildoraIndex]) return;
 
     modulePildoras.pildoras[pildoraIndex][field] = value;
-    console.log(`Updated píldora ${pildoraIndex} field ${field} to:`, value);
+    //console.log(`Updated píldora ${pildoraIndex} field ${field} to:`, value);
 }
 
 function applyPildorasColorCoding() {
@@ -1069,7 +1077,7 @@ async function savePildorasToServer(module) {
             throw new Error(`Failed to save píldoras: ${response.statusText}`);
         }
 
-        console.log('Píldoras saved successfully');
+        //console.log('Píldoras saved successfully');
     } catch (error) {
         console.error('Error saving píldoras:', error);
         alert('Error saving changes to server');
@@ -2018,8 +2026,8 @@ async function saveExtendedInfo() {
         extendedInfoData.virtualClassroom = window._evalState.virtualClassroom;
     }
 
-    console.log('Saving extended info for promotion:', promotionId);
-    console.log('Data to save:', extendedInfoData);
+    //console.log('Saving extended info for promotion:', promotionId);
+    //console.log('Data to save:', extendedInfoData);
 
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
@@ -2031,11 +2039,11 @@ async function saveExtendedInfo() {
             body: JSON.stringify(extendedInfoData)
         });
 
-        console.log('Save response status:', response.status);
+        //console.log('Save response status:', response.status);
 
         if (response.ok) {
             const savedData = await response.json();
-            console.log('Data saved successfully:', savedData);
+            //console.log('Data saved successfully:', savedData);
 
             // ── Auto-sync competences → roadmap module projects ───────────────
             if (window.ProgramCompetences && window.ProgramCompetences.getEvalModulesSyncData) {
@@ -2114,7 +2122,7 @@ async function _syncCompetencesToRoadmap() {
         },
         body: JSON.stringify({ modules })
     });
-    console.log('[Sync] Competencias sincronizadas al roadmap correctamente.');
+    //console.log('[Sync] Competencias sincronizadas al roadmap correctamente.');
 }
 
 // ── Acta de Inicio modal ─────────────────────────────────────────────────────
@@ -2426,7 +2434,7 @@ async function saveActaData() {
 
 async function togglePildorasAssignment(isOpen) {
     extendedInfoData.pildorasAssignmentOpen = isOpen;
-    console.log('Toggling píldoras self-assignment:', isOpen);
+    //console.log('Toggling píldoras self-assignment:', isOpen);
 
     const token = localStorage.getItem('token');
     try {
@@ -3080,14 +3088,14 @@ function updateCourseProgressBar(promotion) {
         // Update date info (left) - start date
         const startInfo = document.getElementById('progress-start-info');
         if (startInfo) {
-            startInfo.textContent = 'Inicio: ' + new Date(promotion.startDate).toLocaleDateString('es-ES', { day: 'short', month: 'short' });
+            startInfo.textContent = 'Inicio: ' + new Date(promotion.startDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         }
 
         // Note: progress-week-info (center) is managed by updateProgressInfo() for student counts
         // Update end date info (right)
         const endInfo = document.getElementById('progress-end-info');
         if (endInfo) {
-            endInfo.textContent = 'Fin: ' + new Date(promotion.endDate).toLocaleDateString('es-ES', { day: 'short', month: 'short' });
+            endInfo.textContent = 'Fin: ' + new Date(promotion.endDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         }
     } catch (error) {
         console.error('Error updating course progress bar:', error);
@@ -3272,9 +3280,8 @@ function generateGanttChart(promotion) {
         tableContainer.style.maxWidth = '100%';
     }
 
-    function getMonthForWeek(w) { return Math.ceil(w / 4); }
-
     // ── 1. Header: month + week rows go in <thead> ────────────────────────────
+    // Group every 4 weeks into one month (Mes 1, Mes 2, ...)
     const thead = document.createElement('thead');
 
     const monthRow = document.createElement('tr');
@@ -3283,15 +3290,19 @@ function generateGanttChart(promotion) {
     monthHeaderCell.className = 'gantt-label-cell';
     monthRow.appendChild(monthHeaderCell);
 
-    let currentMonth = 0, monthSpan = 0, monthCell = null;
-    for (let i = 1; i <= weeks; i++) {
-        const m = getMonthForWeek(i);
-        if (m !== currentMonth) {
+    // Each group of 4 weeks = 1 month
+    let currentMonthKey = null, monthSpan = 0, monthCell = null;
+    for (let i = 0; i < weeks; i++) {
+        const m = Math.floor(i / 4) + 1;
+        const monthKey = `m${m}`;
+        if (monthKey !== currentMonthKey) {
             if (monthCell) monthCell.colSpan = monthSpan;
-            currentMonth = m;
+            currentMonthKey = monthKey;
             monthCell = document.createElement('th');
-            monthCell.innerHTML = `<strong>M${m}</strong>`;
+            monthCell.innerHTML = `<strong>Mes ${m}</strong>`;
             monthCell.style.textAlign = 'center';
+            monthCell.style.backgroundColor = '#e8f4f8';
+            monthCell.style.borderLeft = '2px solid #6c757d';
             monthRow.appendChild(monthCell);
             monthSpan = 1;
         } else { monthSpan++; }
@@ -3304,9 +3315,11 @@ function generateGanttChart(promotion) {
     weekHeaderCell.innerHTML = '<strong>Sem.</strong>';
     weekHeaderCell.className = 'gantt-label-cell';
     weekRow.appendChild(weekHeaderCell);
-    for (let i = 1; i <= weeks; i++) {
+    for (let i = 0; i < weeks; i++) {
         const th = document.createElement('th');
-        th.textContent = `${i}`;
+        th.textContent = `${i + 1}`;
+        th.title = `Semana ${i + 1}`;
+        if (i % 4 === 0) th.style.borderLeft = '2px solid #6c757d';
         th.className = 'gantt-week-cell text-center';
         weekRow.appendChild(th);
     }
@@ -3771,6 +3784,12 @@ async function loadQuickLinks() {
             displayQuickLinks(links);
             const el = document.getElementById('quicklinks-count');
             if (el) el.textContent = links.length;
+
+            // Cache GitHub quick link URL so Aula Virtual can use it as repo base
+            const githubLink = links.find(l =>
+                l.platform === 'github' || l.name?.toLowerCase().includes('github')
+            );
+            window._githubQuickLinkUrl = githubLink ? (githubLink.url || '') : '';
         }
     } catch (error) {
         console.error('Error loading quick links:', error);
@@ -4127,6 +4146,286 @@ function displaySections(sections) {
     });
 }
 
+// ==================== PROMO RESOURCES ====================
+// Resources created by teachers for a specific promotion (videos, repos, canva/ppt).
+// Stored in ExtendedInfo.promotionResources as a JSON array.
+
+const PROMO_RESOURCE_TYPE_ICONS = {
+    video:       { icon: 'bi-play-btn-fill',       color: '#dc3545', label: 'Vídeo' },
+    repository:  { icon: 'bi-github',              color: '#333',    label: 'Repositorio' },
+    canva:       { icon: 'bi-palette-fill',         color: '#7c3aed', label: 'Canva' },
+    powerpoint:  { icon: 'bi-file-earmark-slides-fill', color: '#e55a1c', label: 'PowerPoint' },
+    other:       { icon: 'bi-paperclip',            color: '#6c757d', label: 'Otro' }
+};
+
+async function loadPromoResources() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/promotion-resources/all`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const resources = await res.json();
+        renderPromoResources(resources);
+    } catch (err) {
+        console.error('[loadPromoResources] Error:', err);
+    }
+}
+
+function renderPromoResources(resources) {
+    const container = document.getElementById('promo-resources-list');
+    const countEl = document.getElementById('promo-resources-count');
+    if (!container) return;
+    if (countEl) countEl.textContent = resources.length;
+
+    if (!resources.length) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-collection-play fs-2 d-block mb-2 opacity-25"></i>
+                <span class="small">Sin recursos aún. Crea el primero.</span>
+            </div>`;
+        return;
+    }
+
+    // Group by module
+    const grouped = {};
+    resources.forEach(r => {
+        const key = r.module || '__sin_modulo__';
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(r);
+    });
+
+    const now = new Date();
+    let html = '';
+
+    Object.entries(grouped).forEach(([moduleName, items]) => {
+        const groupLabel = moduleName === '__sin_modulo__' ? 'Sin módulo' : escapeHtml(moduleName);
+        html += `
+        <div class="mb-4">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="fw-bold text-primary"><i class="bi bi-folder2-open me-1"></i>${groupLabel}</span>
+                <span class="badge bg-light text-dark border">${items.length}</span>
+            </div>
+            <div class="accordion" id="promo-res-acc-${encodeURIComponent(moduleName)}">`;
+
+        items.forEach((r, idx) => {
+            const meta = PROMO_RESOURCE_TYPE_ICONS[r.type] || PROMO_RESOURCE_TYPE_ICONS.other;
+            const accId = `promo-res-item-${r.id}`;
+
+            // Status badge
+            let statusBadge;
+            if (r.status === 'published') {
+                statusBadge = `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Publicado</span>`;
+            } else if (r.publishAt && new Date(r.publishAt) <= now) {
+                statusBadge = `<span class="badge bg-success"><i class="bi bi-clock-history me-1"></i>Publicado (programado)</span>`;
+            } else if (r.publishAt) {
+                const dateStr = new Date(r.publishAt).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                statusBadge = `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-event me-1"></i>Programado: ${escapeHtml(dateStr)}</span>`;
+            } else {
+                statusBadge = `<span class="badge bg-secondary"><i class="bi bi-pencil-square me-1"></i>Borrador</span>`;
+            }
+
+            html += `
+            <div class="accordion-item border rounded mb-2 shadow-sm">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2 px-3" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#${accId}" aria-expanded="false">
+                        <div class="d-flex align-items-center gap-2 w-100 flex-wrap">
+                            <i class="bi ${meta.icon} fs-5" style="color:${meta.color}; min-width:1.2rem;"></i>
+                            <span class="fw-semibold flex-grow-1">${escapeHtml(r.title)}</span>
+                            <div class="d-flex gap-1 flex-wrap">
+                                <span class="badge bg-light text-dark border" style="font-size:0.7rem;">${meta.label}</span>
+                                ${statusBadge}
+                            </div>
+                        </div>
+                    </button>
+                </h2>
+                <div id="${accId}" class="accordion-collapse collapse">
+                    <div class="accordion-body py-2 px-3">
+                        ${r.description ? `<p class="text-muted small mb-2">${escapeHtml(r.description)}</p>` : ''}
+                        <div class="mb-2">
+                            <a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Abrir recurso
+                            </a>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap mt-2">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="editPromoResource('${r.id}')">
+                                <i class="bi bi-pencil me-1"></i>Editar
+                            </button>
+                            ${r.status !== 'published' ? `
+                            <button class="btn btn-sm btn-success" onclick="publishPromoResource('${r.id}')">
+                                <i class="bi bi-globe me-1"></i>Publicar
+                            </button>` : `
+                            <button class="btn btn-sm btn-outline-secondary" onclick="unpublishPromoResource('${r.id}')">
+                                <i class="bi bi-eye-slash me-1"></i>Volver a borrador
+                            </button>`}
+                            <button class="btn btn-sm btn-outline-danger" onclick="deletePromoResource('${r.id}')">
+                                <i class="bi bi-trash me-1"></i>Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        });
+
+        html += `</div></div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function openPromoResourceModal(resourceId = null) {
+    const form = document.getElementById('promo-resource-form');
+    form.reset();
+    document.getElementById('promo-resource-id').value = '';
+    document.getElementById('promo-resource-modal-title').innerHTML = '<i class="bi bi-collection-play me-2 text-primary"></i>Nuevo Recurso';
+    document.getElementById('promo-resource-publishAt-row').style.display = 'none';
+    document.getElementById('promo-resource-draft').checked = true;
+
+    // Populate module dropdown from promotionModules
+    const moduleSelect = document.getElementById('promo-resource-module');
+    moduleSelect.innerHTML = '<option value="">— Sin módulo —</option>';
+    (promotionModules || []).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.name;
+        opt.textContent = m.name;
+        moduleSelect.appendChild(opt);
+    });
+
+    if (resourceId) {
+        // Load existing resource for editing
+        const token = localStorage.getItem('token');
+        fetch(`${API_URL}/api/promotions/${promotionId}/promotion-resources/all`, {
+            headers: { Authorization: `Bearer ${token}` }
+        }).then(r => r.json()).then(list => {
+            const r = list.find(x => x.id === resourceId);
+            if (!r) return;
+            document.getElementById('promo-resource-id').value = r.id;
+            document.getElementById('promo-resource-modal-title').innerHTML = '<i class="bi bi-pencil me-2 text-primary"></i>Editar Recurso';
+            document.getElementById('promo-resource-title').value = r.title || '';
+            document.getElementById('promo-resource-description').value = r.description || '';
+            document.getElementById('promo-resource-type').value = r.type || 'other';
+            document.getElementById('promo-resource-url').value = r.url || '';
+            if (r.module) moduleSelect.value = r.module;
+
+            // Status radios
+            const statusRadio = document.querySelector(`input[name="promo-resource-status"][value="${r.status || 'draft'}"]`);
+            if (statusRadio) statusRadio.checked = true;
+
+            // publishAt
+            if (r.publishAt) {
+                document.getElementById('promo-resource-publishAt-row').style.display = '';
+                // Convert ISO to datetime-local format
+                const dt = new Date(r.publishAt);
+                const local = dt.toISOString().slice(0, 16);
+                document.getElementById('promo-resource-publishAt').value = local;
+            }
+        });
+    }
+
+    window._promoResourceModal?.show();
+}
+
+function togglePublishAtField(value) {
+    const row = document.getElementById('promo-resource-publishAt-row');
+    // Show the schedule field only when status is draft (allows scheduling)
+    row.style.display = value === 'draft' ? '' : 'none';
+    if (value === 'published') {
+        document.getElementById('promo-resource-publishAt').value = '';
+    }
+}
+
+async function submitPromoResource(e) {
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    const id = document.getElementById('promo-resource-id').value;
+    const statusRadio = document.querySelector('input[name="promo-resource-status"]:checked');
+
+    const payload = {
+        title: document.getElementById('promo-resource-title').value.trim(),
+        description: document.getElementById('promo-resource-description').value.trim(),
+        module: document.getElementById('promo-resource-module').value,
+        type: document.getElementById('promo-resource-type').value,
+        url: document.getElementById('promo-resource-url').value.trim(),
+        status: statusRadio?.value || 'draft',
+        publishAt: document.getElementById('promo-resource-publishAt').value || null
+    };
+
+    if (!payload.title || !payload.url) return;
+
+    const btn = document.getElementById('promo-resource-submit-btn');
+    btn.disabled = true;
+    try {
+        let res;
+        if (id) {
+            res = await fetch(`${API_URL}/api/promotions/${promotionId}/promotion-resources/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            res = await fetch(`${API_URL}/api/promotions/${promotionId}/promotion-resources`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+        }
+        if (res.ok) {
+            window._promoResourceModal?.hide();
+            await loadPromoResources();
+        } else {
+            const err = await res.json();
+            alert('Error: ' + (err.error || 'Unknown error'));
+        }
+    } catch (err) {
+        console.error('[submitPromoResource] Error:', err);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function editPromoResource(resourceId) {
+    openPromoResourceModal(resourceId);
+}
+
+async function publishPromoResource(resourceId) {
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/promotion-resources/${resourceId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ status: 'published', publishAt: null })
+        });
+        if (res.ok) await loadPromoResources();
+    } catch (err) { console.error(err); }
+}
+
+async function unpublishPromoResource(resourceId) {
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/promotion-resources/${resourceId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ status: 'draft', publishAt: null })
+        });
+        if (res.ok) await loadPromoResources();
+    } catch (err) { console.error(err); }
+}
+
+async function deletePromoResource(resourceId) {
+    if (!confirm('¿Eliminar este recurso? Esta acción no se puede deshacer.')) return;
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/promotion-resources/${resourceId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) await loadPromoResources();
+    } catch (err) { console.error(err); }
+}
+
 // Load calendar ID from backend for Overview preview
 async function loadOverviewCalendarId() {
     try {
@@ -4136,7 +4435,7 @@ async function loadOverviewCalendarId() {
             const calendar = await response.json();
             // Store the calendar ID in the global variable
             currentCalendarId = calendar.googleCalendarId || '';
-            console.log('[loadOverviewCalendarId] Calendar ID loaded from backend:', currentCalendarId);
+            //console.log('[loadOverviewCalendarId] Calendar ID loaded from backend:', currentCalendarId);
 
             // Setup the calendar preview with the new ID
             if (window.setupCalendarPreview) {
@@ -4144,7 +4443,7 @@ async function loadOverviewCalendarId() {
             }
         } else {
             currentCalendarId = '';
-            console.log('[loadOverviewCalendarId] No calendar found for this promotion');
+            //console.log('[loadOverviewCalendarId] No calendar found for this promotion');
         }
     } catch (error) {
         console.error('[loadOverviewCalendarId] Error loading calendar:', error);
@@ -4358,14 +4657,14 @@ async function loadOverviewAttendanceAlert() {
             }
         });
 
-        console.log('[loadOverviewAttendanceAlert] Absences per student:', absencesPerStudent);
-        console.log('[loadOverviewAttendanceAlert] Total attendance records:', allAttendanceData.length);
+        //console.log('[loadOverviewAttendanceAlert] Absences per student:', absencesPerStudent);
+        //console.log('[loadOverviewAttendanceAlert] Total attendance records:', allAttendanceData.length);
 
         // Sort students by total absences (descending)
         const sortedStudents = Object.values(absencesPerStudent)
             .sort((a, b) => b.absences - a.absences);
 
-        console.log('[loadOverviewAttendanceAlert] Sorted students:', sortedStudents);
+        //console.log('[loadOverviewAttendanceAlert] Sorted students:', sortedStudents);
 
         // Calculate attendance rate using CURRENT MONTH data (matching the Attendance tab)
         let present = 0, absent = 0, late = 0, justified = 0, earlyLeave = 0;
@@ -4440,7 +4739,7 @@ async function loadCalendar() {
             const calendar = await response.json();
             // Store in global variable for use across the application
             currentCalendarId = calendar.googleCalendarId || '';
-            console.log('[loadCalendar] Calendar ID stored globally:', currentCalendarId);
+            //console.log('[loadCalendar] Calendar ID stored globally:', currentCalendarId);
 
             // Also store in the HTML field if it exists (for the calendar configuration tab)
             const calendarIdInput = document.getElementById('google-calendar-id');
@@ -4966,7 +5265,7 @@ function setupForms() {
             email
         };
 
-        console.log('Sending student data:', studentData);
+        //console.log('Sending student data:', studentData);
 
         try {
             let response;
@@ -5081,29 +5380,15 @@ async function importStudentsFromExcel(input) {
     }
 }
 
-// Download a blank Excel template with the correct column headers for student import
+// Download a blank Excel template with the 3 required columns for student import
 function downloadStudentsExcelTemplate() {
-    const headers = [
-        'Nombre', 'Apellidos', 'Email', 'Teléfono', 'Edad',
-        'Situación Administrativa', 'Nacionalidad', 'Documento',
-        'Sexo', 'Nivel Inglés', 'Nivel Educativo', 'Profesión', 'Comunidad'
-    ];
-    // Add a hint row showing accepted values for enum columns
-    const hints = [
-        '(requerido)', '(requerido)', '(requerido)', '(requerido)', '(requerido, número)',
-        'nacional | solicitante_asilo | ciudadano_europeo | permiso_trabajo | no_permiso_trabajo | otro',
-        '', 'DNI / NIE / Pasaporte',
-        'mujer | hombre | no_binario | no_especifica',
-        'A1 | A2 | B1 | B2 | C1 | C2',
-        'sin_estudios | eso | bachillerato | fp_medio | fp_superior | grado | postgrado | doctorado',
-        '', 'Comunidad Autónoma'
-    ];
+    const headers = ['Nombre', 'Apellidos', 'Email'];
+    const hint    = ['Ej: María', 'Ej: García López', 'Ej: maria@email.com'];
 
-    // Build CSV content (no XLSX library on the client side — CSV opens fine in Excel)
     const escape = v => `"${String(v).replace(/"/g, '""')}"`;
     const rows = [
         headers.map(escape).join(','),
-        hints.map(escape).join(',')
+        hint.map(escape).join(',')
     ];
     const csvContent = rows.join('\r\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel UTF-8
@@ -5120,39 +5405,30 @@ function downloadStudentsExcelTemplate() {
 
 // Debug function to test student endpoints
 async function debugStudentEndpoints() {
-    console.log('=== TESTING STUDENT ENDPOINTS ===');
+    //console.log('=== TESTING STUDENT ENDPOINTS ===');
     const token = localStorage.getItem('token');
 
     if (!window.currentStudents || window.currentStudents.length === 0) {
-        console.log('No students available for testing');
+        //console.log('No students available for testing');
         return;
     }
 
     const student = window.currentStudents[0];
-    console.log('Testing with student:', student);
-    console.log('Student fields present:', {
-        id: !!student.id,
-        name: !!student.name,
-        lastname: !!student.lastname,
-        email: !!student.email,
-        age: !!student.age,
-        nationality: !!student.nationality,
-        profession: !!student.profession,
-        address: !!student.address
-    });
+    //console.log('Testing with student:', student);
+    //console.log('Student fields present:', { id: !!student.id, name: !!student.name, lastname: !!student.lastname, email: !!student.email, age: !!student.age, nationality: !!student.nationality, profession: !!student.profession, address: !!student.address });
 
     // Test GET endpoint
     try {
         const getResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${student.id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        console.log('GET /students/:id status:', getResponse.status);
+        //console.log('GET /students/:id status:', getResponse.status);
         if (getResponse.ok) {
             const studentData = await getResponse.json();
-            console.log('GET student data:', studentData);
+            //console.log('GET student data:', studentData);
         }
     } catch (error) {
-        console.log('GET /students/:id error:', error.message);
+        //console.log('GET /students/:id error:', error.message);
     }
 
     // Test PUT /profile endpoint
@@ -5167,7 +5443,7 @@ async function debugStudentEndpoints() {
             address: student.address || 'Test Address'
         };
 
-        console.log('Testing PUT with data:', testData);
+        //console.log('Testing PUT with data:', testData);
 
         const putResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${student.id}/profile`, {
             method: 'PUT',
@@ -5178,17 +5454,17 @@ async function debugStudentEndpoints() {
             body: JSON.stringify(testData)
         });
 
-        console.log('PUT /students/:id/profile status:', putResponse.status);
+        //console.log('PUT /students/:id/profile status:', putResponse.status);
         if (putResponse.ok) {
             const updatedData = await putResponse.json();
-            console.log('✓ Profile endpoint works!');
-            console.log('Updated student data:', updatedData);
+            //console.log('✓ Profile endpoint works!');
+            //console.log('Updated student data:', updatedData);
         } else {
             const errorText = await putResponse.text();
-            console.log('PUT error response:', errorText);
+            //console.log('PUT error response:', errorText);
         }
     } catch (error) {
-        console.log('PUT /students/:id/profile error:', error.message);
+        //console.log('PUT /students/:id/profile error:', error.message);
     }
 }
 
@@ -5216,7 +5492,7 @@ async function loadStudents(retryCount = 0) {
         }
 
         const students = await response.json();
-        console.log('Loaded students:', students);
+        //console.log('Loaded students:', students);
 
         // Store students data globally for multi-select operations
         // Backend already normalizes the ID field, so we can use it directly
@@ -6049,8 +6325,8 @@ async function addCollaboratorById() {
     }
     const checked = document.querySelectorAll('#collaborator-module-checklist .form-check-input:checked');
     const moduleIds = Array.from(checked).map(cb => cb.value);
-    console.log('[addCollaboratorById] teacherId:', teacherId, 'moduleIds:', moduleIds, 'checked count:', checked.length);
-    console.log('[addCollaboratorById] all checkboxes in list:', document.querySelectorAll('#collaborator-module-checklist .form-check-input').length);
+    //console.log('[addCollaboratorById] teacherId:', teacherId, 'moduleIds:', moduleIds, 'checked count:', checked.length);
+    //console.log('[addCollaboratorById] all checkboxes in list:', document.querySelectorAll('#collaborator-module-checklist .form-check-input').length);
 
     const token = localStorage.getItem('token');
     try {
@@ -6784,9 +7060,9 @@ function _getSelectedStudentIds() {
 }
 
 window._bulkReportTechnical = function () {
-    console.log('[Reports] _bulkReportTechnical triggered');
+    //console.log('[Reports] _bulkReportTechnical triggered');
     const ids = _getSelectedStudentIds();
-    console.log('[Reports] Selected student IDs:', ids);
+    //console.log('[Reports] Selected student IDs:', ids);
     if (!ids.length) {
         alert('Selecciona al menos un estudiante.');
         return;
@@ -6800,7 +7076,7 @@ window._bulkReportTechnical = function () {
 }
 
 window._bulkReportTransversal = function () {
-    console.log('[Reports] _bulkReportTransversal triggered');
+    //console.log('[Reports] _bulkReportTransversal triggered');
     const ids = _getSelectedStudentIds();
     if (!ids.length) { alert('Selecciona al menos un estudiante.'); return; }
     if (!window.Reports) {
@@ -8029,22 +8305,22 @@ async function loadEvaluation() {
 
         const promo = promoRes.ok ? await promoRes.json() : {};
         const ext = extRes.ok ? await extRes.json() : {};
-        console.log('[DEBUG] Full ext data:', ext);
+        //console.log('[DEBUG] Full ext data:', ext);
         const studentsData = studentsRes.ok ? await studentsRes.json() : [];
         const catalogRaw = catalogRes.ok ? await catalogRes.json() : [];
 
-        console.log('✅ [VERIFICATION] Competences received from API https://evaluation.coderf5.es/v1/competences');
+        //console.log('✅ [VERIFICATION] Competences received from API https://evaluation.coderf5.es/v1/competences');
         // DEBUG: log first catalog entry to verify structure
         if (catalogRaw.length > 0) {
-            console.log('[Eval] catalogRaw.length:', catalogRaw.length, 'competences');
-            console.log('[Eval] catalogRaw[0].id:', catalogRaw[0].id);
-            console.log('[Eval] catalogRaw[0].name:', catalogRaw[0].name);
-            console.log('[Eval] catalogRaw[0].areas:', JSON.stringify(catalogRaw[0].areas));
-            console.log('😎 [Eval] catalogRaw[0].tools count:', (catalogRaw[0].tools || []).length, '(from API)');
+            //console.log('[Eval] catalogRaw.length:', catalogRaw.length, 'competences');
+            //console.log('[Eval] catalogRaw[0].id:', catalogRaw[0].id);
+            //console.log('[Eval] catalogRaw[0].name:', catalogRaw[0].name);
+            //console.log('[Eval] catalogRaw[0].areas:', JSON.stringify(catalogRaw[0].areas));
+            //console.log('😎 [Eval] catalogRaw[0].tools count:', (catalogRaw[0].tools || []).length, '(from API)');
             if (catalogRaw[0].tools && catalogRaw[0].tools[0]) {
-                console.log('[Eval] catalogRaw[0].tools[0]:', JSON.stringify(catalogRaw[0].tools[0], null, 2).substring(0, 300));
+                //console.log('[Eval] catalogRaw[0].tools[0]:', JSON.stringify(catalogRaw[0].tools[0], null, 2).substring(0, 300));
             }
-            console.log('[Eval] catalogRaw[0].indicators (COMPETENCE INDICATORS):', JSON.stringify(catalogRaw[0].indicators, null, 2));
+            //console.log('[Eval] catalogRaw[0].indicators (COMPETENCE INDICATORS):', JSON.stringify(catalogRaw[0].indicators, null, 2));
         }
 
         // Normalize the full catalog: id, name, area, description, levels, allTools, toolsWithIndicators, competenceIndicators
@@ -8092,7 +8368,7 @@ async function loadEvaluation() {
             };
         });
 
-        // console.log(`🎈 ${(let i = 0; i < catalog.length; i++) catalog[i].name}`)
+        // //console.log(`🎈 ${(let i = 0; i < catalog.length; i++) catalog[i].name}`)
         // Also keep catalog entries that might be referenced by project competenceIds but not in extComps
         const extIds = new Set(extComps.map(c => String(c.id)));
         catalog.forEach(c => { if (!extIds.has(String(c.id))) enrichedCompetences.push(c); });
@@ -8104,7 +8380,7 @@ async function loadEvaluation() {
         window._evalState.allStudents = studentsData;
         window._evalState.students = studentsData.filter(s => !s.isWithdrawn);
         window._evalState.savedEvaluations = ext.projectEvaluations || [];
-        console.log('[DEBUG] Loaded evaluations:', window._evalState.savedEvaluations);
+        //console.log('[DEBUG] Loaded evaluations:', window._evalState.savedEvaluations);
         window._evalState.projectCompetences = ext.projectCompetences || []; // per-project competence definitions
         window._evalState.virtualClassroom = ext.virtualClassroom || null;
 
@@ -8137,6 +8413,17 @@ function initVirtualClassroomPanel(ext, promo) {
 
     const modules = promo.modules || [];
     const projectCompetences = window._evalState.projectCompetences || [];
+
+    // Build a quick lookup: "moduleId__projectName" → url (from roadmap)
+    window._projectUrlMap = {};
+    modules.forEach((m, idx) => {
+        const mId = m.id || String(idx);
+        (m.projects || []).forEach(p => {
+            if (p && p.name && p.url) {
+                window._projectUrlMap[`${mId}__${p.name}`] = p.url;
+            }
+        });
+    });
 
     // Map rápido de módulo por id para obtener el nombre de módulo
     const moduleById = {};
@@ -8175,8 +8462,28 @@ function initVirtualClassroomPanel(ext, promo) {
     }
 
     // Fill inputs from active config
-    repoBaseEl.value = vc.repoBaseUrl || '';
-    briefingEl.value = vc.briefingUrl || '';
+    // Repo base: prefer saved value, fall back to GitHub quick link
+    const _githubUrl = window._githubQuickLinkUrl || '';
+    if (vc.repoBaseUrl) {
+        repoBaseEl.value = vc.repoBaseUrl;
+        _setRepoBaseBadge(false);
+    } else if (_githubUrl) {
+        repoBaseEl.value = _githubUrl;
+        _setRepoBaseBadge(true);
+    } else {
+        repoBaseEl.value = '';
+        _setRepoBaseBadge(false);
+    }
+    // Fill briefing URL — prefer roadmap URL for the selected project (auto-fill)
+    const _activeKey = selectEl.value;
+    const _roadmapUrl = _activeKey && window._projectUrlMap ? window._projectUrlMap[_activeKey] : '';
+    if (_roadmapUrl) {
+        briefingEl.value = _roadmapUrl;
+        _setBriefingSourceBadge(true);
+    } else {
+        briefingEl.value = vc.briefingUrl || '';
+        _setBriefingSourceBadge(false);
+    }
 
     // Update status UI
     if (vc.isActive && activeValue) {
@@ -8340,7 +8647,40 @@ function updateVirtualClassroomCompetencesPreview() {
 // Called by select change in the panel
 window.onVirtualClassroomProjectChange = function () {
     updateVirtualClassroomCompetencesPreview();
+    const selectEl = document.getElementById('vc-project-select');
+    if (selectEl) _applyBriefingUrlFromRoadmap(selectEl.value);
 };
+
+function _setBriefingSourceBadge(fromRoadmap) {
+    const badge = document.getElementById('vc-briefing-source');
+    const hint = document.getElementById('vc-briefing-hint');
+    if (badge) badge.classList.toggle('d-none', !fromRoadmap);
+    if (hint) hint.classList.toggle('d-none', !fromRoadmap);
+}
+
+function _setRepoBaseBadge(fromGithub) {
+    const badge = document.getElementById('vc-repo-base-source');
+    const hint = document.getElementById('vc-repo-base-hint');
+    if (badge) badge.classList.toggle('d-none', !fromGithub);
+    if (hint) hint.classList.toggle('d-none', !fromGithub);
+}
+
+function _applyBriefingUrlFromRoadmap(selectValue) {
+    const briefingEl = document.getElementById('vc-briefing-url');
+    if (!briefingEl) return;
+    const roadmapUrl = selectValue && window._projectUrlMap ? window._projectUrlMap[selectValue] : '';
+    if (roadmapUrl) {
+        briefingEl.value = roadmapUrl;
+        _setBriefingSourceBadge(true);
+    } else {
+        // Only clear if currently showing a roadmap URL (don't wipe manually entered values)
+        const badge = document.getElementById('vc-briefing-source');
+        if (badge && !badge.classList.contains('d-none')) {
+            briefingEl.value = '';
+        }
+        _setBriefingSourceBadge(false);
+    }
+}
 
 async function saveVirtualClassroom(isActive) {
     const selectEl = document.getElementById('vc-project-select');
@@ -8518,7 +8858,7 @@ function renderEvaluationTab() {
             const evals = saved ? (saved.evaluations || []) : [];
             const evalCount = evals.filter(e => e.evaluatedAt).length; // Only counts those with a date (graded)
             const submissionCount = evals.filter(e => e.submissionLink).length; // Counts those with a link
-            console.log(`[DEBUG] Project "${proj.name}": evalCount=${evalCount}, submissionCount=${submissionCount}`, evals);
+            //console.log(`[DEBUG] Project "${proj.name}": evalCount=${evalCount}, submissionCount=${submissionCount}`, evals);
             const hasEval = evalCount > 0;
             const hasSubmission = submissionCount > 0;
             const groupCount = (saved && saved.groups) ? saved.groups.length : 0;
@@ -9852,7 +10192,7 @@ function selectEvalTarget(targetId) {
 
     const isGrupal = saved.type === 'grupal';
     const savedEval = (saved.evaluations || []).find(e => String(e.targetId) === String(targetId));
-    console.log('[DEBUG] selectEvalTarget:', { targetId, isGrupal, savedEval });
+    //console.log('[DEBUG] selectEvalTarget:', { targetId, isGrupal, savedEval });
 
     // Resolve display name
     let displayName = String(targetId);
@@ -9873,7 +10213,7 @@ function selectEvalTarget(targetId) {
     const isDone = !!(savedEval && savedEval.evaluatedAt);
     const savedFeedback = savedEval ? (savedEval.feedback || '') : '';
     const hasLink = !!(savedEval && savedEval.submissionLink);
-    console.log('[DEBUG] selectEvalTarget state:', { isDone, hasLink, savedEval });
+    //console.log('[DEBUG] selectEvalTarget state:', { isDone, hasLink, savedEval });
 
     // Build competences HTML using existing buildCompetencesHtml logic
     const projCompetences = window._evalCurrentProjectCompetences || [];
@@ -9958,7 +10298,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
     }
     const removedCompIds = window._evalRemovedComps?.[String(targetId)] || [];
     const visibleComps = projCompetences.filter(c => !removedCompIds.includes(String(c.id)));
-    console.log(`📌 ${visibleComps}`)
+    //console.log(`📌 ${visibleComps}`)
     if (!visibleComps.length) {
         return `<p class="text-muted small fst-italic">Todas las competencias han sido eliminadas de esta evaluación.</p>`;
     }
@@ -10343,15 +10683,7 @@ function openEvaluationModal(mIdx, pIdx) {
     })();
 
     // DEBUG: log competence tool data
-    console.log('[Eval] projCompetences:', projCompetences.map(c => ({
-        id: c.id, name: c.name,
-        toolsWithIndicators_count: (c.toolsWithIndicators || []).length,
-        first_tool: (c.toolsWithIndicators || [])[0] ? {
-            name: (c.toolsWithIndicators || [])[0].name,
-            indicators_count: ((c.toolsWithIndicators || [])[0].indicators || []).length,
-            first_indicator: ((c.toolsWithIndicators || [])[0].indicators || [])[0]
-        } : null
-    })));
+    //console.log('[Eval] projCompetences:', projCompetences.map(c => ({ id: c.id, name: c.name, toolsWithIndicators_count: (c.toolsWithIndicators || []).length, first_tool: (c.toolsWithIndicators || [])[0] ? { name: (c.toolsWithIndicators || [])[0].name, indicators_count: ((c.toolsWithIndicators || [])[0].indicators || []).length, first_indicator: ((c.toolsWithIndicators || [])[0].indicators || [])[0] } : null })));
 
     document.getElementById('eval-modal-title').textContent = `${escapeHtml(proj.name)} — ${escapeHtml(mod.name || `Módulo ${mIdx + 1}`)}`;
 

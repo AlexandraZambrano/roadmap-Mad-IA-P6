@@ -5,3 +5,6 @@ node_modules
 ./data
 ./backend/keys/public.pem
 backend/keys/public.pem
+# keep .env.example tracked
+!.env.example
+./backend/utils/email.js

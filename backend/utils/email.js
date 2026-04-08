@@ -77,7 +77,7 @@ export async function sendPasswordEmail(email, name, password) {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`Password email sent to ${email}`);
+    //console.log(`Password email sent to ${email}`);
     return true;
   } catch (error) {
     console.error('Error sending email:', error);
@@ -108,7 +108,7 @@ export async function sendReportEmail(to, subject, body, attachments) {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`Report email sent to ${to}`);
+    //console.log(`Report email sent to ${to}`);
     return true;
   } catch (error) {
     console.error('Error sending report email:', error);
